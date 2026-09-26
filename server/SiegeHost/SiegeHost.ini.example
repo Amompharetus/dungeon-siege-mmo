@@ -1,0 +1,25 @@
+[SiegeHost]
+Enabled=1
+MaxPlayers=0
+PatchTeams=1
+LogDirectPlay=1
+
+[Chat]
+; seconds a chat line stays on screen (menus open or not)
+LineSeconds=10
+; 1 = opening the chat (Enter or its button) shows the latest lines again, even ones that timed out
+HistoryOnOpen=1
+
+[UI]
+; 1 = the top-left panel shows the other players (at most 7), 0 = only your own character
+ShowOtherPlayers=1
+; 1 = only players in your area (your town and the places around it, the map's own groups), 0 = everyone
+NearbyOnly=1
+; 1 = also show the server's ServerHost character in that panel
+ShowServerHost=0
+; 1 = frame other players' portraits correctly at every screen resolution
+PortraitFix=1
+
+; game server only ([AutoHost] section of SiegeHost-server.ini):
+; AreaScaling=1     new monsters scale with the players in their area (map location group), 0 = everyone online
+; CountServerHost=0 ServerHost is not counted as a player for that scaling, 1 = count it as the stock game did

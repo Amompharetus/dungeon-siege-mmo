@@ -1,0 +1,3478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dungeon Siege MMO</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Dungeon Siege MMO | Enter the Utraean Peninsula">
+    <meta property="og:description" content="A persistent multiplayer world. Journey together across regional dedicated realms.">
+    <meta property="og:image" content="https://dungeonsiegemmo.online/static/og-image.png">
+    <meta property="og:image:secure_url" content="https://dungeonsiegemmo.online/static/og-image.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1024">
+    <meta property="og:image:height" content="576">
+    <meta property="og:image:alt" content="Dungeon Siege MMO | Enter the Utraean Peninsula">
+    <meta property="og:url" content="https://dungeonsiegemmo.online/">
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Dungeon Siege MMO | Enter the Utraean Peninsula">
+    <meta name="twitter:description" content="A persistent multiplayer world. Journey together across regional dedicated realms.">
+    <meta name="twitter:image" content="https://dungeonsiegemmo.online/static/og-image.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Cinzel+Decorative:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ds-gold: #e5b85c;
+            --ds-gold-glow: rgba(229, 184, 92, 0.4);
+            --ds-gold-dark: #8c6a28;
+            --ds-amber: #ff9800;
+            --ds-bg-dark: #0a0c10;
+            --ds-card-bg: rgba(18, 22, 28, 0.88);
+            --ds-card-border: #2e261d;
+            --ds-border-gold: #5e4a28;
+            --ds-accent-red: #c0392b;
+            --ds-accent-blue: #2980b9;
+            --ds-green: #2ecc71;
+            --ds-gray: #8b949e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--ds-bg-dark);
+            background-image: 
+                radial-gradient(circle at 50% 8%, rgba(45, 32, 18, 0.6) 0%, rgba(10, 12, 16, 0.95) 75%),
+                linear-gradient(rgba(10, 12, 16, 0.88), rgba(10, 12, 16, 0.94));
+            color: #d1d5db;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            padding: 35px 24px 60px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* TOP NAVIGATION BUTTONS (FAR LEFT) */
+        .top-nav {
+            position: fixed;
+            top: 25px;
+            left: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 9px 12px;
+            background: linear-gradient(180deg, rgba(28, 24, 20, 0.96) 0%, rgba(16, 18, 22, 0.96) 100%);
+            border: 1.5px solid var(--ds-border-gold);
+            border-radius: 6px;
+            color: #b8aba0;
+            font-family: 'Cinzel', serif;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            text-decoration: none;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            transition: all 0.22s ease;
+            user-select: none;
+            width: 118px;
+            backdrop-filter: blur(8px);
+            white-space: nowrap;
+            box-sizing: border-box;
+        }
+
+        .nav-btn .nav-icon {
+            width: 15px;
+            height: 15px;
+            fill: currentColor;
+            opacity: 0.8;
+            flex-shrink: 0;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .nav-btn:hover {
+            color: var(--ds-gold);
+            border-color: var(--ds-gold);
+            background: linear-gradient(180deg, rgba(42, 34, 25, 0.95) 0%, rgba(22, 24, 28, 0.95) 100%);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7), 0 0 12px rgba(229, 184, 92, 0.25);
+            transform: translateX(2px);
+        }
+
+        .nav-btn:hover .nav-icon {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .nav-btn.active {
+            color: #fff6de;
+            border-color: var(--ds-gold);
+            background: linear-gradient(180deg, rgba(88, 65, 28, 0.9) 0%, rgba(36, 28, 20, 0.98) 100%);
+            box-shadow: 0 0 18px rgba(229, 184, 92, 0.38), inset 0 1px 1px rgba(255, 235, 175, 0.45);
+            text-shadow: 0 0 10px rgba(229, 184, 92, 0.65);
+        }
+
+        .nav-btn.active .nav-icon {
+            opacity: 1;
+            fill: var(--ds-gold);
+            filter: drop-shadow(0 0 4px rgba(229, 184, 92, 0.8));
+        }
+
+        /* DISABLED NAV BUTTONS */
+        .nav-btn.disabled {
+            opacity: 0.38;
+            cursor: not-allowed !important;
+            filter: grayscale(0.65);
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            color: #6a737d !important;
+            box-shadow: none !important;
+            background: rgba(14, 18, 24, 0.5) !important;
+            transform: none !important;
+            user-select: none;
+        }
+
+        .nav-btn.disabled:hover {
+            color: #6a737d !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            background: rgba(14, 18, 24, 0.5) !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        .nav-btn.disabled .nav-icon {
+            opacity: 0.3 !important;
+            transform: none !important;
+            fill: #6a737d !important;
+            filter: none !important;
+        }
+
+        @media (max-width: 1100px) {
+            .top-nav {
+                position: absolute;
+                top: 20px;
+                left: 15px;
+            }
+        }
+
+        @media (max-width: 800px) {
+            .container {
+                padding: 20px 12px 40px;
+            }
+            .top-nav {
+                position: static;
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 8px;
+                margin: 0 auto 16px;
+                width: 100%;
+                max-width: 100%;
+                padding: 0 4px;
+                box-sizing: border-box;
+            }
+            .nav-btn {
+                width: auto;
+                padding: 7px 10px;
+                font-size: 11px;
+                gap: 5px;
+            }
+            .nav-btn:hover {
+                transform: none;
+            }
+        }
+
+        /* HEADER */
+        header {
+            text-align: center;
+            margin-bottom: 32px;
+            position: relative;
+        }
+
+        .logo-wrap {
+            margin-bottom: 12px;
+            display: inline-block;
+            filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 30px rgba(229, 184, 92, 0.28));
+            transition: transform 0.3s ease;
+        }
+
+        .logo-wrap:hover {
+            transform: scale(1.02);
+        }
+
+        .logo-img {
+            max-width: 440px;
+            width: 90%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .realm-subtitle {
+            font-family: 'Cinzel', serif;
+            font-size: 16px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--ds-gold);
+            text-shadow: 0 2px 5px rgba(0,0,0,0.85);
+            margin-top: 6px;
+            font-weight: 700;
+        }
+
+        /* METRICS BAR */
+        .meta-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .meta-pill {
+            background: rgba(20, 24, 30, 0.85);
+            border: 1px solid var(--ds-border-gold);
+            border-radius: 6px;
+            padding: 8px 18px;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        .meta-pill.clickable {
+            cursor: pointer;
+        }
+
+        .meta-pill.clickable:hover {
+            border-color: var(--ds-gold);
+            box-shadow: 0 4px 16px rgba(229, 184, 92, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .pulse-dot {
+            width: 9px;
+            height: 9px;
+            background-color: var(--ds-green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--ds-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(46, 204, 113, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+        }
+
+        .meta-label {
+            color: var(--ds-gray);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        .meta-val {
+            color: #fff;
+            font-weight: 700;
+            font-family: 'Cinzel', serif;
+        }
+
+        /* MAIN GRID */
+        .grid-servers {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+            margin-top: 25px;
+            align-items: start;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .server-column {
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        @media (max-width: 1150px) {
+            .grid-servers {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* SERVER CARD */
+        .server-card {
+            background: var(--ds-card-bg);
+            border: 1.5px solid var(--ds-border-gold);
+            border-radius: 8px;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.75), inset 0 0 35px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .server-card::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, transparent, var(--ds-gold), transparent);
+        }
+
+        /* CARD HEADER */
+        .card-header {
+            padding: 18px 24px;
+            background: linear-gradient(180deg, rgba(38, 30, 20, 0.75) 0%, rgba(18, 22, 28, 0.6) 100%);
+            border-bottom: 1px solid var(--ds-card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title-group {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .flag-icon {
+            width: 34px;
+            height: 23px;
+            border-radius: 3px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+            object-fit: cover;
+            display: block;
+            flex-shrink: 0;
+        }
+
+        .server-name {
+            font-family: 'Cinzel', serif;
+            font-size: 20px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: 1.2px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .header-adventurers {
+            font-family: 'Cinzel', serif;
+            font-size: 13px;
+            color: var(--ds-gray);
+            letter-spacing: 0.5px;
+        }
+
+        .count-highlight {
+            color: var(--ds-gold);
+            font-weight: 700;
+            font-size: 14px;
+            margin-left: 3px;
+        }
+
+        /* PLAYERS TABLE / GUILD CENSUS */
+        .roster-table {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* 
+           Equal-gap layout:
+           Identical 15px gap between Adventurer, Level, Class, and Location.
+           Sized to eliminate any ellipsis (...) truncation across classes and locations.
+        */
+        .roster-head {
+            display: grid;
+            grid-template-columns: 1.55fr 1.15fr 1.45fr 1.45fr;
+            column-gap: 0px;
+            align-items: center;
+            padding: 11px 16px;
+            min-width: 480px;
+            background: rgba(12, 15, 20, 0.95);
+            border-bottom: 1px solid var(--ds-card-border);
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ds-gold-dark);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .roster-head .th-col {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            min-width: 0;
+        }
+
+        .roster-body {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-height: 100px;
+        }
+
+        .roster-row {
+            display: grid;
+            grid-template-columns: 1.55fr 1.15fr 1.45fr 1.45fr;
+            column-gap: 0px;
+            align-items: center;
+            padding: 10px 8px;
+            min-width: 480px;
+            background: rgba(22, 26, 34, 0.75);
+            border: 1px solid rgba(229, 184, 92, 0.12);
+            border-radius: 5px;
+            transition: all 0.2s ease;
+        }
+
+        .roster-row:hover {
+            border-color: var(--ds-gold);
+            background: rgba(28, 34, 44, 0.95);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .col-adventurer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 2px;
+            overflow: hidden;
+            padding: 0 4px;
+        }
+
+        .hero-name {
+            font-family: 'Cinzel', serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .account-tag {
+            font-size: 9.5px;
+            color: var(--ds-gray);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .account-tag span {
+            color: #abb2bf;
+        }
+
+        .level-shield {
+            width: 36px;
+            height: 38px;
+            background: linear-gradient(135deg, #2c2214 0%, #16120b 100%);
+            border: 1.5px solid var(--ds-gold);
+            clip-path: polygon(50% 0%, 100% 20%, 100% 75%, 50% 100%, 0% 75%, 0% 20%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+            flex-shrink: 0;
+        }
+
+        .level-val {
+            font-family: 'Cinzel', serif;
+            font-size: 15px;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1;
+        }
+
+        .col-level,
+        .col-race,
+        .col-class,
+        .col-location {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            min-width: 0;
+        }
+
+        .race-pill,
+        .class-pill {
+            display: inline-block;
+            padding: 3px 6px;
+            background: rgba(20, 24, 30, 0.85);
+            border: 1px solid var(--ds-border-gold);
+            border-radius: 5px;
+            font-family: 'Cinzel', serif;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .location-pill {
+            display: inline-block;
+            padding: 3px 5px;
+            background: rgba(20, 24, 30, 0.85);
+            border: 1px solid var(--ds-border-gold);
+            border-radius: 5px;
+            font-family: 'Cinzel', serif;
+            font-size: 9.5px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 0.2px;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 36px 20px;
+            color: #6e7681;
+            text-align: center;
+            gap: 6px;
+        }
+
+        .empty-title {
+            font-family: 'Cinzel', serif;
+            font-size: 14px;
+            color: #8b949e;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .empty-desc {
+            font-size: 12px;
+            max-width: 280px;
+            line-height: 1.5;
+            color: #57606a;
+        }
+
+        /* ========================================================
+           INTERACTIVE UTRAEAN PENINSULA MAP STYLING
+           ======================================================== */
+        .map-card {
+            margin-top: 0;
+            overflow: visible !important;
+            z-index: 20;
+        }
+
+        .map-card:hover,
+        .map-card:focus-within {
+            z-index: 80;
+        }
+
+        .map-card .card-header {
+            border-top-left-radius: 7px;
+            border-top-right-radius: 7px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .map-card .map-staging-bar {
+            border-bottom-left-radius: 7px;
+            border-bottom-right-radius: 7px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .map-frame {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 662 / 1024;
+            background: #0d1015;
+            overflow: visible;
+            z-index: 10;
+        }
+
+        .markers-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: visible;
+            z-index: 20;
+        }
+
+        .map-img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+            border-radius: 0;
+        }
+
+        /* MAP MARKER */
+        .map-marker {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 30;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+
+        .map-marker:hover,
+        .map-marker:focus-within {
+            z-index: 999999 !important;
+        }
+
+        /* RADAR PULSE RING */
+        .map-marker .radar-ping {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 34px;
+            height: 34px;
+            margin-top: -17px;
+            margin-left: -17px;
+            border-radius: 50%;
+            background: rgba(46, 204, 113, 0.4);
+            box-shadow: 0 0 14px rgba(46, 204, 113, 0.8);
+            pointer-events: none;
+            animation: radarPing 2.2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        .map-marker .radar-ping-secondary {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 34px;
+            height: 34px;
+            margin-top: -17px;
+            margin-left: -17px;
+            border-radius: 50%;
+            border: 2px solid rgba(46, 204, 113, 0.85);
+            pointer-events: none;
+            animation: radarPing 2.2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+            animation-delay: 0.7s;
+        }
+
+        @keyframes radarPing {
+            0% {
+                transform: scale(0.3);
+                opacity: 1;
+            }
+            60% {
+                transform: scale(2.2);
+                opacity: 0.3;
+            }
+            100% {
+                transform: scale(3.2);
+                opacity: 0;
+            }
+        }
+
+        /* CENTRAL BEACON DOT */
+        .marker-beacon {
+            position: relative;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #58d68d 0%, #27ae60 70%, #1e8449 100%);
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 14px rgba(46, 204, 113, 0.95), 0 2px 6px rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #ffffff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 2;
+        }
+
+        .map-marker:hover .marker-beacon {
+            transform: scale(1.3);
+            border-color: var(--ds-gold);
+            box-shadow: 0 0 20px rgba(46, 204, 113, 1), 0 0 10px var(--ds-gold);
+        }
+
+        /* IDLE TOWN MARKER (No players online) */
+        .map-marker.idle .radar-ping,
+        .map-marker.idle .radar-ping-secondary {
+            display: none;
+        }
+
+        .map-marker.idle .marker-beacon {
+            width: 14px;
+            height: 14px;
+            background: rgba(22, 26, 34, 0.85);
+            border: 1.5px solid var(--ds-border-gold);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.7);
+            font-size: 0;
+            opacity: 0.75;
+        }
+
+        .map-marker.idle:hover .marker-beacon {
+            opacity: 1;
+            transform: scale(1.4);
+            border-color: var(--ds-gold);
+            background: rgba(229, 184, 92, 0.35);
+            box-shadow: 0 0 10px var(--ds-gold);
+        }
+
+        /* TOWN NAME BADGE (Superseded by interactive tooltips) */
+        .town-tag {
+            display: none !important;
+        }
+
+        /* INTERACTIVE FANTASY TOOLTIP */
+        .map-tooltip {
+            position: absolute;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%) translateY(6px);
+            background: linear-gradient(180deg, #161b24 0%, #0d1016 100%);
+            border: 1.5px solid var(--ds-gold);
+            border-radius: 7px;
+            padding: 12px 14px;
+            min-width: 250px;
+            max-width: min(320px, 85vw);
+            box-shadow: 0 14px 40px rgba(0,0,0,0.98), 0 0 25px rgba(0, 0, 0, 0.9), 0 0 18px rgba(229, 184, 92, 0.3);
+            pointer-events: auto;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s cubic-bezier(0.165, 0.84, 0.44, 1), transform 0.2s cubic-bezier(0.165, 0.84, 0.44, 1), visibility 0.2s ease;
+            z-index: 999999;
+            backdrop-filter: blur(10px);
+        }
+
+        .map-tooltip::after {
+            content: "";
+            position: absolute;
+            bottom: -7px;
+            left: 50%;
+            transform: translateX(-50%) rotate(45deg);
+            width: 12px;
+            height: 12px;
+            background: #0d1016;
+            border-right: 1.5px solid var(--ds-gold);
+            border-bottom: 1.5px solid var(--ds-gold);
+            z-index: 1;
+        }
+
+        /* Downward tooltip for upper regions */
+        .map-marker.pos-down-mid .map-tooltip,
+        .map-marker.pos-down-left .map-tooltip,
+        .map-marker.pos-down-right .map-tooltip {
+            bottom: auto;
+            top: 28px;
+        }
+
+        .map-marker.pos-down-mid .map-tooltip::after,
+        .map-marker.pos-down-left .map-tooltip::after,
+        .map-marker.pos-down-right .map-tooltip::after {
+            bottom: auto;
+            top: -7px;
+            background: #161b24;
+            border-right: none;
+            border-bottom: none;
+            border-left: 1.5px solid var(--ds-gold);
+            border-top: 1.5px solid var(--ds-gold);
+            z-index: 1;
+        }
+
+        /* Pos-Mid (Center Horizontally) */
+        .map-marker.pos-up-mid .map-tooltip {
+            left: 50%;
+            right: auto;
+            transform: translateX(-50%) translateY(6px);
+        }
+        .map-marker.pos-down-mid .map-tooltip {
+            left: 50%;
+            right: auto;
+            transform: translateX(-50%) translateY(-6px);
+        }
+        .map-marker.pos-up-mid .map-tooltip::after,
+        .map-marker.pos-down-mid .map-tooltip::after {
+            left: 50%;
+            right: auto;
+            transform: translateX(-50%) rotate(45deg);
+        }
+
+        /* Pos-Left (Anchored left near marker, extends eastward/inward to the right) */
+        .map-marker.pos-up-left .map-tooltip {
+            left: -14px;
+            right: auto;
+            transform: translateY(6px);
+        }
+        .map-marker.pos-down-left .map-tooltip {
+            left: -14px;
+            right: auto;
+            transform: translateY(-6px);
+        }
+        .map-marker.pos-up-left .map-tooltip::after,
+        .map-marker.pos-down-left .map-tooltip::after {
+            left: 25px;
+            right: auto;
+            transform: translateX(-50%) rotate(45deg);
+        }
+
+        /* Pos-Right (Anchored right near marker, extends westward/inward to the left) */
+        .map-marker.pos-up-right .map-tooltip {
+            left: auto;
+            right: -14px;
+            transform: translateY(6px);
+        }
+        .map-marker.pos-down-right .map-tooltip {
+            left: auto;
+            right: -14px;
+            transform: translateY(-6px);
+        }
+        .map-marker.pos-up-right .map-tooltip::after,
+        .map-marker.pos-down-right .map-tooltip::after {
+            left: auto;
+            right: 25px;
+            transform: translateX(50%) rotate(45deg);
+        }
+
+        /* HOVER ACTIVATIONS */
+        .map-marker:hover .map-tooltip,
+        .map-marker:focus-within .map-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+        .map-marker.pos-up-mid:hover .map-tooltip,
+        .map-marker.pos-up-mid:focus-within .map-tooltip,
+        .map-marker.pos-down-mid:hover .map-tooltip,
+        .map-marker.pos-down-mid:focus-within .map-tooltip {
+            transform: translateX(-50%) translateY(0);
+        }
+        .map-marker.pos-down-left:hover .map-tooltip,
+        .map-marker.pos-down-left:focus-within .map-tooltip,
+        .map-marker.pos-up-left:hover .map-tooltip,
+        .map-marker.pos-up-left:focus-within .map-tooltip {
+            transform: translateY(0);
+        }
+        .map-marker.pos-down-right:hover .map-tooltip,
+        .map-marker.pos-down-right:focus-within .map-tooltip,
+        .map-marker.pos-up-right:hover .map-tooltip,
+        .map-marker.pos-up-right:focus-within .map-tooltip {
+            transform: translateY(0);
+        }
+
+        .tooltip-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(229, 184, 92, 0.3);
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+        }
+
+        .tooltip-town {
+            font-family: 'Cinzel', serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--ds-gold);
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+        }
+
+        .tooltip-count {
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            color: var(--ds-green);
+            font-weight: 600;
+        }
+
+        .tooltip-req {
+            font-size: 10px;
+            color: var(--ds-gray);
+            font-style: italic;
+        }
+
+        .tooltip-player-list {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .tooltip-player-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(30, 37, 48, 0.6);
+            border: 1px solid rgba(229, 184, 92, 0.15);
+            border-radius: 4px;
+            padding: 6px 8px;
+            gap: 8px;
+        }
+
+        .tooltip-player-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+        }
+
+        .tooltip-shield {
+            width: 24px;
+            height: 26px;
+            background: linear-gradient(135deg, #2c2214 0%, #16120b 100%);
+            border: 1px solid var(--ds-gold);
+            clip-path: polygon(50% 0%, 100% 20%, 100% 75%, 50% 100%, 0% 75%, 0% 20%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .tooltip-char-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .tooltip-char-name {
+            font-family: 'Cinzel', serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tooltip-char-acct {
+            font-size: 9.5px;
+            color: var(--ds-gray);
+        }
+
+        .tooltip-race-pill,
+        .tooltip-class-pill {
+            font-family: 'Cinzel', serif;
+            font-size: 10px;
+            padding: 2px 7px;
+            background: rgba(18, 22, 28, 0.9);
+            border: 1px solid var(--ds-border-gold);
+            border-radius: 3px;
+            color: var(--ds-gold);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .tooltip-player-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        /* STAGING SCREEN FOOTER BAR */
+        .map-staging-bar {
+            padding: 10px 18px;
+            background: rgba(12, 15, 20, 0.95);
+            border-top: 1px solid var(--ds-card-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11.5px;
+        }
+
+        .map-staging-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--ds-gray);
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        .staging-beacon {
+            width: 7px;
+            height: 7px;
+            background: var(--ds-amber);
+            border-radius: 50%;
+            box-shadow: 0 0 6px var(--ds-amber);
+            display: none;
+        }
+
+        .staging-players-names {
+            color: var(--ds-gold);
+            font-weight: 600;
+        }
+
+        /* ========================================================
+           HOME LANDING PAGE & ADVENTURER CITADEL
+           ======================================================== */
+        .home-view {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 960px;
+            margin: 0 auto;
+            gap: 28px;
+        }
+
+        .home-hero-wrap {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+
+
+        .home-hero-sub {
+            font-family: 'Cinzel', serif;
+            font-size: 26px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 1.2px;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.85);
+        }
+
+        .home-hero-desc {
+            font-size: 13.5px;
+            color: #a0aec0;
+            max-width: 580px;
+            line-height: 1.6;
+            margin-bottom: 22px;
+        }
+
+        .home-discord-wrap {
+            margin-bottom: 6px;
+        }
+
+        .home-discord-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 14px 34px;
+            background: linear-gradient(135deg, #5865F2 0%, #4752C4 100%);
+            border: 1.5px solid #7983f5;
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'Cinzel', serif;
+            font-size: 14.5px;
+            font-weight: 800;
+            letter-spacing: 1.4px;
+            text-decoration: none;
+            box-shadow: 0 8px 24px rgba(88, 101, 242, 0.45), 0 0 18px rgba(88, 101, 242, 0.2);
+            transition: all 0.22s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .home-discord-btn:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 12px 30px rgba(88, 101, 242, 0.65), 0 0 26px rgba(88, 101, 242, 0.35);
+            border-color: #9aa2ff;
+        }
+
+        .home-discord-btn .discord-svg-icon {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
+
+
+        /* LADDER VIEW */
+        .ladder-card-wrapper {
+            width: 100%;
+            max-width: 880px;
+            margin: 0 auto;
+        }
+
+        .ladder-card {
+            width: 100%;
+        }
+
+        .ladder-head,
+        .ladder-row {
+            display: grid;
+            grid-template-columns: 50px 2fr 1.2fr 1.6fr;
+            align-items: center;
+        }
+
+        .col-rank {
+            font-family: 'Cinzel', serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #687282;
+            letter-spacing: 0.5px;
+            user-select: none;
+        }
+
+        .th-rank {
+            color: #555d6b !important;
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+        }
+
+        .ladder-icon {
+            width: 22px;
+            height: 22px;
+            fill: var(--ds-gold);
+            filter: drop-shadow(0 0 6px rgba(229, 184, 92, 0.6));
+            flex-shrink: 0;
+        }
+
+        #nav-btn-gm {
+            font-size: 11.5px;
+            letter-spacing: 0.8px;
+            padding: 9px 6px;
+            gap: 5px;
+        }
+
+        /* TOP RIGHT RUNESTONE SEAL BUTTON (GAME MASTER) */
+        .top-admin-container {
+            position: fixed;
+            top: 25px;
+            right: 28px;
+            z-index: 1000;
+        }
+
+        .admin-seal-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 35% 35%, #252019 0%, #0e1117 80%);
+            border: 2px solid rgba(229, 184, 92, 0.45);
+            color: var(--ds-gold);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 14px rgba(229, 184, 92, 0.2), inset 0 0 10px rgba(0, 0, 0, 0.8);
+            cursor: pointer;
+            outline: none;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .admin-seal-btn::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 1px dashed rgba(229, 184, 92, 0.3);
+            pointer-events: none;
+            transition: transform 0.8s ease, border-color 0.3s ease;
+        }
+
+        .admin-seal-btn:hover {
+            transform: translateY(-2px) scale(1.06);
+            border-color: #ffd875;
+            color: #ffd875;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.85), 0 0 24px rgba(229, 184, 92, 0.5), inset 0 0 12px rgba(229, 184, 92, 0.15);
+        }
+
+        .admin-seal-btn:hover::before {
+            transform: rotate(45deg);
+            border-color: rgba(229, 184, 92, 0.65);
+        }
+
+        .admin-seal-btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .admin-seal-btn .admin-seal-svg {
+            width: 26px;
+            height: 26px;
+            transition: transform 0.3s ease, filter 0.3s ease;
+            filter: drop-shadow(0 0 4px rgba(229, 184, 92, 0.3));
+        }
+
+        .admin-seal-btn:hover .admin-seal-svg {
+            filter: drop-shadow(0 0 8px rgba(229, 184, 92, 0.7));
+        }
+
+        /* Logged in state (Emerald Warden Seal) */
+        .admin-seal-btn.admin-active {
+            border-color: rgba(86, 211, 100, 0.6);
+            color: #56d364;
+            background: radial-gradient(circle at 35% 35%, #15291b 0%, #0c1410 80%);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 18px rgba(86, 211, 100, 0.35), inset 0 0 10px rgba(0, 0, 0, 0.8);
+        }
+
+        .admin-seal-btn.admin-active::before {
+            border-color: rgba(86, 211, 100, 0.4);
+        }
+
+        .admin-seal-btn.admin-active:hover {
+            border-color: #7ee787;
+            color: #aff5b4;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.85), 0 0 26px rgba(86, 211, 100, 0.55), inset 0 0 12px rgba(86, 211, 100, 0.2);
+        }
+
+        .admin-seal-btn.admin-active:hover::before {
+            border-color: rgba(86, 211, 100, 0.75);
+        }
+
+        .admin-seal-btn.admin-active .admin-seal-svg {
+            filter: drop-shadow(0 0 6px rgba(86, 211, 100, 0.5));
+        }
+
+        @media (max-width: 768px) {
+            .top-admin-container {
+                top: 16px;
+                right: 16px;
+            }
+        }
+
+        /* ADMIN / GM MODAL & CMS STYLES */
+        .admin-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 6, 9, 0.82);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.18s ease, visibility 0.18s ease;
+        }
+
+        .admin-modal-backdrop.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .admin-modal-card {
+            background: rgba(14, 18, 26, 0.98);
+            border: 1.5px solid rgba(229, 184, 92, 0.5);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85), 0 0 20px rgba(229, 184, 92, 0.2);
+            border-radius: 14px;
+            width: 100%;
+            max-width: 440px;
+            padding: 26px;
+            box-sizing: border-box;
+            color: #e6edf3;
+            transform: scale(0.96) translateZ(0);
+            transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform, opacity;
+        }
+
+        .admin-modal-backdrop.active .admin-modal-card {
+            transform: scale(1) translateZ(0);
+        }
+
+        .admin-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+
+        .admin-modal-header h3 {
+            margin: 0;
+            color: var(--ds-gold);
+            font-family: 'Cinzel', serif;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+        }
+
+        .admin-modal-close {
+            background: transparent;
+            border: none;
+            color: #8b949e;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .admin-modal-close:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .admin-modal-desc {
+            color: #8b949e;
+            font-size: 13.5px;
+            margin-top: 0;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .admin-field {
+            margin-bottom: 14px;
+        }
+
+        .admin-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: #ffd875;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 6px;
+            font-family: 'Cinzel', serif;
+        }
+
+        .admin-input {
+            width: 100%;
+            box-sizing: border-box;
+            background: rgba(9, 11, 15, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .admin-input:focus {
+            border-color: var(--ds-gold);
+            box-shadow: 0 0 12px rgba(229, 184, 92, 0.35);
+        }
+
+        .admin-password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .admin-password-wrapper .admin-input {
+            padding-right: 42px;
+        }
+
+        .admin-password-toggle {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: #8b949e;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .admin-password-toggle:hover {
+            color: var(--ds-gold);
+            background: rgba(229, 184, 92, 0.12);
+        }
+
+        .admin-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 16px;
+        }
+
+        .admin-btn-submit {
+            background: linear-gradient(135deg, #e5b85c, #ff9800);
+            color: #0b0c10;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            font-family: 'Cinzel', serif;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.8px;
+            cursor: pointer;
+            box-shadow: 0 0 16px rgba(229, 184, 92, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .admin-btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 24px rgba(229, 184, 92, 0.6);
+        }
+
+        .admin-btn-cancel {
+            background: rgba(28, 33, 44, 0.8);
+            color: #8b949e;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .admin-btn-cancel:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .admin-btn-danger {
+            background: rgba(248, 81, 73, 0.15);
+            color: #f85149;
+            border: 1px solid rgba(248, 81, 73, 0.4);
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .admin-btn-danger:hover {
+            background: #f85149;
+            color: #fff;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .admin-error-box {
+            background: rgba(248, 81, 73, 0.15);
+            border: 1px solid rgba(248, 81, 73, 0.5);
+            color: #ff7b72;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 14px;
+        }
+
+        .admin-error-box.hidden {
+            display: none !important;
+        }
+
+        .admin-success-box {
+            background: rgba(86, 211, 100, 0.12);
+            border: 1px solid rgba(86, 211, 100, 0.4);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .admin-toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(14, 18, 26, 0.96);
+            border: 1px solid var(--ds-gold);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(229, 184, 92, 0.35);
+            color: #ffd875;
+            padding: 12px 22px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            font-weight: 600;
+            z-index: 100000;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .admin-toast.hidden {
+            display: none !important;
+        }
+
+        /* GM ACTION CONFIRMATION MODAL */
+        .gm-confirm-card {
+            max-width: 480px;
+            padding: 24px;
+            border: 1.5px solid var(--ds-border-gold);
+            background: linear-gradient(180deg, #171c26 0%, #0d1016 100%);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.95), 0 0 30px rgba(229, 184, 92, 0.25);
+        }
+
+        .gm-confirm-header {
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(229, 184, 92, 0.25);
+        }
+
+        .gm-confirm-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .gm-confirm-icon-wrap {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .gm-confirm-icon-wrap svg {
+            width: 17px;
+            height: 17px;
+        }
+
+        .gm-confirm-icon-wrap.icon-start {
+            background: rgba(46, 204, 113, 0.18);
+            color: #2ecc71;
+            border: 1.5px solid rgba(46, 204, 113, 0.45);
+            box-shadow: 0 0 12px rgba(46, 204, 113, 0.35);
+        }
+        .gm-confirm-icon-wrap.icon-start svg {
+            fill: currentColor;
+            stroke: none;
+        }
+
+        .gm-confirm-icon-wrap.icon-restart {
+            background: rgba(229, 184, 92, 0.18);
+            color: var(--ds-gold);
+            border: 1.5px solid rgba(229, 184, 92, 0.45);
+            box-shadow: 0 0 12px rgba(229, 184, 92, 0.35);
+        }
+        .gm-confirm-icon-wrap.icon-restart svg {
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .gm-confirm-icon-wrap.icon-stop {
+            background: rgba(231, 76, 60, 0.18);
+            color: #e74c3c;
+            border: 1.5px solid rgba(231, 76, 60, 0.45);
+            box-shadow: 0 0 12px rgba(231, 76, 60, 0.35);
+        }
+        .gm-confirm-icon-wrap.icon-stop svg {
+            fill: currentColor;
+            stroke: none;
+        }
+
+        .gm-confirm-realm-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            padding: 5px 14px;
+            background: rgba(22, 27, 36, 0.9);
+            border: 1px solid var(--ds-border-gold);
+            border-radius: 6px;
+            font-family: 'Cinzel', serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .gm-confirm-text {
+            color: #d1d5db;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 0 0 14px 0;
+        }
+
+        .gm-confirm-text strong {
+            color: #ffffff;
+            letter-spacing: 0.3px;
+        }
+
+        .gm-confirm-warning {
+            background: rgba(231, 76, 60, 0.12);
+            border: 1px solid rgba(231, 76, 60, 0.45);
+            border-left: 4px solid #e74c3c;
+            border-radius: 6px;
+            padding: 12px 14px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            margin-top: 14px;
+            box-shadow: 0 4px 14px rgba(231, 76, 60, 0.15);
+        }
+
+        .gm-confirm-warning.hidden {
+            display: none !important;
+        }
+
+        .gm-confirm-warn-icon {
+            color: #ff6b6b;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .gm-confirm-warn-title {
+            color: #ff6b6b;
+            font-family: 'Cinzel', serif;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .gm-confirm-warn-desc {
+            color: #e2e8f0;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .gm-confirm-actions {
+            margin-top: 22px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .gm-confirm-action-btn {
+            font-family: 'Cinzel', serif;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.8px;
+            padding: 10px 22px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .gm-confirm-action-btn.btn-action-start {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: #0b0c10;
+            box-shadow: 0 0 16px rgba(46, 204, 113, 0.45);
+        }
+        .gm-confirm-action-btn.btn-action-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 24px rgba(46, 204, 113, 0.7);
+        }
+
+        .gm-confirm-action-btn.btn-action-restart {
+            background: linear-gradient(135deg, #e5b85c, #ff9800);
+            color: #0b0c10;
+            box-shadow: 0 0 16px rgba(229, 184, 92, 0.45);
+        }
+        .gm-confirm-action-btn.btn-action-restart:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 24px rgba(229, 184, 92, 0.7);
+        }
+
+        .gm-confirm-action-btn.btn-action-stop {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+            color: #ffffff;
+            box-shadow: 0 0 16px rgba(231, 76, 60, 0.45);
+        }
+        .gm-confirm-action-btn.btn-action-stop:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 24px rgba(231, 76, 60, 0.7);
+        }
+
+        /* GM PANEL VIEW STYLES */
+        .gm-panel-wrapper {
+            width: 100%;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        .gm-panel-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .gm-panel-title {
+            font-family: 'Cinzel', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--ds-gold);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            text-shadow: 0 0 14px rgba(229, 184, 92, 0.35);
+        }
+
+        .gm-panel-subtitle {
+            font-size: 13px;
+            color: var(--ds-gray);
+        }
+
+        .gm-card-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .gm-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11.5px;
+            font-weight: 700;
+            font-family: 'Cinzel', serif;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            background: rgba(15, 18, 24, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #8b949e;
+        }
+
+        .gm-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #8b949e;
+        }
+
+        .gm-status-badge.status-running {
+            background: rgba(46, 204, 113, 0.12);
+            border-color: rgba(46, 204, 113, 0.4);
+            color: #2ecc71;
+        }
+
+        .gm-status-badge.status-running .gm-status-dot {
+            background: #2ecc71;
+            box-shadow: 0 0 8px #2ecc71;
+        }
+
+        .gm-status-badge.status-stopped {
+            background: rgba(231, 76, 60, 0.12);
+            border-color: rgba(231, 76, 60, 0.4);
+            color: #e74c3c;
+        }
+
+        .gm-status-badge.status-stopped .gm-status-dot {
+            background: #e74c3c;
+            box-shadow: 0 0 8px #e74c3c;
+        }
+
+        .gm-status-badge.status-transition {
+            background: rgba(255, 152, 0, 0.12);
+            border-color: rgba(255, 152, 0, 0.4);
+            color: #ff9800;
+        }
+
+        .gm-status-badge.status-transition .gm-status-dot {
+            background: #ff9800;
+            box-shadow: 0 0 8px #ff9800;
+            animation: pulseDot 1.5s infinite;
+        }
+
+        @keyframes pulseDot {
+            0% { transform: scale(0.95); opacity: 0.7; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.7; }
+        }
+
+        .gm-meta-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(10, 12, 16, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 12px 14px;
+            font-size: 12.5px;
+        }
+
+        .gm-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gm-info-label {
+            color: var(--ds-gray);
+        }
+
+        .gm-info-val {
+            color: #e6edf3;
+            font-weight: 500;
+        }
+
+        .gm-info-val code {
+            font-family: monospace;
+            color: var(--ds-gold);
+            background: rgba(229, 184, 92, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11.5px;
+        }
+
+        .gm-btn-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .gm-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-family: 'Cinzel', serif;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .gm-action-icon {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .btn-start {
+            background: rgba(46, 204, 113, 0.15);
+            color: #2ecc71;
+            border-color: rgba(46, 204, 113, 0.35);
+        }
+
+        .btn-start .gm-action-icon {
+            fill: currentColor;
+            stroke: none;
+        }
+
+        .btn-start:hover:not(:disabled) {
+            background: #2ecc71;
+            color: #0b0c10;
+            box-shadow: 0 0 14px rgba(46, 204, 113, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-restart {
+            background: rgba(229, 184, 92, 0.15);
+            color: var(--ds-gold);
+            border-color: rgba(229, 184, 92, 0.35);
+        }
+
+        .btn-restart:hover:not(:disabled) {
+            background: var(--ds-gold);
+            color: #0b0c10;
+            box-shadow: 0 0 14px rgba(229, 184, 92, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-stop {
+            background: rgba(231, 76, 60, 0.15);
+            color: #e74c3c;
+            border-color: rgba(231, 76, 60, 0.35);
+        }
+
+        .btn-stop .gm-action-icon {
+            fill: currentColor;
+            stroke: none;
+        }
+
+        .btn-stop:hover:not(:disabled) {
+            background: #e74c3c;
+            color: #ffffff;
+            box-shadow: 0 0 14px rgba(231, 76, 60, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .gm-action-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .gm-action-feedback {
+            font-size: 12px;
+            text-align: center;
+            min-height: 18px;
+            color: var(--ds-gray);
+            transition: all 0.2s ease;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="top-admin-container">
+    <button id="nav-btn-admin" class="admin-seal-btn" onclick="openAdminModal()" aria-label="Sign In / MMO Account" title="Sign In / MMO Account">
+        <svg class="admin-seal-svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 3" opacity="0.65" />
+            <circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="1.2" />
+            <path d="M24 8L30 14L28 20L24 18L20 20L18 14L24 8Z" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+            <path d="M24 11V29M16 20H32M18.5 14.5L29.5 25.5M29.5 14.5L18.5 25.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.5" />
+            <path d="M17 25C17 33 24 38 24 38C24 38 31 33 31 25V21H17V25Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="currentColor" fill-opacity="0.2" />
+            <circle cx="24" cy="28" r="2.2" fill="currentColor" />
+            <path d="M23 29.5L22.2 34H25.8L25 29.5" fill="currentColor" />
+        </svg>
+    </button>
+</div>
+
+
+<nav class="top-nav" aria-label="Main Navigation">
+    <a href="/home" class="nav-btn active" id="nav-btn-home" data-view="home">
+        <svg class="nav-icon" viewBox="0 0 24 24">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        <span>Home</span>
+    </a>
+    <a href="/realms" class="nav-btn disabled" id="nav-btn-realms" data-view="realms" title="Sign in with your MMO account to access Realms">
+        <svg class="nav-icon" viewBox="0 0 24 24">
+            <path d="M2 20h20v-3h-2v-5h1V5h-3v2h-2V5h-2v2h-2V5h-2v2H8V5H5v7h1v5H4v3H2zm9-6h2a2 2 0 0 1 2 2v4h-6v-4a2 2 0 0 1 2-2z"/>
+        </svg>
+        <span>Realms</span>
+    </a>
+    <a href="/world" class="nav-btn disabled" id="nav-btn-world" data-view="world" title="Sign in with your MMO account to access World Map">
+        <svg class="nav-icon" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        </svg>
+        <span>World</span>
+    </a>
+    <a href="/ladder" class="nav-btn disabled" id="nav-btn-ladder" data-view="ladder" title="Sign in with your MMO account to access Ladder">
+        <svg class="nav-icon" viewBox="0 0 24 24">
+            <path d="M5 2h2v4h10V2h2v20h-2v-4H7v4H5V2zm2 6v3h10V8H7zm0 5v3h10v-3H7z"/>
+        </svg>
+        <span>Ladder</span>
+    </a>
+    <a href="/gm-panel" class="nav-btn" id="nav-btn-gm" data-view="gm" style="display: none;">
+        <svg class="nav-icon" viewBox="0 0 24 24">
+            <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+        </svg>
+        <span>GM Panel</span>
+    </a>
+</nav>
+
+<div class="container">
+
+    <header>
+        <div class="logo-wrap">
+            <img src="/logo.png" alt="Dungeon Siege Logo" class="logo-img">
+        </div>
+        <div class="realm-subtitle">Private MMO Server</div>
+
+        <div class="meta-bar">
+            <div class="meta-pill clickable" id="meta-pill" onclick="if(!currentAuthUser||!currentAuthUser.authenticated)openAdminModal()" title="Click to Sign In">
+                <div class="pulse-dot"></div>
+                <span class="meta-label">Total Online:</span>
+                <span class="meta-val" id="total-online" style="color: var(--ds-gold);">SIGN IN TO SEE</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- VIEW: HOME (Landing Page & Hero Hub) -->
+        <div class="view-container home-view" id="view-home">
+            <!-- Hero Tagline -->
+            <div class="home-hero-wrap">
+                <h1 class="home-hero-sub">Enter the Utraean Peninsula</h1>
+                <p class="home-hero-desc">
+                    A persistent multiplayer world. Journey together across regional dedicated realms.
+                </p>
+
+                <!-- Discord Button -->
+                <div class="home-discord-wrap">
+                    <a href="https://discord.gg/btrVCJAnE8" target="_blank" rel="noopener noreferrer" class="home-discord-btn" title="Join the Official Dungeon Siege MMO Discord">
+                        <svg class="discord-svg-icon" viewBox="0 0 24 24">
+                            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                        </svg>
+                        <span>JOIN OUR DISCORD SERVER</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: REALMS (Adventurer Rosters) -->
+        <div class="view-container grid-servers" id="view-realms" style="display: none;">
+            <div class="server-column">
+                <!-- NA ROSTER CARD -->
+                <section class="server-card" id="card-na">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <img src="/static/flag-us.svg" alt="US Flag" class="flag-icon">
+                            <div class="server-name">North America</div>
+                        </div>
+                        <div class="header-adventurers">
+                            Adventurers: <span class="count-highlight" id="count-na">0 / 30</span>
+                        </div>
+                    </div>
+                    <div class="roster-table">
+                        <div class="roster-head">
+                            <div class="th-col">Adventurer</div>
+                            <div class="th-col">Level</div>
+                            <div class="th-col">Class</div>
+                            <div class="th-col">Location</div>
+                        </div>
+                        <div class="roster-body" id="list-na">
+                            <div class="empty-state">
+                                <div class="empty-title">No Adventurers Online</div>
+                                <div class="empty-desc">The taverns and trails of the Peninsula are currently quiet in this realm.</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="server-column">
+                <!-- EU ROSTER CARD -->
+                <section class="server-card" id="card-eu">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <img src="/static/flag-eu.svg" alt="EU Flag" class="flag-icon">
+                            <div class="server-name">Central Europe</div>
+                        </div>
+                        <div class="header-adventurers">
+                            Adventurers: <span class="count-highlight" id="count-eu">0 / 30</span>
+                        </div>
+                    </div>
+                    <div class="roster-table">
+                        <div class="roster-head">
+                            <div class="th-col">Adventurer</div>
+                            <div class="th-col">Level</div>
+                            <div class="th-col">Class</div>
+                            <div class="th-col">Location</div>
+                        </div>
+                        <div class="roster-body" id="list-eu">
+                            <div class="empty-state">
+                                <div class="empty-title">No Adventurers Online</div>
+                                <div class="empty-desc">The taverns and trails of the Peninsula are currently quiet in this realm.</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- VIEW: WORLD (Utraean Peninsula World Maps) -->
+        <div class="view-container grid-servers" id="view-world" style="display: none;">
+            <div class="server-column">
+                <!-- NA MAP CARD -->
+                <section class="server-card map-card" id="map-card-na">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <img src="/static/flag-us.svg" alt="US Flag" class="flag-icon">
+                            <div class="server-name">North America</div>
+                        </div>
+                        <div class="header-adventurers">
+                            Adventurers: <span class="count-highlight" id="count-map-na">0 / 30</span>
+                        </div>
+                    </div>
+                    <div class="map-frame" id="map-frame-na">
+                        <img src="/static/utraean-map.jpg" alt="Utraean Peninsula Map" class="map-img">
+                        <div class="markers-layer" id="markers-na"></div>
+                    </div>
+                    <div class="map-staging-bar" id="staging-bar-na">
+                        <div class="map-staging-label">
+                            <div class="staging-beacon" id="staging-beacon-na"></div>
+                            <span>Staging Screen:</span>
+                        </div>
+                        <div class="staging-players-names" id="staging-names-na">No adventurers in staging screen</div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="server-column">
+                <!-- EU MAP CARD -->
+                <section class="server-card map-card" id="map-card-eu">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <img src="/static/flag-eu.svg" alt="EU Flag" class="flag-icon">
+                            <div class="server-name">Central Europe</div>
+                        </div>
+                        <div class="header-adventurers">
+                            Adventurers: <span class="count-highlight" id="count-map-eu">0 / 30</span>
+                        </div>
+                    </div>
+                    <div class="map-frame" id="map-frame-eu">
+                        <img src="/static/utraean-map.jpg" alt="Utraean Peninsula Map" class="map-img">
+                        <div class="markers-layer" id="markers-eu"></div>
+                    </div>
+                    <div class="map-staging-bar" id="staging-bar-eu">
+                        <div class="map-staging-label">
+                            <div class="staging-beacon" id="staging-beacon-eu"></div>
+                            <span>Staging Screen:</span>
+                        </div>
+                        <div class="staging-players-names" id="staging-names-eu">No adventurers in staging screen</div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- VIEW: LADDER (Character Rankings) -->
+        <div class="view-container" id="view-ladder" style="display: none; width: 100%;">
+            <div class="ladder-card-wrapper">
+                <section class="server-card ladder-card" id="card-ladder">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <svg class="ladder-icon" viewBox="0 0 24 24">
+                                <path d="M5 2h2v4h10V2h2v20h-2v-4H7v4H5V2zm2 6v3h10V8H7zm0 5v3h10v-3H7z"/>
+                            </svg>
+                            <div class="server-name">Character Ladder</div>
+                        </div>
+                        <div class="header-adventurers">
+                            Adventurers: <span class="count-highlight" id="count-ladder">0</span>
+                        </div>
+                    </div>
+                    <div class="roster-table ladder-table">
+                        <div class="roster-head ladder-head">
+                            <div class="th-col th-rank"></div>
+                            <div class="th-col">Adventurer</div>
+                            <div class="th-col">Level</div>
+                            <div class="th-col">Class</div>
+                        </div>
+                        <div class="roster-body" id="list-ladder">
+                            <div class="empty-state">
+                                <div class="empty-title">No Characters Found</div>
+                                <div class="empty-desc">No adventurers have been recorded in the realm archives yet.</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+        <!-- VIEW: GM PANEL -->
+        <div class="view-container" id="view-gm" style="display: none;">
+            <div class="gm-panel-wrapper">
+                <div class="gm-panel-header">
+                    <div class="gm-panel-title">Server Control Panel</div>
+                    <div class="gm-panel-subtitle">NA and EU instance management</div>
+                </div>
+                
+                <div class="grid-servers gm-grid">
+                    <!-- NA SERVER CONTROL CARD -->
+                    <div class="server-column">
+                        <section class="server-card gm-card" id="gm-card-na">
+                            <div class="card-header">
+                                <div class="card-title-group">
+                                    <img src="/static/flag-us.svg" alt="US Flag" class="flag-icon">
+                                    <div class="server-name">North America</div>
+                                </div>
+                                <div class="gm-status-badge" id="gm-badge-na">
+                                    <span class="gm-status-dot"></span>
+                                    <span class="gm-status-text" id="gm-status-na">CHECKING...</span>
+                                </div>
+                            </div>
+                            <div class="gm-card-body">
+                                <div class="gm-meta-info">
+                                    <div class="gm-info-row">
+                                        <span class="gm-info-label">Active Adventurers:</span>
+                                        <span class="gm-info-val" id="gm-players-na">0 / 30 Online</span>
+                                    </div>
+                                    <div class="gm-info-row">
+                                        <span class="gm-info-label">Server Uptime:</span>
+                                        <span class="gm-info-val" id="gm-uptime-na">--</span>
+                                    </div>
+                                    <div class="gm-info-row">
+                                        <span class="gm-info-label">Tickrate:</span>
+                                        <span class="gm-info-val" id="gm-tick-na">30 Hz</span>
+                                    </div>
+                                </div>
+                                <div class="gm-btn-group">
+                                    <button class="gm-action-btn btn-start" id="btn-na-start" onclick="serverAction('na', 'start')">
+                                        <svg class="gm-action-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                        <span>Start</span>
+                                    </button>
+                                    <button class="gm-action-btn btn-restart" id="btn-na-restart" onclick="serverAction('na', 'restart')">
+                                        <svg class="gm-action-icon" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                        <span>Restart</span>
+                                    </button>
+                                    <button class="gm-action-btn btn-stop" id="btn-na-stop" onclick="serverAction('na', 'stop')">
+                                        <svg class="gm-action-icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                                        <span>Stop</span>
+                                    </button>
+                                </div>
+                                <div class="gm-action-feedback" id="feedback-na"></div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- EU SERVER CONTROL CARD -->
+                    <div class="server-column">
+                        <section class="server-card gm-card" id="gm-card-eu">
+                            <div class="card-header">
+                                <div class="card-title-group">
+                                    <img src="/static/flag-eu.svg" alt="EU Flag" class="flag-icon">
+                                    <div class="server-name">Central Europe</div>
+                                </div>
+                                <div class="gm-status-badge" id="gm-badge-eu">
+                                    <span class="gm-status-dot"></span>
+                                    <span class="gm-status-text" id="gm-status-eu">CHECKING...</span>
+                                </div>
+                            </div>
+                            <div class="gm-card-body">
+                                <div class="gm-meta-info">
+                                    <div class="gm-info-row">
+                                        <span class="gm-info-label">Active Adventurers:</span>
+                                        <span class="gm-info-val" id="gm-players-eu">0 / 30 Online</span>
+                                    </div>
+                                    <div class="gm-info-row">
+                                        <span class="gm-info-label">Server Uptime:</span>
+                                        <span class="gm-info-val" id="gm-uptime-eu">--</span>
+                                    </div>
+                                    <div class="gm-info-row">
+                                        <span class="gm-info-label">Tickrate:</span>
+                                        <span class="gm-info-val" id="gm-tick-eu">30 Hz</span>
+                                    </div>
+                                </div>
+                                <div class="gm-btn-group">
+                                    <button class="gm-action-btn btn-start" id="btn-eu-start" onclick="serverAction('eu', 'start')">
+                                        <svg class="gm-action-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                        <span>Start</span>
+                                    </button>
+                                    <button class="gm-action-btn btn-restart" id="btn-eu-restart" onclick="serverAction('eu', 'restart')">
+                                        <svg class="gm-action-icon" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                        <span>Restart</span>
+                                    </button>
+                                    <button class="gm-action-btn btn-stop" id="btn-eu-stop" onclick="serverAction('eu', 'stop')">
+                                        <svg class="gm-action-icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                                        <span>Stop</span>
+                                    </button>
+                                </div>
+                                <div class="gm-action-feedback" id="feedback-eu"></div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    const TOWNS = [
+        { id: 'elddim', name: 'Elddim', req: 'Level 0+', left: '47.3%', top: '33.7%', posClass: 'pos-down-mid' },
+        { id: 'lang', name: 'Lang', req: 'Level 25+', left: '22.2%', top: '37.6%', posClass: 'pos-down-left' },
+        { id: 'meren', name: 'Meren', req: 'Level 18+', left: '82.8%', top: '33.4%', posClass: 'pos-down-right' },
+        { id: 'crystwind', name: 'Crystwind', req: 'Level 5+', left: '37.2%', top: '51.5%', posClass: 'pos-up-mid' },
+        { id: 'fallraen', name: 'Fallraen', req: 'Level 9+', left: '56.5%', top: '58.4%', posClass: 'pos-up-mid' },
+        { id: 'quillrabe', name: 'Quillrabe', req: 'Level 42+', left: '28.1%', top: '62.1%', posClass: 'pos-up-left' },
+        { id: 'hiroth', name: 'Hiroth', req: 'Level 46+', left: '23.7%', top: '67.6%', posClass: 'pos-up-left' },
+        { id: 'grescal', name: 'Grescal', req: 'Level 50+', left: '62.7%', top: '76.9%', posClass: 'pos-up-mid' }
+    ];
+
+    const MAP_AREAS = {
+        // Towns
+        'elddim': { id: 'elddim', name: 'Elddim', left: '47.3%', top: '33.7%', posClass: 'pos-down-mid', isTown: true },
+        'lang': { id: 'lang', name: 'Lang', left: '22.2%', top: '37.6%', posClass: 'pos-down-left', isTown: true },
+        'meren': { id: 'meren', name: 'Meren', left: '82.8%', top: '33.4%', posClass: 'pos-down-right', isTown: true },
+        'crystwind': { id: 'crystwind', name: 'Crystwind', left: '37.2%', top: '51.5%', posClass: 'pos-up-mid', isTown: true },
+        'fallraen': { id: 'fallraen', name: 'Fallraen', left: '56.5%', top: '58.4%', posClass: 'pos-up-mid', isTown: true },
+        'quillrabe': { id: 'quillrabe', name: 'Quillrabe', left: '28.1%', top: '62.1%', posClass: 'pos-up-left', isTown: true },
+        'hiroth': { id: 'hiroth', name: 'Hiroth', left: '23.7%', top: '67.6%', posClass: 'pos-up-left', isTown: true },
+        'grescal': { id: 'grescal', name: 'Grescal', left: '62.7%', top: '76.9%', posClass: 'pos-up-mid', isTown: true },
+
+        // Wilderness & Dungeons across the Peninsula
+        'dorneks_stone_quarry': { id: 'dorneks_stone_quarry', name: "Dornek's Stone Quarry", left: '37.2%', top: '13.9%', posClass: 'pos-down-mid' },
+        'sulfur_tunnels': { id: 'sulfur_tunnels', name: 'Sulfur Tunnels', left: '37.2%', top: '18.6%', posClass: 'pos-down-mid' },
+        'mt_elspen_forest': { id: 'mt_elspen_forest', name: 'Mt. Elspen Forest', left: '54.4%', top: '17.6%', posClass: 'pos-down-mid' },
+        'meren_coast': { id: 'meren_coast', name: 'Meren Coast', left: '85.0%', top: '27.0%', posClass: 'pos-down-right' },
+        'great_northern_forest': { id: 'great_northern_forest', name: 'Great Northern Forest', left: '49.8%', top: '26.9%', posClass: 'pos-down-mid' },
+        'elddim_lowlands': { id: 'elddim_lowlands', name: 'Elddim Lowlands', left: '35.6%', top: '31.1%', posClass: 'pos-down-mid' },
+        'lang_mire': { id: 'lang_mire', name: 'Lang Mire', left: '29.5%', top: '35.9%', posClass: 'pos-down-left' },
+        'goblin_warrens': { id: 'goblin_warrens', name: 'Goblin Warrens', left: '18.0%', top: '39.0%', posClass: 'pos-down-left' },
+        'elddim_glade': { id: 'elddim_glade', name: 'Elddim Glade', left: '37.8%', top: '41.0%', posClass: 'pos-down-mid' },
+        'iliarth_valley': { id: 'iliarth_valley', name: 'Iliarth Valley', left: '54.4%', top: '35.2%', posClass: 'pos-down-mid' },
+        'iliarth_divide': { id: 'iliarth_divide', name: 'Iliarth Divide', left: '53.6%', top: '41.2%', posClass: 'pos-down-mid' },
+        'hovart_marsh': { id: 'hovart_marsh', name: 'Hovart Marsh', left: '66.5%', top: '43.2%', posClass: 'pos-down-right' },
+        'cloud_forest': { id: 'cloud_forest', name: 'Cloud Forest', left: '83.1%', top: '42.0%', posClass: 'pos-down-right' },
+        'utraean_basilicus': { id: 'utraean_basilicus', name: 'Utraean Basilicus', left: '46.1%', top: '45.4%', posClass: 'pos-up-mid' },
+        'iliarth_falls': { id: 'iliarth_falls', name: 'Iliarth Falls', left: '52.1%', top: '47.9%', posClass: 'pos-up-mid' },
+        'redwood_gap': { id: 'redwood_gap', name: 'Redwood Gap', left: '27.2%', top: '45.9%', posClass: 'pos-up-left' },
+        'fury_den': { id: 'fury_den', name: 'Fury Den', left: '23.4%', top: '53.2%', posClass: 'pos-up-left' },
+        'crystwind_mines': { id: 'crystwind_mines', name: 'Crystwind Mines', left: '40.8%', top: '52.2%', posClass: 'pos-up-mid' },
+        'iliarth_canyon': { id: 'iliarth_canyon', name: 'Iliarth Canyon', left: '43.1%', top: '54.7%', posClass: 'pos-up-mid' },
+        'mt_utrae_forest': { id: 'mt_utrae_forest', name: 'Mt. Utrae Forest', left: '62.7%', top: '50.8%', posClass: 'pos-up-mid' },
+        'quillrabe_canyons': { id: 'quillrabe_canyons', name: 'Quillrabe Canyons', left: '39.3%', top: '57.1%', posClass: 'pos-up-mid' },
+        'crystwind_old_mines': { id: 'crystwind_old_mines', name: 'Crystwind Old Mines', left: '46.8%', top: '61.5%', posClass: 'pos-up-mid' },
+        'fallraen_forest': { id: 'fallraen_forest', name: 'Fallraen Forest', left: '56.6%', top: '62.5%', posClass: 'pos-up-mid' },
+        'glacial_caverns': { id: 'glacial_caverns', name: 'Glacial Caverns', left: '61.5%', top: '58.5%', posClass: 'pos-up-mid' },
+        'drake_nest': { id: 'drake_nest', name: 'Drake Nest', left: '24.2%', top: '62.0%', posClass: 'pos-up-left' },
+        'castle_hiroth': { id: 'castle_hiroth', name: 'Castle Hiroth', left: '20.4%', top: '65.9%', posClass: 'pos-up-left' },
+        'hiroth_mausoleum': { id: 'hiroth_mausoleum', name: 'Hiroth Mausoleum', left: '23.4%', top: '70.8%', posClass: 'pos-up-left' },
+        'mesa_desert': { id: 'mesa_desert', name: 'Mesa Desert', left: '44.6%', top: '68.8%', posClass: 'pos-up-mid' },
+        'volcanic_caverns': { id: 'volcanic_caverns', name: 'Volcanic Caverns', left: '37.8%', top: '71.8%', posClass: 'pos-up-mid' },
+        'endless_desert': { id: 'endless_desert', name: 'Endless Desert', left: '73.3%', top: '78.6%', posClass: 'pos-up-right' },
+        'eastern_island': { id: 'eastern_island', name: 'Eastern Island', left: '86.9%', top: '70.8%', posClass: 'pos-up-right' }
+    };
+
+    function renderPlayers(containerId, players) {
+        const container = document.getElementById(containerId);
+        if (!players || players.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-title">No Adventurers Online</div>
+                    <div class="empty-desc">The taverns and trails of the Peninsula are currently quiet in this realm.</div>
+                </div>
+            `;
+            return;
+        }
+
+        // Always rank from higher level to lower; tie-breaker: character name alphabetical
+        const sorted = [...players].sort((a, b) => {
+            const lvlA = a.level || 0;
+            const lvlB = b.level || 0;
+            if (lvlB !== lvlA) return lvlB - lvlA;
+            return (a.character_name || '').localeCompare(b.character_name || '');
+        });
+
+        let html = '';
+        sorted.forEach(p => {
+            const loc = p.location || 'Staging Screen';
+            html += `
+                <div class="roster-row">
+                    <div class="col-adventurer">
+                        <div class="hero-name">${escapeHTML(p.character_name || 'Hero')}</div>
+                        <div class="account-tag">Account: <span>${escapeHTML(p.account_name || '')}</span></div>
+                    </div>
+                    <div class="col-level">
+                        <div class="level-shield">
+                            <span class="level-val">${p.level || 1}</span>
+                        </div>
+                    </div>
+                    <div class="col-class">
+                        <span class="class-pill">${escapeHTML(p.class || 'Adventurer')}</span>
+                    </div>
+                    <div class="col-location">
+                        <span class="location-pill">${escapeHTML(loc)}</span>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function renderMap(serverId, players) {
+        const markersContainer = document.getElementById(`markers-${serverId}`);
+        const stagingNamesElem = document.getElementById(`staging-names-${serverId}`);
+        const stagingBeaconElem = document.getElementById(`staging-beacon-${serverId}`);
+
+        if (!markersContainer) return;
+
+        const areaMap = {};
+        for (const key in MAP_AREAS) {
+            areaMap[key] = [];
+        }
+        const stagingPlayers = [];
+
+        (players || []).forEach(p => {
+            const loc = (p.location || '').toLowerCase().trim();
+            const areaId = (p.map_area_id || '').toLowerCase().trim();
+
+            if (loc.includes('staging') || areaId === 'staging' || !loc) {
+                stagingPlayers.push(p);
+            } else if (areaId && areaMap[areaId]) {
+                areaMap[areaId].push(p);
+            } else {
+                let matched = false;
+                for (const key in MAP_AREAS) {
+                    if (loc === MAP_AREAS[key].name.toLowerCase() || loc.includes(key)) {
+                        areaMap[key].push(p);
+                        matched = true;
+                        break;
+                    }
+                }
+                if (!matched) {
+                    areaMap['elddim'].push(p);
+                }
+            }
+        });
+
+        function generateTooltipPlayerList(list) {
+            const sorted = [...list].sort((a, b) => {
+                const lvlA = a.level || 0;
+                const lvlB = b.level || 0;
+                if (lvlB !== lvlA) return lvlB - lvlA;
+                return (a.character_name || '').localeCompare(b.character_name || '');
+            });
+
+            let pListHtml = '';
+            sorted.forEach(p => {
+                pListHtml += `
+                    <div class="tooltip-player-item">
+                        <div class="tooltip-player-left">
+                            <div class="tooltip-shield">${p.level || 1}</div>
+                            <div class="tooltip-char-info">
+                                <span class="tooltip-char-name">${escapeHTML(p.character_name || 'Hero')}</span>
+                                <span class="tooltip-char-acct">Account: ${escapeHTML(p.account_name || '')}</span>
+                            </div>
+                        </div>
+                        <div class="tooltip-player-right">
+                            <span class="tooltip-class-pill">${escapeHTML(p.class || 'Adventurer')}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            return pListHtml;
+        }
+
+        let html = '';
+
+        // 1. Always render the 8 canonical town anchors
+        TOWNS.forEach(t => {
+            const list = areaMap[t.id] || [];
+            const isActive = list.length > 0;
+
+            if (isActive) {
+                const pListHtml = generateTooltipPlayerList(list);
+                html += `
+                    <div class="map-marker active ${t.posClass}" style="left: ${t.left}; top: ${t.top};">
+                        <div class="radar-ping"></div>
+                        <div class="radar-ping-secondary"></div>
+                        <div class="marker-beacon">${list.length}</div>
+                        <div class="town-tag">${t.name}</div>
+                        <div class="map-tooltip">
+                            <div class="tooltip-header">
+                                <span class="tooltip-town">${t.name}</span>
+                                <span class="tooltip-count">${list.length} Adventurer${list.length === 1 ? '' : 's'}</span>
+                            </div>
+                            <div class="tooltip-player-list">
+                                ${pListHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="map-marker idle ${t.posClass}" style="left: ${t.left}; top: ${t.top};">
+                        <div class="marker-beacon"></div>
+                        <div class="town-tag">${t.name} (${t.req})</div>
+                        <div class="map-tooltip">
+                            <div class="tooltip-header">
+                                <span class="tooltip-town">${t.name}</span>
+                                <span class="tooltip-req">Requires ${t.req}</span>
+                            </div>
+                            <div style="font-size: 11px; color: #8b949e; text-align: center; padding: 4px 0;">No active adventurers</div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        // 2. Render dynamic radar beacon dots for any wilderness / dungeon areas where adventurers are active
+        for (const key in MAP_AREAS) {
+            const area = MAP_AREAS[key];
+            if (area.isTown) continue;
+
+            const list = areaMap[key] || [];
+            if (list.length > 0) {
+                const pListHtml = generateTooltipPlayerList(list);
+                html += `
+                    <div class="map-marker active ${area.posClass}" style="left: ${area.left}; top: ${area.top};">
+                        <div class="radar-ping"></div>
+                        <div class="radar-ping-secondary"></div>
+                        <div class="marker-beacon">${list.length}</div>
+                        <div class="town-tag">${area.name}</div>
+                        <div class="map-tooltip">
+                            <div class="tooltip-header">
+                                <span class="tooltip-town">${area.name}</span>
+                                <span class="tooltip-count">${list.length} Adventurer${list.length === 1 ? '' : 's'}</span>
+                            </div>
+                            <div class="tooltip-player-list">
+                                ${pListHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        markersContainer.innerHTML = html;
+
+        if (stagingPlayers.length > 0) {
+            if (stagingBeaconElem) stagingBeaconElem.style.display = 'block';
+            if (stagingNamesElem) {
+                stagingNamesElem.innerHTML = stagingPlayers.map(p => 
+                    `${escapeHTML(p.character_name || 'Hero')} (Level ${p.level || 1} ${escapeHTML(p.class || 'Adventurer')})`
+                ).join(', ');
+            }
+        } else {
+            if (stagingBeaconElem) stagingBeaconElem.style.display = 'none';
+            if (stagingNamesElem) stagingNamesElem.innerText = 'No adventurers in staging screen';
+        }
+    }
+
+    function escapeHTML(str) {
+        return (str || '').replace(/[&<>'"]/g, 
+            tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag] || tag)
+        );
+    }
+
+    function renderLadder(characters) {
+        const container = document.getElementById('list-ladder');
+        const countElem = document.getElementById('count-ladder');
+        if (countElem) countElem.innerText = characters ? characters.length : 0;
+
+        if (!container) return;
+        if (!characters || characters.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-title">No Characters Found</div>
+                    <div class="empty-desc">No adventurers have been recorded in the realm archives yet.</div>
+                </div>
+            `;
+            return;
+        }
+
+        // Always rank from higher level to lower; tie-breaker: higher XP, then character name alphabetical
+        const sorted = [...characters].sort((a, b) => {
+            const lvlA = a.level !== undefined ? a.level : 0;
+            const lvlB = b.level !== undefined ? b.level : 0;
+            if (lvlB !== lvlA) return lvlB - lvlA;
+            const xpA = a.xp || 0;
+            const xpB = b.xp || 0;
+            if (xpB !== xpA) return xpB - xpA;
+            return (a.character_name || '').localeCompare(b.character_name || '');
+        });
+
+        let html = '';
+        sorted.forEach((p, index) => {
+            const lvl = p.level !== undefined ? p.level : 0;
+            const rank = index + 1;
+            html += `
+                <div class="roster-row ladder-row">
+                    <div class="col-rank">#${rank}</div>
+                    <div class="col-adventurer">
+                        <div class="hero-name">${escapeHTML(p.character_name || 'Hero')}</div>
+                        <div class="account-tag">Account: <span>${escapeHTML(p.account_name || '')}</span></div>
+                    </div>
+                    <div class="col-level">
+                        <div class="level-shield">
+                            <span class="level-val">${lvl}</span>
+                        </div>
+                    </div>
+                    <div class="col-class">
+                        <span class="class-pill">${escapeHTML(p.class || 'Adventurer')}</span>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    // ========================================================
+    // UNIFIED AUTHENTICATION & SESSION MANAGEMENT
+    // (Shared between MMO Adventurers and Game Masters)
+    // ========================================================
+    let currentAuthUser = null;
+    let isGMLoggedIn = false;
+    let gmServersPollTimer = null;
+    let initialAuthPending = false;
+    let requestedView = 'home';
+
+    async function fetchStatus() {
+        try {
+            const res = await fetch('/api/status', { cache: 'no-store' });
+            if (!res.ok) return;
+            const data = await res.json();
+
+            // Meta summary
+            const totalOnlineEl = document.getElementById('total-online');
+            const metaPill = document.getElementById('meta-pill');
+            const isAuthed = currentAuthUser && currentAuthUser.authenticated;
+            if (totalOnlineEl) {
+                if (isAuthed) {
+                    totalOnlineEl.innerText = `${data.total_online || 0} ADVENTURER${data.total_online === 1 ? '' : 'S'}`;
+                    totalOnlineEl.style.color = '#fff';
+                    if (metaPill) {
+                        metaPill.classList.remove('clickable');
+                        metaPill.removeAttribute('title');
+                    }
+                } else {
+                    totalOnlineEl.innerText = 'SIGN IN TO SEE';
+                    totalOnlineEl.style.color = 'var(--ds-gold)';
+                    if (metaPill) {
+                        metaPill.classList.add('clickable');
+                        metaPill.setAttribute('title', 'Click to Sign In');
+                    }
+                }
+            }
+            const mapNameEl = document.getElementById('map-name');
+            if (mapNameEl && data.map_name) mapNameEl.innerText = data.map_name;
+
+            // NA Server
+            const na = data.na || {};
+            const countNaStr = `${na.players_count || (na.players ? na.players.length : 0)} / ${na.max_players || 30}`;
+            document.getElementById('count-na').innerText = countNaStr;
+            const countMapNa = document.getElementById('count-map-na');
+            if (countMapNa) countMapNa.innerText = countNaStr;
+            renderPlayers('list-na', na.players);
+            renderMap('na', na.players);
+
+            // EU Server
+            const eu = data.eu || {};
+            const countEuStr = `${eu.players_count || (eu.players ? eu.players.length : 0)} / ${eu.max_players || 30}`;
+            document.getElementById('count-eu').innerText = countEuStr;
+            const countMapEu = document.getElementById('count-map-eu');
+            if (countMapEu) countMapEu.innerText = countEuStr;
+            renderPlayers('list-eu', eu.players);
+            renderMap('eu', eu.players);
+
+            // Realm Character Ladder
+            renderLadder(data.ladder);
+
+            // Live GM card metrics sync
+            updateGMMetrics('na', na, data.tick_rate);
+            updateGMMetrics('eu', eu, data.tick_rate);
+
+        } catch (e) {
+            console.error('Status fetch error:', e);
+        }
+    }
+
+    // Initial fetch and 3-second live loop
+    fetchStatus();
+    setInterval(fetchStatus, 3000);
+
+    function updateAuthUI(user) {
+        const navBtnAdmin = document.getElementById('nav-btn-admin');
+        const navBtnRealms = document.getElementById('nav-btn-realms');
+        const navBtnWorld = document.getElementById('nav-btn-world');
+        const navBtnLadder = document.getElementById('nav-btn-ladder');
+        const navBtnGM = document.getElementById('nav-btn-gm');
+
+        const loginPane = document.getElementById('admin-login-pane');
+        const authedPane = document.getElementById('admin-authed-pane');
+        const curUserEl = document.getElementById('admin-current-user');
+        const authedTitle = document.getElementById('admin-authed-title');
+        const authedDesc = document.getElementById('admin-authed-desc');
+
+        if (user && user.authenticated) {
+            const isGM = !!(user.is_gm || user.role === 'gm');
+            isGMLoggedIn = isGM;
+
+            // Nav bar buttons: enable Realms, World, Ladder
+            if (navBtnRealms) {
+                navBtnRealms.classList.remove('disabled');
+                navBtnRealms.removeAttribute('title');
+            }
+            if (navBtnWorld) {
+                navBtnWorld.classList.remove('disabled');
+                navBtnWorld.removeAttribute('title');
+            }
+            if (navBtnLadder) {
+                navBtnLadder.classList.remove('disabled');
+                navBtnLadder.removeAttribute('title');
+            }
+            if (navBtnGM) navBtnGM.style.display = isGM ? 'inline-flex' : 'none';
+
+            if (navBtnAdmin) {
+                if (isGM) {
+                    navBtnAdmin.classList.add('admin-active');
+                    navBtnAdmin.setAttribute('title', `Game Master: ${user.username} (Click to manage session)`);
+                } else {
+                    navBtnAdmin.classList.remove('admin-active');
+                    navBtnAdmin.setAttribute('title', `Logged in as ${user.username} (Click to manage session)`);
+                }
+            }
+
+            // Modal panes
+            const modalTitle = document.getElementById('admin-modal-title');
+            if (modalTitle) modalTitle.innerText = 'MMO Account Signed In';
+            if (loginPane) loginPane.classList.add('hidden');
+            if (authedPane) authedPane.classList.remove('hidden');
+            if (curUserEl) curUserEl.innerText = user.username || 'Adventurer';
+            if (authedTitle) authedTitle.innerText = isGM ? 'Game Master Session' : 'Active Adventurer Session';
+            if (authedDesc) {
+                authedDesc.innerText = isGM 
+                    ? 'You have Game Master privileges and full access to realms, world, and ladder.' 
+                    : 'You have full access to realms, the Utraean Peninsula world map, and the character ladder.';
+            }
+            // Total online meta pill
+            const totalOnlineEl = document.getElementById('total-online');
+            const metaPill = document.getElementById('meta-pill');
+            if (totalOnlineEl) totalOnlineEl.style.color = '#fff';
+            if (metaPill) {
+                metaPill.classList.remove('clickable');
+                metaPill.removeAttribute('title');
+            }
+        } else {
+            isGMLoggedIn = false;
+
+            // Nav bar buttons: visible but disabled
+            if (navBtnRealms) {
+                navBtnRealms.classList.add('disabled');
+                navBtnRealms.setAttribute('title', 'Sign in with your MMO account to access Realms');
+            }
+            if (navBtnWorld) {
+                navBtnWorld.classList.add('disabled');
+                navBtnWorld.setAttribute('title', 'Sign in with your MMO account to access World Map');
+            }
+            if (navBtnLadder) {
+                navBtnLadder.classList.add('disabled');
+                navBtnLadder.setAttribute('title', 'Sign in with your MMO account to access Ladder');
+            }
+            if (navBtnGM) navBtnGM.style.display = 'none';
+
+            if (navBtnAdmin) {
+                navBtnAdmin.classList.remove('admin-active');
+                navBtnAdmin.setAttribute('title', 'Sign In / MMO Account');
+            }
+
+            // Total online meta pill: prompt sign in
+            const totalOnlineEl = document.getElementById('total-online');
+            const metaPill = document.getElementById('meta-pill');
+            if (totalOnlineEl) {
+                totalOnlineEl.innerText = 'SIGN IN TO SEE';
+                totalOnlineEl.style.color = 'var(--ds-gold)';
+            }
+            if (metaPill) {
+                metaPill.classList.add('clickable');
+                metaPill.setAttribute('title', 'Click to Sign In');
+            }
+
+            // Modal panes
+            const modalTitle = document.getElementById('admin-modal-title');
+            if (modalTitle) modalTitle.innerText = 'MMO Account Sign In';
+            if (loginPane) loginPane.classList.remove('hidden');
+            if (authedPane) authedPane.classList.add('hidden');
+
+            // If user is currently on a protected view and auth check has settled, redirect to home
+            if (!initialAuthPending) {
+                const currentPath = window.location.pathname;
+                if (currentPath !== '/' && currentPath !== '/home') {
+                    switchView('home', true);
+                }
+            }
+        }
+    }
+
+    function checkAuthStatus() {
+        return fetch('/api/auth/status', { cache: 'no-store' })
+            .then(r => r.json())
+            .then(data => {
+                const wasPending = initialAuthPending;
+                initialAuthPending = false;
+                if (data && data.authenticated) {
+                    currentAuthUser = data;
+                    try { localStorage.setItem('ds_auth_user', JSON.stringify(data)); } catch (_) {}
+                    updateAuthUI(currentAuthUser);
+                    if (wasPending && requestedView !== 'home') {
+                        switchView(requestedView, false);
+                    }
+                    fetchStatus();
+                } else {
+                    currentAuthUser = null;
+                    try { localStorage.removeItem('ds_auth_user'); } catch (_) {}
+                    updateAuthUI(null);
+                    if (wasPending && requestedView !== 'home') {
+                        switchView('home', true);
+                    }
+                }
+            })
+            .catch(() => {
+                const wasPending = initialAuthPending;
+                initialAuthPending = false;
+                currentAuthUser = null;
+                try { localStorage.removeItem('ds_auth_user'); } catch (_) {}
+                updateAuthUI(null);
+                if (wasPending && requestedView !== 'home') {
+                    switchView('home', true);
+                }
+            });
+    }
+
+    function checkGMStatus() {
+        checkAuthStatus();
+    }
+
+    function openAdminModal() {
+        const modal = document.getElementById('admin-modal');
+        const errBox = document.getElementById('admin-login-error');
+        const modalTitle = document.getElementById('admin-modal-title');
+        const isAuthenticated = currentAuthUser && currentAuthUser.authenticated;
+        if (modalTitle) {
+            modalTitle.innerText = isAuthenticated ? 'MMO Account Signed In' : 'MMO Account Sign In';
+        }
+        if (errBox) errBox.classList.add('hidden');
+        if (modal) modal.classList.add('active');
+        const userInput = document.getElementById('admin-input-user');
+        if (!isAuthenticated && userInput) {
+            setTimeout(() => userInput.focus(), 60);
+        }
+    }
+
+    function closeAdminModal() {
+        const modal = document.getElementById('admin-modal');
+        if (modal) modal.classList.remove('active');
+    }
+
+    function handleAdminBackdropClick(e) {
+        if (e.target.id === 'admin-modal') closeAdminModal();
+    }
+
+    function toggleAdminPasswordVisibility() {
+        const passInput = document.getElementById('admin-input-pass');
+        const eyeIcon = document.getElementById('admin-eye-icon');
+        if (!passInput) return;
+
+        if (passInput.type === 'password') {
+            passInput.type = 'text';
+            if (eyeIcon) {
+                eyeIcon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+            }
+        } else {
+            passInput.type = 'password';
+            if (eyeIcon) {
+                eyeIcon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+            }
+        }
+    }
+
+    function submitAdminLogin() {
+        const userInput = document.getElementById('admin-input-user');
+        const passInput = document.getElementById('admin-input-pass');
+        const errBox = document.getElementById('admin-login-error');
+        const btn = document.getElementById('btn-admin-submit');
+
+        const u = (userInput ? userInput.value : '').trim();
+        const p = (passInput ? passInput.value : '').trim();
+
+        if (!u || !p) {
+            if (errBox) {
+                errBox.innerText = 'Please enter both account name and password.';
+                errBox.classList.remove('hidden');
+            }
+            return;
+        }
+
+        if (btn) btn.innerText = 'Signing In...';
+        fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: u, password: p })
+        })
+        .then(r => r.json().then(d => ({ status: r.status, body: d })))
+        .then(res => {
+            if (btn) btn.innerText = 'Sign In';
+            if (res.status === 200) {
+                if (errBox) errBox.classList.add('hidden');
+                if (passInput) passInput.value = '';
+                currentAuthUser = {
+                    authenticated: true,
+                    username: res.body.username,
+                    is_gm: res.body.is_gm,
+                    characters: res.body.characters || []
+                };
+                try { localStorage.setItem('ds_auth_user', JSON.stringify(currentAuthUser)); } catch (_) {}
+                updateAuthUI(currentAuthUser);
+                showAdminToast('Welcome, ' + (res.body.username || 'Adventurer') + '!');
+                fetchStatus();
+                setTimeout(closeAdminModal, 400);
+            } else {
+                if (errBox) {
+                    errBox.innerText = res.body.message || 'Invalid account name or password.';
+                    errBox.classList.remove('hidden');
+                }
+            }
+        })
+        .catch(err => {
+            if (btn) btn.innerText = 'Sign In';
+            if (errBox) {
+                errBox.innerText = 'Network error. Please try again.';
+                errBox.classList.remove('hidden');
+            }
+        });
+    }
+
+    function submitAdminLogout() {
+        fetch('/api/auth/logout', { method: 'POST' })
+            .then(() => {
+                currentAuthUser = null;
+                try { localStorage.removeItem('ds_auth_user'); } catch (_) {}
+                try { sessionStorage.removeItem('ds_current_view'); } catch (_) {}
+                updateAuthUI(null);
+                showAdminToast('Signed out of account.');
+                fetchStatus();
+                closeAdminModal();
+                switchView('home', true);
+            })
+            .catch(() => {
+                currentAuthUser = null;
+                try { localStorage.removeItem('ds_auth_user'); } catch (_) {}
+                try { sessionStorage.removeItem('ds_current_view'); } catch (_) {}
+                updateAuthUI(null);
+                closeAdminModal();
+                switchView('home', true);
+            });
+    }
+
+    function showAdminToast(msg) {
+        const toast = document.getElementById('admin-toast');
+        if (!toast) return;
+        toast.innerText = msg;
+        toast.classList.remove('hidden');
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 3500);
+    }
+
+    async function fetchGMServers() {
+        if (!isGMLoggedIn) return;
+        try {
+            const res = await fetch('/api/gm/servers');
+            if (res.status === 401 || res.status === 403) {
+                checkGMStatus();
+                return;
+            }
+            const data = await res.json();
+            updateGMServerCard('na', data.na);
+            updateGMServerCard('eu', data.eu);
+        } catch (e) {
+            console.error('Error fetching GM server states:', e);
+        }
+    }
+
+    function updateGMServerCard(id, server) {
+        if (!server) return;
+        const badge = document.getElementById(`gm-badge-${id}`);
+        const statusText = document.getElementById(`gm-status-${id}`);
+        const btnStart = document.getElementById(`btn-${id}-start`);
+        const btnRestart = document.getElementById(`btn-${id}-restart`);
+        const btnStop = document.getElementById(`btn-${id}-stop`);
+
+        const state = (server.state || '').toLowerCase();
+        if (statusText) statusText.innerText = state.toUpperCase();
+
+        if (badge) {
+            badge.className = 'gm-status-badge';
+            if (state === 'running' || state === 'active') {
+                badge.classList.add('status-running');
+            } else if (state === 'stopped' || state === 'inactive') {
+                badge.classList.add('status-stopped');
+            } else {
+                badge.classList.add('status-transition');
+            }
+        }
+
+        const isRunning = state === 'running' || state === 'active';
+        const isStopped = state === 'stopped' || state === 'inactive';
+
+        if (btnStart) btnStart.disabled = isRunning;
+        if (btnRestart) btnRestart.disabled = !isRunning && !isStopped;
+        if (btnStop) btnStop.disabled = isStopped;
+
+        updateGMMetrics(id, server, server.tick_rate);
+    }
+
+    function updateGMMetrics(id, server, globalTickRate) {
+        if (!server) return;
+        const playersEl = document.getElementById(`gm-players-${id}`);
+        const uptimeEl = document.getElementById(`gm-uptime-${id}`);
+        const tickEl = document.getElementById(`gm-tick-${id}`);
+
+        const isRunning = (server.state || '').toLowerCase() === 'running' || (server.state || '').toLowerCase() === 'active' || !!server.online;
+
+        if (playersEl) {
+            const pCount = server.players_count !== undefined ? server.players_count : (server.players ? server.players.length : 0);
+            const pMax = server.max_players || 30;
+            if (isRunning) {
+                if (pCount > 0) {
+                    playersEl.innerHTML = `<span style="color: var(--ds-gold); font-weight: 700;">${pCount} / ${pMax} Online</span>`;
+                } else {
+                    playersEl.innerText = `0 / ${pMax} Online`;
+                }
+            } else {
+                playersEl.innerText = 'Offline';
+            }
+        }
+
+        if (uptimeEl) {
+            if (isRunning) {
+                uptimeEl.innerText = server.uptime || 'Active';
+            } else {
+                uptimeEl.innerText = 'Offline';
+            }
+        }
+
+        if (tickEl) {
+            if (isRunning) {
+                let tickText = server.tick_rate || globalTickRate || '30 Hz';
+                if (server.fps && server.fps !== '0' && server.fps !== '') {
+                    tickText += ` (${server.fps} FPS)`;
+                }
+                tickEl.innerText = tickText;
+            } else {
+                tickEl.innerText = 'Offline';
+            }
+        }
+    }
+
+    let gmActionResolve = null;
+
+    function openGMActionModal(server, action, pCount) {
+        return new Promise((resolve) => {
+            gmActionResolve = resolve;
+
+            const modal = document.getElementById('gm-confirm-modal');
+            const titleEl = document.getElementById('gm-confirm-title');
+            const iconWrap = document.getElementById('gm-confirm-icon-wrap');
+            const flagEl = document.getElementById('gm-confirm-flag');
+            const realmNameEl = document.getElementById('gm-confirm-realm-name');
+            const messageEl = document.getElementById('gm-confirm-message');
+            const warningEl = document.getElementById('gm-confirm-warning');
+            const warnDescEl = document.getElementById('gm-confirm-warn-desc');
+            const actionBtn = document.getElementById('gm-confirm-action-btn');
+
+            const serverName = server === 'na' ? 'North America' : 'Central Europe';
+            const flagSrc = server === 'na' ? '/static/flag-us.svg' : '/static/flag-eu.svg';
+
+            if (flagEl) flagEl.src = flagSrc;
+            if (realmNameEl) realmNameEl.innerText = serverName;
+
+            if (actionBtn) {
+                actionBtn.className = 'gm-confirm-action-btn';
+            }
+
+            if (action === 'start') {
+                if (titleEl) titleEl.innerText = 'Start Realm Server';
+                if (iconWrap) {
+                    iconWrap.className = 'gm-confirm-icon-wrap icon-start';
+                    iconWrap.innerHTML = `<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+                }
+                if (actionBtn) {
+                    actionBtn.classList.add('btn-action-start');
+                    actionBtn.innerHTML = `<span>Start Server</span>`;
+                }
+            } else if (action === 'restart') {
+                if (titleEl) titleEl.innerText = 'Restart Realm Server';
+                if (iconWrap) {
+                    iconWrap.className = 'gm-confirm-icon-wrap icon-restart';
+                    iconWrap.innerHTML = `<svg viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
+                }
+                if (actionBtn) {
+                    actionBtn.classList.add('btn-action-restart');
+                    actionBtn.innerHTML = `<span>Restart Server</span>`;
+                }
+            } else if (action === 'stop') {
+                if (titleEl) titleEl.innerText = 'Stop Realm Server';
+                if (iconWrap) {
+                    iconWrap.className = 'gm-confirm-icon-wrap icon-stop';
+                    iconWrap.innerHTML = `<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>`;
+                }
+                if (actionBtn) {
+                    actionBtn.classList.add('btn-action-stop');
+                    actionBtn.innerHTML = `<span>Stop Server</span>`;
+                }
+            }
+
+            if (messageEl) {
+                messageEl.innerHTML = `Are you sure you want to <strong>${action.toUpperCase()}</strong> the <strong>${serverName}</strong> server?`;
+            }
+
+            if (pCount > 0 && (action === 'restart' || action === 'stop')) {
+                if (warnDescEl) {
+                    warnDescEl.innerHTML = `There are currently <strong>${pCount} adventurer${pCount === 1 ? '' : 's'}</strong> connected to <strong>${serverName}</strong>. Performing this action will immediately disconnect active players from the realm.`;
+                }
+                if (warningEl) warningEl.classList.remove('hidden');
+            } else {
+                if (warningEl) warningEl.classList.add('hidden');
+            }
+
+            if (modal) {
+                modal.classList.add('active');
+                setTimeout(() => {
+                    if (actionBtn) actionBtn.focus();
+                }, 60);
+            }
+        });
+    }
+
+    function confirmGMActionModal() {
+        const modal = document.getElementById('gm-confirm-modal');
+        if (modal) modal.classList.remove('active');
+        if (gmActionResolve) {
+            gmActionResolve(true);
+            gmActionResolve = null;
+        }
+    }
+
+    function cancelGMActionModal() {
+        const modal = document.getElementById('gm-confirm-modal');
+        if (modal) modal.classList.remove('active');
+        if (gmActionResolve) {
+            gmActionResolve(false);
+            gmActionResolve = null;
+        }
+    }
+
+    function handleGMConfirmBackdropClick(e) {
+        if (e.target.id === 'gm-confirm-modal') {
+            cancelGMActionModal();
+        }
+    }
+
+    async function serverAction(server, action) {
+        const serverName = server === 'na' ? 'North America' : 'Central Europe';
+        const playersEl = document.getElementById(`gm-players-${server}`);
+        let pCount = 0;
+        if (playersEl) {
+            const m = (playersEl.textContent || '').trim().match(/(\d+)/);
+            if (m) pCount = parseInt(m[1], 10);
+        }
+
+        const confirmed = await openGMActionModal(server, action, pCount);
+        if (!confirmed) return;
+
+        const feedback = document.getElementById(`feedback-${server}`);
+        const btnStart = document.getElementById(`btn-${server}-start`);
+        const btnRestart = document.getElementById(`btn-${server}-restart`);
+        const btnStop = document.getElementById(`btn-${server}-stop`);
+
+        if (btnStart) btnStart.disabled = true;
+        if (btnRestart) btnRestart.disabled = true;
+        if (btnStop) btnStop.disabled = true;
+
+        if (feedback) {
+            feedback.style.color = 'var(--ds-gold)';
+            feedback.innerText = `Executing ${action.toUpperCase()} on ${serverName}...`;
+        }
+
+        try {
+            const res = await fetch('/api/gm/servers/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ server: server, action: action })
+            });
+            const data = await res.json();
+            if (res.ok && data.status === 'ok') {
+                if (feedback) {
+                    feedback.style.color = '#2ecc71';
+                    feedback.innerText = data.message || `Action ${action} succeeded.`;
+                }
+                showAdminToast(`${serverName}: ${action.toUpperCase()} completed.`);
+            } else {
+                if (feedback) {
+                    feedback.style.color = '#e74c3c';
+                    feedback.innerText = data.message || `Failed to ${action} server.`;
+                }
+            }
+        } catch (e) {
+            if (feedback) {
+                feedback.style.color = '#e74c3c';
+                feedback.innerText = 'Network request failed: ' + e;
+            }
+        }
+
+        setTimeout(() => {
+            fetchGMServers();
+            if (feedback) {
+                setTimeout(() => { feedback.innerText = ''; }, 4000);
+            }
+        }, 1500);
+    }
+
+    function getRequestedView() {
+        const p = (window.location.pathname || '').toLowerCase();
+        if (p === '/realms' || p.includes('realm')) return 'realms';
+        if (p === '/world' || p.includes('world') || p === '/map' || p.includes('map') || p === '/world-map') return 'world';
+        if (p === '/ladder' || p.includes('ladder')) return 'ladder';
+        if (p === '/gm' || p === '/gm-panel' || p.includes('gm')) return 'gm';
+
+        const hash = (window.location.hash || '').toLowerCase();
+        if (hash.includes('realm')) return 'realms';
+        if (hash.includes('world') || hash.includes('map')) return 'world';
+        if (hash.includes('ladder')) return 'ladder';
+        if (hash.includes('gm')) return 'gm';
+
+        return 'home';
+    }
+
+    function applyViewDOM(target) {
+        const viewHome = document.getElementById('view-home');
+        const viewRealms = document.getElementById('view-realms');
+        const viewWorld = document.getElementById('view-world') || document.getElementById('view-map');
+        const viewLadder = document.getElementById('view-ladder');
+        const viewGM = document.getElementById('view-gm');
+
+        const btnHome = document.getElementById('nav-btn-home');
+        const btnRealms = document.getElementById('nav-btn-realms');
+        const btnWorld = document.getElementById('nav-btn-world') || document.getElementById('nav-btn-map');
+        const btnLadder = document.getElementById('nav-btn-ladder');
+        const btnGM = document.getElementById('nav-btn-gm');
+
+        if (viewHome) viewHome.style.display = target === 'home' ? 'block' : 'none';
+        if (viewRealms) viewRealms.style.display = target === 'realms' ? 'grid' : 'none';
+        if (viewWorld) viewWorld.style.display = target === 'world' ? 'grid' : 'none';
+        if (viewLadder) viewLadder.style.display = target === 'ladder' ? 'flex' : 'none';
+        if (viewGM) viewGM.style.display = target === 'gm' ? 'block' : 'none';
+
+        if (btnHome) btnHome.classList.toggle('active', target === 'home');
+        if (btnRealms) btnRealms.classList.toggle('active', target === 'realms');
+        if (btnWorld) btnWorld.classList.toggle('active', target === 'world');
+        if (btnLadder) btnLadder.classList.toggle('active', target === 'ladder');
+        if (btnGM) btnGM.classList.toggle('active', target === 'gm');
+    }
+
+    // SPA View Switching (Home vs Realms vs World vs Ladder vs GM)
+    function switchView(viewName, pushHistory = true) {
+        let target = 'home';
+        if (viewName === 'realms') target = 'realms';
+        else if (viewName === 'world' || viewName === 'map' || viewName === 'world-map') target = 'world';
+        else if (viewName === 'ladder') target = 'ladder';
+        else if (viewName === 'gm') target = 'gm';
+
+        // Authentication guard: realms, world, ladder, gm are restricted unless logged in
+        const isAuthenticated = currentAuthUser && currentAuthUser.authenticated;
+        if (target !== 'home') {
+            if (!isAuthenticated && !initialAuthPending) {
+                target = 'home';
+                showAdminToast('Please sign in with your MMO account to view ' + (viewName === 'gm' ? 'GM Panel' : viewName) + '.');
+                openAdminModal();
+            } else if (target === 'gm' && isAuthenticated && (!currentAuthUser.is_gm && !isGMLoggedIn)) {
+                target = 'home';
+                showAdminToast('Game Master privileges required.');
+            }
+        }
+
+        applyViewDOM(target);
+        try { sessionStorage.setItem('ds_current_view', target); } catch (_) {}
+
+        if (target === 'gm') {
+            fetchGMServers();
+            if (!gmServersPollTimer) {
+                gmServersPollTimer = setInterval(fetchGMServers, 4000);
+            }
+        } else {
+            if (gmServersPollTimer) {
+                clearInterval(gmServersPollTimer);
+                gmServersPollTimer = null;
+            }
+        }
+
+        const targetPath = target === 'home' ? '/' : (target === 'gm' ? '/gm-panel' : `/${target}`);
+        if (pushHistory && window.location.pathname !== targetPath) {
+            window.history.pushState({ view: target }, '', targetPath);
+        }
+    }
+
+    // Intercept navigation button clicks (using event delegation for dynamically shown buttons)
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.nav-btn');
+        if (btn) {
+            e.preventDefault();
+            if (btn.classList.contains('disabled')) {
+                const label = btn.querySelector('span') ? btn.querySelector('span').innerText : 'this feature';
+                showAdminToast('Please sign in to access ' + label + '.');
+                return;
+            }
+            const target = btn.getAttribute('data-view');
+            switchView(target, true);
+        }
+    });
+
+    // Browser back/forward navigation
+    window.addEventListener('popstate', () => {
+        const v = getRequestedView();
+        switchView(v, false);
+    });
+
+    // Synchronously restore cached auth state from localStorage to prevent flash of unauthed/redirect
+    try {
+        const cachedUser = localStorage.getItem('ds_auth_user');
+        if (cachedUser) {
+            currentAuthUser = JSON.parse(cachedUser);
+            updateAuthUI(currentAuthUser);
+        }
+    } catch (_) {}
+
+    requestedView = getRequestedView();
+    initialAuthPending = !currentAuthUser;
+
+    if (currentAuthUser && currentAuthUser.authenticated) {
+        switchView(requestedView, false);
+    } else if (requestedView === 'home') {
+        switchView('home', false);
+    } else {
+        // Initial load on non-home view while auth check is in flight:
+        // Set DOM immediately to the requested view to prevent layout flash, wait for auth check
+        applyViewDOM(requestedView);
+    }
+
+    // Initial check for GM and Member status
+    checkAuthStatus();
+    // Global Escape key handler to dismiss active modals
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const gmModal = document.getElementById('gm-confirm-modal');
+            if (gmModal && gmModal.classList.contains('active')) {
+                cancelGMActionModal();
+                return;
+            }
+            const adminModal = document.getElementById('admin-modal');
+            if (adminModal && adminModal.classList.contains('active')) {
+                closeAdminModal();
+            }
+        }
+    });
+</script>
+
+<!-- ACCOUNT SIGN IN / STATUS MODAL -->
+<div id="admin-modal" class="admin-modal-backdrop" onclick="handleAdminBackdropClick(event)">
+    <div class="admin-modal-card">
+        <div class="admin-modal-header">
+            <h3 id="admin-modal-title">MMO Account Sign In</h3>
+            <button class="admin-modal-close" onclick="closeAdminModal()">✕</button>
+        </div>
+        <div id="admin-login-pane">
+            <p style="font-size: 13px; color: #8b949e; margin-bottom: 16px; line-height: 1.5;">
+                Sign in with the MMO account created when running the game launcher to access realms, world, and ladder.
+            </p>
+            <div id="admin-login-error" class="admin-error-box hidden"></div>
+            <div class="admin-field">
+                <label>Account Name</label>
+                <input type="text" id="admin-input-user" class="admin-input" placeholder="Account Name" autocomplete="username" onkeydown="if(event.key==='Enter')submitAdminLogin()" />
+            </div>
+            <div class="admin-field">
+                <label>Password</label>
+                <div class="admin-password-wrapper">
+                    <input type="password" id="admin-input-pass" class="admin-input" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitAdminLogin()" />
+                    <button type="button" class="admin-password-toggle" onclick="toggleAdminPasswordVisibility()" aria-label="Toggle password visibility">
+                        <svg id="admin-eye-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="admin-modal-actions">
+                <button class="admin-btn-cancel" onclick="closeAdminModal()">Cancel</button>
+                <button id="btn-admin-submit" class="admin-btn-submit" onclick="submitAdminLogin()">Sign In</button>
+            </div>
+        </div>
+        <div id="admin-authed-pane" class="hidden">
+            <div class="admin-success-box">
+                <div style="font-size:16px; font-weight:800; color:var(--ds-gold);" id="admin-authed-title">Active Session</div>
+                <div style="font-size:13px; color:#8b949e; margin-top:4px;">Logged in as <b id="admin-current-user" style="color:#56d364;">Adventurer</b></div>
+            </div>
+            <p class="admin-modal-desc" id="admin-authed-desc" style="text-align:center; margin-top:14px; font-size:13px; color:#8b949e;">
+                You have full access to realms, the Utraean Peninsula world map, and the character ladder.
+            </p>
+            <div class="admin-modal-actions" style="justify-content:center; gap:12px;">
+                <button class="admin-btn-cancel" onclick="closeAdminModal()">Close</button>
+                <button class="admin-btn-danger" onclick="submitAdminLogout()">Sign Out</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GM ACTION CONFIRMATION MODAL -->
+<div id="gm-confirm-modal" class="admin-modal-backdrop" onclick="handleGMConfirmBackdropClick(event)">
+    <div class="admin-modal-card gm-confirm-card" role="dialog" aria-modal="true" aria-labelledby="gm-confirm-title">
+        <div class="admin-modal-header gm-confirm-header">
+            <div class="gm-confirm-header-left">
+                <div class="gm-confirm-icon-wrap" id="gm-confirm-icon-wrap">
+                    <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </div>
+                <h3 id="gm-confirm-title">Confirm Server Action</h3>
+            </div>
+            <button class="admin-modal-close" onclick="cancelGMActionModal()" aria-label="Close modal">✕</button>
+        </div>
+        <div class="gm-confirm-body">
+            <div class="gm-confirm-realm-badge">
+                <img id="gm-confirm-flag" src="/static/flag-eu.svg" alt="Realm Flag" class="flag-icon" style="width: 22px; height: 15px;">
+                <span id="gm-confirm-realm-name">Central Europe</span>
+            </div>
+            
+            <p id="gm-confirm-message" class="gm-confirm-text">
+                Are you sure you want to <strong>START</strong> the <strong>Central Europe</strong> server?
+            </p>
+
+            <div id="gm-confirm-warning" class="gm-confirm-warning hidden">
+                <div class="gm-confirm-warn-icon">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                </div>
+                <div class="gm-confirm-warn-content">
+                    <div class="gm-confirm-warn-title">Active Adventurers Connected</div>
+                    <div id="gm-confirm-warn-desc" class="gm-confirm-warn-desc">
+                        There are currently active adventurers in this realm. Continuing will disconnect active players.
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="admin-modal-actions gm-confirm-actions">
+            <button type="button" class="admin-btn-cancel" onclick="cancelGMActionModal()">Cancel</button>
+            <button type="button" id="gm-confirm-action-btn" class="gm-confirm-action-btn btn-action-start" onclick="confirmGMActionModal()">
+                Confirm Action
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- FLOATING TOAST NOTIFICATION -->
+<div id="admin-toast" class="admin-toast hidden"></div>
+
+</body>
+</html>

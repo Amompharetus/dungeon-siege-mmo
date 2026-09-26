@@ -1,0 +1,48 @@
+# Build outputs and binaries
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+
+# Go binaries
+/launcher/SiegeLauncher
+/server/SiegePortal/SiegePortal
+/server/SiegeServer/SiegeServer
+/website/website
+
+# C / C++ compiled objects
+*.o
+*.obj
+*.a
+*.lib
+*.exp
+
+# IDEs and editors
+.vs/
+.vscode/
+.idea/
+
+# Logs and runtime dumps
+*.log
+*.dmp
+heartbeat.txt
+SiegeHostLogs/
+crash_*.dmp
+
+# Secrets, keys, and credentials
+*.pem
+*.key
+*.csv
+.env
+.env.*
+
+# Backups and temporary files
+*.bak
+*.bak-*
+*.orig
+*~
+*.swp
+.DS_Store
+Thumbs.db
