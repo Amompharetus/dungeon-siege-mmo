@@ -380,11 +380,92 @@ void* FirstBackpackIn(void* go) {
     }
     return nullptr;
 }
+// ---------------------------------------------------------------------------------------------
+// FuryEye - one item, into one named NPC, once per world.
+//
+// Places a fury_eye in the bandit boss's inventory so a hunt can be run without shipping a new map
+// to every player.
+//
+// MpWorld.dsmap contains exactly one bandit_boss, scid 0x065020CF, in mega_forest_r2. fury_eye is a
+// stock template in world/contentdb/templates/regular/interactive/trs_treasure.gas. Both were read
+// out of the tanks rather than assumed.
+//
+// This is the shop stocking path above with everything situational removed: no per-object records,
+// no refills, no gold value, no grid arithmetic. It runs inside the sweep that already walks every
+// Go, so it costs one string compare per object, and it stops looking once the item is placed.
+//
+// The engine call is the same one the shops use, and so is the guard around it. Without
+// g_shopStocking set, RSCreateAddItem hands every client a world copy of the new object at the
+// owner's feet, which is what left items lying on the ground near the Elddim shops in 0.8.3.
+//
+// The item goes to il_main, which is where the bandit_boss template already places its own random
+// loot ([inventory] [pcontent]), so it is carried and dropped by the same path as the rest of that
+// drop table.
+//
+// The NPC only exists while a player is near its region, so the item is placed the first time
+// somebody travels out there in a given world rather than at world creation. State is three
+// variables in the process: the world resets by restarting that process when the last player leaves,
+// which is what makes this once per world with nothing to clean up.
+bool g_fury = false;                 // feature on
+bool g_furyPlaced = false;           // placed in this world
+bool g_furyGaveUp = false;           // tried and the NPC would not take it; do not keep trying
+DWORD g_furyGoid = 0;                // who got it
+char g_furyTmpl[64] = "fury_eye";
+char g_furyHost[64] = "bandit_boss";
+
+// How many items directly inside this container carry that template name.
+int CountOfTemplate(void* go, const char* tmpl) {
+    void** b = *(void***)((char*)go + kItemsBegin);
+    void** e = *(void***)((char*)go + kItemsEnd);
+    if (!b && !e) return 0;
+    if (!b || !e || e < b || (size_t)(e - b) > 4096) return -1;
+    int n = 0;
+    for (void** it = b; it != e; ++it) {
+        void* ii = *it; if (!ii) continue;
+        const char* t = TemplateName(ii);
+        if (t && !strcmp(t, tmpl)) ++n;
+    }
+    return n;
+}
+
 void AddOne(void* inv, const char* tmpl) {
     eng::gpstring s; char alloc[4] = {0};
     eng::gpstring_ctor(&s, tmpl, alloc);
     RSCreateAddItem(inv, kIlMain, &s);
     eng::gpstring_dtor(&s);
+}
+
+// Called once per object from the sweep. Returns as early as possible in every case but the one.
+void FuryEyeConsider(void* go) {
+    if (!g_fury || g_furyPlaced || g_furyGaveUp) return;
+    const char* t = TemplateName(go);
+    if (!t || strcmp(t, g_furyHost)) return;
+    void* inv = *(void**)((char*)go + kGoInventory);
+    if (!inv) return;                       // nothing to put it in
+    DWORD goid = *(DWORD*)((char*)go + kGoid);
+    int had = CountOfTemplate(go, g_furyTmpl);
+    if (had < 0) return;                    // unreadable item list, try again next sweep
+    if (had > 0) {                          // already carrying one: this world is done
+        g_furyPlaced = true; g_furyGoid = goid;
+        Log("FuryEye: '%s' (goid %08lX) is already carrying a '%s'. Nothing added.",
+            t, goid, g_furyTmpl);
+        return;
+    }
+    InterlockedIncrement(&g_shopStocking);
+    AddOne(inv, g_furyTmpl);
+    InterlockedDecrement(&g_shopStocking);
+    int now = CountOfTemplate(go, g_furyTmpl);
+    if (now <= 0) {
+        // It would not take it. One attempt only: retrying every sweep is how objects get stranded.
+        g_furyGaveUp = true;
+        Log("FuryEye: '%s' (goid %08lX) would not take a '%s'. Not trying again in this world.",
+            t, goid, g_furyTmpl);
+        return;
+    }
+    g_furyPlaced = true; g_furyGoid = goid;
+    Log("FuryEye: put a '%s' in '%s' (goid %08lX). Once per world: nothing else will be added until "
+        "the world resets, and the world resets when the last player logs off.",
+        g_furyTmpl, t, goid);
 }
 
 // LAB ONLY (SIEGEHOST_INVTEST=1). The backpack-ownership rules, measured on a real player's
@@ -404,6 +485,7 @@ void SweepOnce() {
     void* fullInv = nullptr; void* fullInvGo = nullptr;
     while (go && go != head && walked < kWalkCap) {
         ++walked;
+        FuryEyeConsider(go);
         // A backpack with no parent is one lying in the world rather than sitting in a container.
         // Counting them is how we see the 0.8.3 leak if it ever comes back.
         if (!*(void**)((char*)go + kGoParent) && IsOurBackpack(go)) ++loose;
@@ -722,14 +804,16 @@ void ShopStockTick() {
 }
 
 std::string ShopStockHeartbeatLines() {
-    char b[320];
+    char b[512];
     if (!g_on) return "shopstock=off\n";
     snprintf(b, sizeof b,
              "shopstock=on\nshop_backpacks=%d\nshop_price=%d\nshop_count=%d\nshop_objects=%lu\n"
              "shop_loose=%d\nshop_stocked=%d\nshop_refill=once-per-world\ngoldcap=%s\n"
-             "goldcap_limit=%d\ngoldcap_trimmed=%lu\ngoldcap_highest=%d\n",
+             "goldcap_limit=%d\ngoldcap_trimmed=%lu\ngoldcap_highest=%d\n"
+             "furyeye=%s\nfuryeye_host=%s\nfuryeye_placed=%d\n",
              g_want, g_price, g_lastShops, g_lastWalked, g_lastLoose, g_stockedShops,
-             g_goldCap ? "on" : "off", kGoldCap, g_goldTrimmedTotal, g_goldHighest);
+             g_goldCap ? "on" : "off", kGoldCap, g_goldTrimmedTotal, g_goldHighest,
+             g_fury ? (g_furyGaveUp ? "refused" : "on") : "off", g_furyHost, g_furyPlaced ? 1 : 0);
     return b;
 }
 
@@ -750,6 +834,15 @@ void ShopStockInstall() {
     g_goldTest = GetEnvironmentVariableA("SIEGEHOST_GOLDTEST", e, sizeof e) != 0;  // lab only
     g_buyTest  = GetEnvironmentVariableA("SIEGEHOST_SHOPBUYTEST", e, sizeof e) != 0;  // lab only
     g_goldDiag = GetEnvironmentVariableA("SIEGEHOST_GOLDDIAG", e, sizeof e) != 0;  // lab only
+    g_fury = !GetEnvironmentVariableA("SIEGEHOST_NO_FURYEYE", e, sizeof e);
+    GetEnvironmentVariableA("SIEGEHOST_FURYHOST", g_furyHost, sizeof g_furyHost);   // lab only
+    GetEnvironmentVariableA("SIEGEHOST_FURYITEM", g_furyTmpl, sizeof g_furyTmpl);   // lab only
+    if (g_fury)
+        Log("FuryEye: on - the first '%s' this world builds gets one '%s' in its pockets, once, and "
+            "nothing more until the world resets. Nothing is patched; this uses the engine's own "
+            "GoInventory::RSCreateAddItem, the same call the shops use.", g_furyHost, g_furyTmpl);
+    else
+        Log("FuryEye: off (SIEGEHOST_NO_FURYEYE).");
     if (GetEnvironmentVariableA("SIEGEHOST_NO_SHOPSTOCK", e, sizeof e)) {
         Log("ShopStock: off (SIEGEHOST_NO_SHOPSTOCK) - shops keep exactly what the world gave them.");
         return;
