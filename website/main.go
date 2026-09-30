@@ -1282,7 +1282,7 @@ func resolveCharacterDetails(account, charName, saveSHA string, rec *CharRec) Ca
 			}
 		}
 
-		if targetFile == nil {
+		if targetFile == nil && charName == "" {
 			targetFile = fallbackFile
 		}
 
@@ -1428,33 +1428,6 @@ func getLadderCharacters() []LadderCharacter {
 				}
 			}
 			r.Close()
-		}
-
-		// Also check if any character in acct.Chars wasn't found in current.zip
-		if acct.Chars != nil {
-			for _, c := range acct.Chars {
-				alreadyAdded := false
-				for _, existing := range list {
-					if strings.EqualFold(existing.AccountName, canonicalAcctName) && strings.EqualFold(existing.CharacterName, c.Name) {
-						alreadyAdded = true
-						break
-					}
-				}
-				if !alreadyAdded {
-					lvl := 0
-					if c.XP > 0 {
-						lvl = int(math.Floor(math.Sqrt(float64(c.XP)/120.0))) + 1
-					}
-					list = append(list, LadderCharacter{
-						AccountName:   canonicalAcctName,
-						CharacterName: c.Name,
-						Level:         lvl,
-						Race:          "Human",
-						Class:         "Adventurer",
-						XP:            c.XP,
-					})
-				}
-			}
 		}
 	}
 
@@ -1625,7 +1598,7 @@ func getAccountCharacters(accountName string) []UserCharacter {
 		r.Close()
 	}
 
-	if len(chars) == 0 && acct != nil && acct.Chars != nil {
+	if len(chars) == 0 && acct != nil && acct.Chars != nil && err != nil {
 		for _, c := range acct.Chars {
 			lvl := 1
 			if c.XP > 0 {
