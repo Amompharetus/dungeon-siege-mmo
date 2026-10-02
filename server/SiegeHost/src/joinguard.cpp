@@ -7,6 +7,8 @@
 //   player's party experience (sum of every skill's XP over all party members) is compared with the MMO's record that
 //   came in the ticket; a character with more experience than the MMO has seen is kicked. Verified players' experience
 //   goes into heartbeat.txt, and siegeserver pushes it to the central portal, which raises the record.
+//   Separately, every minute each party's skill levels are compared with the experience that paid for them
+//   under the stock table, which catches a modified experience table in the player's own Resources folder.
 #include "siegehost.h"
 #include "engine.h"
 #include <cstdint>
@@ -155,6 +157,9 @@ struct Refusal { long long when; std::string account, reason; };
 std::vector<Refusal> g_refusals;              // last few, for the heartbeat
 std::vector<uint8_t> g_key;
 bool g_enforce = false;
+// XpCheck state; see the block further down for what it does and why it lives on the server.
+int g_xpMode = 0;                 // 0 report, 1 enforce, -1 off
+DWORD g_xpChecked = 0, g_xpFlagged = 0;
 std::string g_serverId;
 
 struct Lock {
@@ -221,6 +226,18 @@ void JG_Init() {
     g_key = Unhex(c.jgKey);
     g_serverId = c.jgServerId;
     g_enforce = c.jgEnabled && g_key.size() >= 16 && !g_serverId.empty();
+    {
+        char e[16] = "";
+        GetEnvironmentVariableA("SIEGEHOST_XPCHECK", e, sizeof e);
+        if (_stricmp(e, "enforce") == 0)   g_xpMode = 1;
+        else if (_stricmp(e, "off") == 0)  g_xpMode = -1;
+        else                               g_xpMode = 0;
+        Log("JoinGuard: XpCheck %s - a skill's level is compared with the experience that paid for it, "
+            "using the stock table. A modified experience table in a player's own Resources folder "
+            "shows up here as a level far above what their experience buys. %s",
+            g_xpMode < 0 ? "off" : (g_xpMode > 0 ? "ENFORCING" : "reporting only"),
+            g_xpMode > 0 ? "Offenders are kicked." : "Nobody is kicked; this only logs and counts.");
+    }
     Log("JoinGuard: %s (server id '%s', key %s)", g_enforce ? "ON - only players with a launcher join ticket can join" : "OFF",
         g_serverId.c_str(), g_key.size() >= 16 ? "set" : "missing");
 }
@@ -381,6 +398,196 @@ bool PartyXp(void* pl, long long& xp, int& members) {
     return true;
 }
 
+// ---------------------------------------------------------------------------------------------
+// XpCheck - a skill's level must match the experience it was paid for.
+//
+// THE HOLE THIS CLOSES
+// ---------------------------------------------------------------------------------------------
+// A player can drop a .dsres into their own Resources folder that the server does not have, and the
+// engine will use it. The one that matters replaces world/global/formula/formulas.gas and divides
+// the whole experience table by ten, so every level costs a tenth of what it should.
+//
+// It works because of where the arithmetic happens. The SERVER awards experience
+// (Rules::RCAwardPrimaryExperience 0x005B7194, replicated). The CLIENT turns that experience into
+// skill levels using ITS OWN copy of the table. The levels, not the formula, are what the character
+// file stores ("melee_level = 57.7172"), so the inflated numbers go into the save, into the
+// backups, and stay there.
+//
+// The experience check above does not see it: the mod does not touch experience at all. The
+// experience stays honest and only the level derived from it is wrong, and nothing compared the two.
+//
+// WHY THIS IS THE RIGHT PLACE TO CATCH IT
+// ---------------------------------------------------------------------------------------------
+// Both numbers are in front of us on the server, in the same 0x48-byte skill record: experience is
+// the double at +0x20, level is the float at +0x30. A player controls their own files; they do not
+// control the arithmetic the server does on the character they hand over, so this cannot be modded
+// away from the client side the way a file check could be.
+//
+// It also composes with the experience check: experience may not exceed what the portal has
+// recorded, and a level may not exceed what that experience buys. Beating both at once means faking
+// experience as well, which is the case already covered.
+//
+// THE TABLE
+// ---------------------------------------------------------------------------------------------
+// 151 thresholds, taken from the stock world/global/formula/formulas.gas in Resources/Logic.dsres.
+// Level is the index whose threshold the experience has passed, plus a linear fraction towards the
+// next one. Checked against a real character's seven skills: the engine's own levels come back to
+// within 0.0001, so this is the engine's formula rather than an approximation of it.
+//
+// WHAT IT DOES ABOUT IT
+// ---------------------------------------------------------------------------------------------
+// By default it reports only. It logs and counts, and nobody is kicked, because how many existing
+// characters are already affected has to be measured before anything is enforced.
+// SIEGEHOST_XPCHECK=enforce turns on the kick once that number is known.
+const double kExpTable[] = {
+    0, 70, 650, 1450, 2350,
+    3350, 4650, 6650, 9450, 12950,
+    17100, 22000, 27800, 34300, 41300,
+    49191, 58327, 68882, 81054, 95071,
+    111190, 129706, 150954, 175317, 203567,
+    236338, 274352, 318449, 369600, 428936,
+    497766, 577609, 670226, 777662, 902288,
+    1046855, 1214551, 1409080, 1634732, 1896489,
+    2200128, 2552348, 2960924, 3434872, 3984651,
+    4622395, 5362179, 6220327, 7215779, 8370504,
+    9709985, 11263782, 13066188, 15156978, 17582294,
+    20395661, 23659167, 27444833, 31836207, 36930200,
+    42839232, 49780637, 58283859, 68700306, 81460453,
+    97091634, 116239830, 139696370, 168430631, 203630102,
+    246749453, 299570658, 364276635, 443541456, 540640862,
+    659587634, 805297430, 983791930, 1202447693, 1470301002,
+    1798421306, 2200368678, 2692754209, 3295926485, 4034812522,
+    4939947918, 6048738778, 7407007581, 9070886865, 11109138988,
+    13605997839, 16664649931, 20411498744, 25001388540, 30624003540,
+    37511706915, 45949143550, 56285003427, 68946431776, 84456681504,
+    103456737421, 126731805919, 155243764829, 190170914494, 232956672834,
+    285369226800, 349574605408, 428226194203, 524574390477, 642600930913,
+    787183442946, 964297020188, 1181261152309, 1447042214156, 1772624014920,
+    2171461720855, 2660037910626, 3258543743095, 3991713387870, 4889846202719,
+    5990058900910, 7337819456193, 8988826136414, 11011309319686, 13488851219194,
+    16523840046091, 20241701359039, 24796081467402, 30375197100145, 37209613750256,
+    45581774146643, 55837670632215, 68401143827042, 83791398490705, 102644460453692,
+    125739461358351, 154030837466559, 188687773199113, 231142519471492, 283149583655156,
+    346858237280144, 424901337970755, 520504136316754, 637617564290602, 781081513558566,
+    956824851411821, 1172110440282060, 1435835286648100, 1758898223446500, 2154650321024540,
+    2639446640557650
+};
+const int kExpLevels = (int)(sizeof kExpTable / sizeof kExpTable[0]);
+
+// Level that this much experience in one skill actually buys, under the stock table.
+double LevelForXp(double xp) {
+    if (xp <= 0) return 0.0;
+    int lo = 0;
+    for (int i = 0; i < kExpLevels; ++i) { if (xp >= kExpTable[i]) lo = i; else break; }
+    if (lo + 1 >= kExpLevels) return (double)lo;
+    double span = kExpTable[lo + 1] - kExpTable[lo];
+    return (double)lo + (span > 0 ? (xp - kExpTable[lo]) / span : 0.0);
+}
+
+// Generous: a whole level of slack, against an effect that is a factor of ten.
+const double kLevelSlack = 1.0;
+
+// Returns true and fills detail when some skill claims a level its experience cannot pay for.
+bool XpCheck(void* pl, char* detail, size_t cap) {
+    if (g_xpMode < 0) return false;
+    char* p = (char*)pl;
+    if (*(void**)(p + 0xAC) == *(void**)(p + 0xB0)) return false;
+    char* party = (char*)**(void***)(p + 0xAC);
+    if (!party) return false;
+    void** cb = *(void***)(party + 0x88), **ce = *(void***)(party + 0x8C);
+    bool bad = false; double worstBy = 0;
+    char worstName[64] = ""; double worstXp = 0, worstLvl = 0, worstShould = 0;
+    for (void** c = cb; c && c < ce; ++c) {
+        char* go = (char*)*c;
+        char* actor = go ? *(char**)go : nullptr;
+        if (!actor) continue;
+        char* sb = *(char**)(actor + 0x18), *se = *(char**)(actor + 0x1C);
+        for (char* s = sb; s && s < se; s += 0x48) {
+            const char* nm = *(char**)s;
+            if (nm && _stricmp(nm, "Uber") == 0) continue;   // derived from the others, not paid for
+            double xp = *(double*)(s + 0x20);
+            float lvl = *(float*)(s + 0x30);
+            if (!(xp >= 0 && xp < 1e15) || !(lvl >= 0 && lvl < 1e5)) continue;   // unreadable, skip
+            double should = LevelForXp(xp);
+            double by = lvl - should;
+            if (by > kLevelSlack && by > worstBy) {
+                bad = true; worstBy = by;
+                snprintf(worstName, sizeof worstName, "%s", nm ? nm : "?");
+                worstXp = xp; worstLvl = lvl; worstShould = should;
+            }
+        }
+    }
+    ++g_xpChecked;
+    if (bad) {
+        ++g_xpFlagged;
+        snprintf(detail, cap,
+                 "%s is level %.2f on %.0f experience, but that experience only pays for level %.2f "
+                 "(%.2f levels too high). This is what a modified experience table in the player's own "
+                 "Resources folder looks like.",
+                 worstName, worstLvl, worstXp, worstShould, worstBy);
+    }
+    return bad;
+}
+
+// SIEGEHOST_SKILLDUMP=1, for working out offsets against a known save: prints every readable float
+// in each 0x48-byte skill record next to the skill's name and its experience, once per character.
+void SkillDump(void* pl) {
+    char* p = (char*)pl;
+    if (*(void**)(p + 0xAC) == *(void**)(p + 0xB0)) return;
+    char* party = (char*)**(void***)(p + 0xAC);
+    if (!party) return;
+    void** cb = *(void***)(party + 0x88), **ce = *(void***)(party + 0x8C);
+    for (void** c = cb; c && c < ce; ++c) {
+        char* go = (char*)*c;
+        char* actor = go ? *(char**)go : nullptr;
+        if (!actor) continue;
+        char* sb = *(char**)(actor + 0x18), *se = *(char**)(actor + 0x1C);
+        for (char* s = sb; s && s < se; s += 0x48) {
+            const char* nm = *(char**)s;
+            char line[700]; int n = 0;
+            n += snprintf(line + n, sizeof line - n, "SKILLDUMP '%s' xp=%.3f |", nm ? nm : "(null)",
+                          *(double*)(s + 0x20));
+            for (int off = 4; off < 0x48; off += 4) {
+                float f = *(float*)(s + off);
+                if (f > 0.0f && f < 100000.0f)
+                    n += snprintf(line + n, sizeof line - n, " +%02X=%.4f", off, f);
+                if (n > (int)sizeof line - 40) break;
+            }
+            Log("%s", line);
+        }
+        break;   // first party member is enough
+    }
+}
+
+// SIEGEHOST_XPTEST=1, test harness. Raises one skill's level in memory without paying any
+// experience, which is the shape a modified experience table leaves behind: honest experience,
+// inflated level. The engine's own RCSetSkillLevels pays the experience as it goes, so it cannot
+// produce this and cannot be used to exercise the check.
+void XpTestTamper(void* pl) {
+    char* p = (char*)pl;
+    if (*(void**)(p + 0xAC) == *(void**)(p + 0xB0)) return;
+    char* party = (char*)**(void***)(p + 0xAC);
+    if (!party) return;
+    void** cb = *(void***)(party + 0x88), **ce = *(void***)(party + 0x8C);
+    for (void** c = cb; c && c < ce; ++c) {
+        char* go = (char*)*c;
+        char* actor = go ? *(char**)go : nullptr;
+        if (!actor) continue;
+        char* sb = *(char**)(actor + 0x18), *se = *(char**)(actor + 0x1C);
+        for (char* s2 = sb; s2 && s2 < se; s2 += 0x48) {
+            const char* nm = *(char**)s2;
+            if (!nm || _stricmp(nm, "Melee") != 0) continue;
+            float* lvl = (float*)(s2 + 0x30);
+            double xp = *(double*)(s2 + 0x20);
+            Log("XPTEST: '%s' is level %.4f on %.0f experience. Raising the level to %.4f and leaving "
+                "the experience alone, which is what a divided experience table produces.",
+                nm, *lvl, xp, *lvl + 20.0f);
+            *lvl += 20.0f;
+            return;
+        }
+    }
+}
+
 std::string HeroName(void* pl) {
     wchar_t* w = *(wchar_t**)((char*)pl + 0x58);
     char name[128] = "";
@@ -439,6 +646,25 @@ void JoinGuardServerTick() {
             if (!j.partySeenTick) {
                 j.partySeenTick = now;
                 Log("JoinGuard: account '%s' hero '%s' entered the world: party experience %lld (%d members)", j.t.account.c_str(), j.hero.c_str(), xp, members);
+                { char e[8]; if (GetEnvironmentVariableA("SIEGEHOST_SKILLDUMP", e, sizeof e)) SkillDump(pl); }
+            }
+            // Every 60 s, not only at the door: a modified table keeps paying out for as long as the
+            // player keeps killing things, so someone can arrive honest and drift while playing.
+            {
+                static std::map<DWORD, DWORD> lastXp;
+                DWORD& last = lastXp[mach];
+                if (!last || now - last > 60000) {
+                    last = now;
+                    { char e[8]; static bool done = false;
+                      if (!done && GetEnvironmentVariableA("SIEGEHOST_XPTEST", e, sizeof e) &&
+                          now - j.partySeenTick > 20000) { done = true; XpTestTamper(pl); } }
+                    char xd[500];
+                    if (XpCheck(pl, xd, sizeof xd)) {
+                        Log("JoinGuard: XPCHECK %s account '%s' hero '%s': %s",
+                            g_xpMode > 0 ? "KICK" : "report only", j.t.account.c_str(), j.hero.c_str(), xd);
+                        if (g_xpMode > 0) Kick(pl, j, "levels", xd);
+                    }
+                }
             }
             if (!j.verified) {
                 std::string key = CharKey(j.hero);
@@ -493,6 +719,12 @@ void JoinGuardServerTick() {
 // refN=unix|account|reason
 std::string JG_HeartbeatLines() {
     std::string out = std::string("joinguard=") + (g_enforce ? "on" : "off") + "\n";
+    {
+        char x[128];
+        snprintf(x, sizeof x, "xpcheck=%s\nxpcheck_checked=%lu\nxpcheck_flagged=%lu\n",
+                 g_xpMode < 0 ? "off" : (g_xpMode > 0 ? "enforce" : "report"), g_xpChecked, g_xpFlagged);
+        out += x;
+    }
     if (!g_enforce) return out;
     Lock l;
     int n = 0;
