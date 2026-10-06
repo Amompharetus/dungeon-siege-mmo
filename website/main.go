@@ -1648,7 +1648,7 @@ func formatRelativeTime(t time.Time) string {
 		return "Unknown"
 	}
 	diff := time.Since(t)
-	if diff < 0 || diff < 2*time.Minute {
+	if diff < 0 || diff < time.Minute {
 		return "Just now"
 	}
 	if diff < time.Hour {
@@ -1756,12 +1756,6 @@ func buildLadderCharacters() []LadderCharacter {
 							lastTime = mod
 						}
 					}
-					if !acct.SaveTime.IsZero() && acct.SaveTime.Year() >= 2020 && acct.SaveTime.After(lastTime) {
-						lastTime = acct.SaveTime
-					}
-					if lastTime.IsZero() && !acct.LastLogin.IsZero() && acct.LastLogin.Year() >= 2020 {
-						lastTime = acct.LastLogin
-					}
 
 					isOnline := false
 					onlineShard := ""
@@ -1788,17 +1782,18 @@ func buildLadderCharacters() []LadderCharacter {
 					}
 
 					lastSeenStr := formatRelativeTime(lastTime)
+					var lastSeenUnix int64 = 0
+					if !lastTime.IsZero() && lastTime.Year() >= 2020 {
+						lastSeenUnix = lastTime.Unix()
+					}
+
 					if isOnline {
 						if onlineShard != "" {
 							lastSeenStr = "Online (" + onlineShard + ")"
 						} else {
 							lastSeenStr = "Online Now"
 						}
-					}
-
-					var lastSeenUnix int64 = 0
-					if !lastTime.IsZero() && lastTime.Year() >= 2020 {
-						lastSeenUnix = lastTime.Unix()
+						lastSeenUnix = time.Now().Unix()
 					}
 
 					list = append(list, LadderCharacter{
