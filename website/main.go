@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -41,6 +42,8 @@ const (
 
 var gmUsers = map[string]bool{
 	"admin": true,
+	"gm1":      true,
+	"gm2":       true,
 }
 
 func isAuthorizedGM(username string) bool {
@@ -254,6 +257,10 @@ type LadderCharacter struct {
 	Race          string `json:"race"`
 	Class         string `json:"class"`
 	XP            int64  `json:"xp"`
+	LastSeen      string `json:"last_seen,omitempty"`
+	LastSeenTime  int64  `json:"last_seen_time,omitempty"`
+	IsOnline      bool   `json:"is_online"`
+	OnlineShard   string `json:"online_shard,omitempty"`
 }
 
 type UserCharacter struct {
@@ -282,10 +289,11 @@ type RealmStatus struct {
 }
 
 type Account struct {
-	Name     string              `json:"name"`
-	SaveSHA  string              `json:"save_sha"`
-	SaveTime time.Time           `json:"save_time"`
-	Chars    map[string]*CharRec `json:"chars"`
+	Name      string              `json:"name"`
+	SaveSHA   string              `json:"save_sha"`
+	SaveTime  time.Time           `json:"save_time"`
+	LastLogin time.Time           `json:"last_login"`
+	Chars     map[string]*CharRec `json:"chars"`
 }
 
 type CharRec struct {
@@ -298,6 +306,53 @@ type StoredAccount struct {
 	Name string `json:"name"`
 	Salt string `json:"salt"`
 	Hash string `json:"hash"`
+}
+
+// Shared, because http.Transport pools connections and must not be rebuilt per request.
+var (
+	awsHTTP = &http.Client{Timeout: 8 * time.Second}
+
+	portalHTTP = &http.Client{
+		Timeout: 3 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        16,
+			MaxIdleConnsPerHost: 8,
+			IdleConnTimeout:     30 * time.Second,
+		},
+	}
+)
+
+// One rebuild at a time, shared by everyone waiting. The underlying data moves at heartbeat speed, so a few
+// seconds of staleness is invisible, while rebuilding per request is not: it opens every account's save.
+type cachedBuild[T any] struct {
+	mu    sync.Mutex
+	val   T
+	at    time.Time
+	ttl   time.Duration
+	build func() T
+}
+
+func (c *cachedBuild[T]) get() T {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if time.Since(c.at) < c.ttl {
+		return c.val
+	}
+	c.val, c.at = c.build(), time.Now()
+	return c.val
+}
+
+var (
+	realmCache  = &cachedBuild[RealmStatus]{ttl: 5 * time.Second, build: buildRealmStatus}
+	ladderCache = &cachedBuild[[]LadderCharacter]{ttl: 30 * time.Second, build: buildLadderCharacters}
+)
+
+func getRealmStatus() RealmStatus {
+	return realmCache.get()
+}
+
+func getLadderCharacters() []LadderCharacter {
+	return ladderCache.get()
 }
 
 var (
@@ -663,8 +718,7 @@ func callEC2(action string, extraParams map[string]string) ([]byte, int, error) 
 	req.Header.Set("X-Amz-Date", amzDate)
 	req.Header.Set("Authorization", authz)
 
-	client := &http.Client{Timeout: 8 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := awsHTTP.Do(req)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -674,7 +728,9 @@ func callEC2(action string, extraParams map[string]string) ([]byte, int, error) 
 }
 
 func getNAServerState() string {
-	out, err := exec.Command("systemctl", "is-active", "ds1mmo-na").CombinedOutput()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "systemctl", "is-active", "ds1mmo-na").CombinedOutput()
 	state := strings.TrimSpace(string(out))
 	if err != nil && state == "" {
 		return "stopped"
@@ -715,14 +771,16 @@ func getEUServerState() string {
 }
 
 func executeNAAction(action string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	var cmd *exec.Cmd
 	switch action {
 	case "start":
-		cmd = exec.Command("sudo", "/usr/bin/systemctl", "start", "ds1mmo-na")
+		cmd = exec.CommandContext(ctx, "sudo", "/usr/bin/systemctl", "start", "ds1mmo-na")
 	case "restart":
-		cmd = exec.Command("sudo", "/usr/bin/systemctl", "restart", "ds1mmo-na")
+		cmd = exec.CommandContext(ctx, "sudo", "/usr/bin/systemctl", "restart", "ds1mmo-na")
 	case "stop":
-		cmd = exec.Command("sudo", "/usr/bin/systemctl", "stop", "ds1mmo-na")
+		cmd = exec.CommandContext(ctx, "sudo", "/usr/bin/systemctl", "stop", "ds1mmo-na")
 	default:
 		return fmt.Errorf("invalid action: %s", action)
 	}
@@ -812,7 +870,7 @@ func main() {
 	}
 }
 
-func getRealmStatus() RealmStatus {
+func buildRealmStatus() RealmStatus {
 	res := RealmStatus{
 		ServerName: "Dungeon Siege MMO",
 		MapName:    "Utraean Peninsula",
@@ -836,8 +894,7 @@ func getRealmStatus() RealmStatus {
 	serverTown := make(map[string]string)
 
 	// 1. Fetch live portal status
-	c := &http.Client{Timeout: 3 * time.Second}
-	resp, err := c.Get(portalURL + "/api/status")
+	resp, err := portalHTTP.Get(portalURL + "/api/status")
 	if err == nil {
 		defer resp.Body.Close()
 		var portalResp struct {
@@ -910,7 +967,7 @@ func getRealmStatus() RealmStatus {
 		}
 	}
 
-	// Also inspect local shard heartbeat files directly
+	// Also inspect local shard heartbeat files directly IF fresh and server is online
 	hbPaths := []struct {
 		path string
 		id   string
@@ -919,9 +976,26 @@ func getRealmStatus() RealmStatus {
 		{path: "/home/amp/.ampdata/instances/ADS01/localaux/ds1mmo_eu_server/game/SiegeHostLogs/heartbeat.txt", id: "eu"},
 	}
 	for _, hb := range hbPaths {
+		srvOnline := false
+		if hb.id == "na" && res.NA.Online && res.NA.PlayersCount > 0 {
+			srvOnline = true
+		} else if hb.id == "eu" && res.EU.Online && res.EU.PlayersCount > 0 {
+			srvOnline = true
+		}
+		if !srvOnline {
+			continue
+		}
+		st, err := os.Stat(hb.path)
+		if err != nil || time.Since(st.ModTime()) > 30*time.Second {
+			continue
+		}
 		if b, err := os.ReadFile(hb.path); err == nil {
+			content := string(b)
+			if strings.Contains(content, "\nplayers=0\n") || strings.HasPrefix(content, "players=0\n") {
+				continue
+			}
 			town := "Elddim"
-			lines := strings.Split(string(b), "\n")
+			lines := strings.Split(content, "\n")
 			for _, l := range lines {
 				l = strings.TrimSpace(l)
 				if strings.HasPrefix(l, "start_location=") {
@@ -959,18 +1033,66 @@ func getRealmStatus() RealmStatus {
 	// 2. Parse active sessions from portal.log
 	activeSessions, sessionRawNames, sessionStartTimes, hasUploadedInSession := parseActiveSessions()
 
-	// Authoritative override / merge:
+	// Build map of active servers and their player counts
+	serverActive := map[string]bool{
+		"na": res.NA.Online && res.NA.PlayersCount > 0,
+		"eu": res.EU.Online && res.EU.PlayersCount > 0,
+	}
+	serverCap := map[string]int{
+		"na": res.NA.PlayersCount,
+		"eu": res.EU.PlayersCount,
+	}
+
+	finalOnlineSessions := make(map[string]string) // acctLower -> srvID
+	serverVerifiedCount := make(map[string]int)
+
 	// Anyone in game server heartbeat is 100% active and connected!
 	for acctLower, srvID := range heartbeatServers {
-		activeSessions[acctLower] = srvID
-		if _, ok := sessionRawNames[acctLower]; !ok {
-			sessionRawNames[acctLower] = canonicalAcctNames[acctLower]
+		srvLower := strings.ToLower(srvID)
+		if serverActive[srvLower] {
+			finalOnlineSessions[acctLower] = srvLower
+			serverVerifiedCount[srvLower]++
+			if _, ok := sessionRawNames[acctLower]; !ok {
+				sessionRawNames[acctLower] = canonicalAcctNames[acctLower]
+			}
+		}
+	}
+
+	// For servers that have connected players (pCount > 0) but heartbeat didn't provide pc* lines (e.g. EU),
+	// match up to the remaining player count using active sessions on that server, ordered by newest session start
+	for srvID, isActive := range serverActive {
+		if !isActive {
+			continue
+		}
+		needed := serverCap[srvID] - serverVerifiedCount[srvID]
+		if needed <= 0 {
+			continue
+		}
+		type candidate struct {
+			acctLower string
+			start     time.Time
+		}
+		var candidates []candidate
+		for acctLower, s := range activeSessions {
+			if strings.ToLower(s) == srvID {
+				if _, already := finalOnlineSessions[acctLower]; !already {
+					candidates = append(candidates, candidate{acctLower: acctLower, start: sessionStartTimes[acctLower]})
+				}
+			}
+		}
+		sort.Slice(candidates, func(i, j int) bool {
+			return candidates[i].start.After(candidates[j].start)
+		})
+		for i := 0; i < len(candidates) && i < needed; i++ {
+			c := candidates[i]
+			finalOnlineSessions[c.acctLower] = srvID
+			hasUploadedInSession[c.acctLower] = true
 		}
 	}
 
 	accounts := loadAccounts()
 
-	for acctLower, srvID := range activeSessions {
+	for acctLower, srvID := range finalOnlineSessions {
 		acct := accounts[acctLower]
 
 		canonicalName := acctLower
@@ -1083,10 +1205,16 @@ func getRealmStatus() RealmStatus {
 	}
 
 	// Update player count from actual connected players
-	if len(res.NA.Players) > res.NA.PlayersCount {
+	if !res.NA.Online {
+		res.NA.PlayersCount = 0
+		res.NA.Players = []PlayerInfo{}
+	} else if len(res.NA.Players) > res.NA.PlayersCount {
 		res.NA.PlayersCount = len(res.NA.Players)
 	}
-	if len(res.EU.Players) > res.EU.PlayersCount {
+	if !res.EU.Online {
+		res.EU.PlayersCount = 0
+		res.EU.Players = []PlayerInfo{}
+	} else if len(res.EU.Players) > res.EU.PlayersCount {
 		res.EU.PlayersCount = len(res.EU.Players)
 	}
 	res.TotalOnline = res.NA.PlayersCount + res.EU.PlayersCount
@@ -1187,12 +1315,13 @@ func parseActiveSessions() (map[string]string, map[string]string, map[string]tim
 	}
 
 	now := time.Now().UTC()
-	for acctLower, t := range lastSeen {
-		if now.Sub(t) > 10*time.Minute {
+	for acctLower, t := range sessionStartTimes {
+		if now.Sub(t) > 12*time.Hour {
 			delete(sessions, acctLower)
 			delete(rawNames, acctLower)
 			delete(sessionStartTimes, acctLower)
 			delete(hasUploadedInSession, acctLower)
+			delete(lastSeen, acctLower)
 		}
 	}
 
@@ -1301,9 +1430,12 @@ func resolveCharacterDetails(account, charName, saveSHA string, rec *CharRec) Ca
 					_ = os.MkdirAll(tmpDir, 0755)
 
 					// 1. Extract party.gas (skills, class, level, screen_name, race)
-					cmdParty := exec.Command(tankdumpBin, tmpDSP, "party.gas", "-e")
+					ctxParty, cancelParty := context.WithTimeout(context.Background(), 5*time.Second)
+					cmdParty := exec.CommandContext(ctxParty, tankdumpBin, tmpDSP, "party.gas", "-e")
 					cmdParty.Dir = tmpDir
-					if out, err := cmdParty.CombinedOutput(); err == nil || len(out) == 0 {
+					outParty, errParty := cmdParty.CombinedOutput()
+					cancelParty()
+					if errParty == nil || len(outParty) == 0 {
 						gasPath := filepath.Join(tmpDir, "party.gas")
 						if gasBytes, err := os.ReadFile(gasPath); err == nil {
 							gasStr := string(gasBytes)
@@ -1332,9 +1464,12 @@ func resolveCharacterDetails(account, charName, saveSHA string, rec *CharRec) Ca
 					}
 
 					// 2. Extract info.gas (actual current region player is in!)
-					cmdInfo := exec.Command(tankdumpBin, tmpDSP, "info.gas", "-e")
+					ctxInfo, cancelInfo := context.WithTimeout(context.Background(), 5*time.Second)
+					cmdInfo := exec.CommandContext(ctxInfo, tankdumpBin, tmpDSP, "info.gas", "-e")
 					cmdInfo.Dir = tmpDir
-					if out, err := cmdInfo.CombinedOutput(); err == nil || len(out) == 0 {
+					outInfo, errInfo := cmdInfo.CombinedOutput()
+					cancelInfo()
+					if errInfo == nil || len(outInfo) == 0 {
 						infoPath := filepath.Join(tmpDir, "info.gas")
 						if infoBytes, err := os.ReadFile(infoPath); err == nil {
 							infoStr := string(infoBytes)
@@ -1379,14 +1514,207 @@ func resolveCharacterDetails(account, charName, saveSHA string, rec *CharRec) Ca
 	return res
 }
 
-func getLadderCharacters() []LadderCharacter {
+func getLiveOnlineSnapshot() (map[string]string, map[string]string, map[string]string) {
+	onlineAccts := make(map[string]string)
+	onlineHeroes := make(map[string]string)
+	onlineMap := make(map[string]string)
+
+	resp, err := portalHTTP.Get(portalURL + "/api/status")
+	if err != nil {
+		return onlineAccts, onlineHeroes, onlineMap
+	}
+	defer resp.Body.Close()
+
+	var portalResp struct {
+		Servers []struct {
+			ID      string            `json:"id"`
+			Online  bool              `json:"online"`
+			Players string            `json:"players"`
+			Game    map[string]string `json:"game"`
+		} `json:"servers"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&portalResp); err != nil {
+		return onlineAccts, onlineHeroes, onlineMap
+	}
+
+	activeServers := make(map[string]int)
+	for _, s := range portalResp.Servers {
+		sID := strings.ToLower(s.ID)
+		pCount, _ := strconv.Atoi(s.Players)
+		if s.Online && pCount > 0 {
+			activeServers[sID] = pCount
+			for k, v := range s.Game {
+				if strings.HasPrefix(k, "pc") {
+					parts := strings.Split(v, "|")
+					if len(parts) > 0 && parts[0] != "" {
+						acctLower := strings.ToLower(strings.TrimSpace(parts[0]))
+						shardUpper := strings.ToUpper(s.ID)
+						onlineAccts[acctLower] = shardUpper
+						if len(parts) > 1 && parts[1] != "" {
+							if dec, err := hex.DecodeString(parts[1]); err == nil && len(dec) > 0 {
+								hero := string(dec)
+								onlineHeroes[acctLower] = hero
+								onlineMap[acctLower+":"+strings.ToLower(hero)] = shardUpper
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Also inspect local heartbeat file IF fresh and server is online
+	hbPaths := []struct {
+		path string
+		id   string
+	}{
+		{path: "/home/amp/.ampdata/instances/ADS01/localaux/ds1mmo_na_server/game/SiegeHostLogs/heartbeat.txt", id: "na"},
+		{path: "/home/amp/.ampdata/instances/ADS01/localaux/ds1mmo_eu_server/game/SiegeHostLogs/heartbeat.txt", id: "eu"},
+	}
+	for _, hb := range hbPaths {
+		if _, ok := activeServers[hb.id]; !ok {
+			continue
+		}
+		st, err := os.Stat(hb.path)
+		if err != nil || time.Since(st.ModTime()) > 30*time.Second {
+			continue
+		}
+		if b, err := os.ReadFile(hb.path); err == nil {
+			content := string(b)
+			if strings.Contains(content, "\nplayers=0\n") || strings.HasPrefix(content, "players=0\n") {
+				continue
+			}
+			lines := strings.Split(content, "\n")
+			for _, l := range lines {
+				l = strings.TrimSpace(l)
+				if strings.HasPrefix(l, "pc") && strings.Contains(l, "=") {
+					val := strings.TrimSpace(strings.SplitN(l, "=", 2)[1])
+					parts := strings.Split(val, "|")
+					if len(parts) > 0 && parts[0] != "" {
+						acctLower := strings.ToLower(strings.TrimSpace(parts[0]))
+						shardUpper := strings.ToUpper(hb.id)
+						onlineAccts[acctLower] = shardUpper
+						if len(parts) > 1 && parts[1] != "" {
+							if dec, err := hex.DecodeString(parts[1]); err == nil && len(dec) > 0 {
+								hero := string(dec)
+								onlineHeroes[acctLower] = hero
+								onlineMap[acctLower+":"+strings.ToLower(hero)] = shardUpper
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// For any active server needing players, consult active sessions
+	sessions, _, startTimes, _ := parseActiveSessions()
+	for sID, count := range activeServers {
+		shardUpper := strings.ToUpper(sID)
+		verifiedCount := 0
+		for _, shard := range onlineAccts {
+			if shard == shardUpper {
+				verifiedCount++
+			}
+		}
+		needed := count - verifiedCount
+		if needed > 0 {
+			type cand struct {
+				acct  string
+				start time.Time
+			}
+			var cands []cand
+			for acct, s := range sessions {
+				if strings.ToLower(s) == sID {
+					if _, ok := onlineAccts[acct]; !ok {
+						cands = append(cands, cand{acct: acct, start: startTimes[acct]})
+					}
+				}
+			}
+			sort.Slice(cands, func(i, j int) bool {
+				return cands[i].start.After(cands[j].start)
+			})
+			for i := 0; i < len(cands) && i < needed; i++ {
+				onlineAccts[cands[i].acct] = shardUpper
+			}
+		}
+	}
+
+	return onlineAccts, onlineHeroes, onlineMap
+}
+
+func formatRelativeTime(t time.Time) string {
+	if t.IsZero() || t.Year() < 2020 {
+		return "Unknown"
+	}
+	diff := time.Since(t)
+	if diff < 0 || diff < 2*time.Minute {
+		return "Just now"
+	}
+	if diff < time.Hour {
+		mins := int(diff.Minutes())
+		if mins <= 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", mins)
+	}
+	if diff < 24*time.Hour {
+		hours := int(diff.Hours())
+		if hours <= 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", hours)
+	}
+	if diff < 48*time.Hour {
+		return "Yesterday"
+	}
+	days := int(diff.Hours() / 24)
+	if days < 7 {
+		if days <= 1 {
+			return "1 day ago"
+		}
+		return fmt.Sprintf("%d days ago", days)
+	}
+	if days < 30 {
+		weeks := days / 7
+		if weeks <= 1 {
+			return "1 week ago"
+		}
+		return fmt.Sprintf("%d weeks ago", weeks)
+	}
+	if days < 365 {
+		months := days / 30
+		if months <= 1 {
+			return "1 month ago"
+		}
+		return fmt.Sprintf("%d months ago", months)
+	}
+	years := days / 365
+	if years <= 1 {
+		return "1 year ago"
+	}
+	return fmt.Sprintf("%d years ago", years)
+}
+
+func buildLadderCharacters() []LadderCharacter {
 	accounts := loadAccounts()
 	var list []LadderCharacter
+
+	onlineAccts, onlineHeroes, onlineMap := getLiveOnlineSnapshot()
 
 	for acctLower, acct := range accounts {
 		canonicalAcctName := acct.Name
 		if canonicalAcctName == "" {
 			canonicalAcctName = acctLower
+		}
+
+		var newestChar *CharRec
+		if acct.Chars != nil {
+			for _, c := range acct.Chars {
+				if newestChar == nil || c.Updated.After(newestChar.Updated) {
+					newestChar = c
+				}
+			}
 		}
 
 		zipPath := filepath.Join(portalDir, "portal-data", "saves", acctLower, "current.zip")
@@ -1417,6 +1745,62 @@ func getLadderCharacters() []LadderCharacter {
 					if race == "" {
 						race = "Human"
 					}
+
+					var lastTime time.Time
+					if charRec != nil && !charRec.Updated.IsZero() && charRec.Updated.Year() >= 2020 {
+						lastTime = charRec.Updated
+					}
+					if f != nil {
+						mod := f.ModTime()
+						if !mod.IsZero() && mod.Year() >= 2020 && mod.After(lastTime) {
+							lastTime = mod
+						}
+					}
+					if !acct.SaveTime.IsZero() && acct.SaveTime.Year() >= 2020 && acct.SaveTime.After(lastTime) {
+						lastTime = acct.SaveTime
+					}
+					if lastTime.IsZero() && !acct.LastLogin.IsZero() && acct.LastLogin.Year() >= 2020 {
+						lastTime = acct.LastLogin
+					}
+
+					isOnline := false
+					onlineShard := ""
+					lookupKey := acctLower + ":" + strings.ToLower(charDetails.Name)
+					if s, ok := onlineMap[lookupKey]; ok {
+						isOnline = true
+						onlineShard = s
+					} else if s, ok := onlineMap[acctLower+":"+strings.ToLower(cleanName)]; ok {
+						isOnline = true
+						onlineShard = s
+					} else if s, ok := onlineAccts[acctLower]; ok {
+						if hero, ok2 := onlineHeroes[acctLower]; ok2 {
+							if strings.EqualFold(hero, charDetails.Name) || strings.EqualFold(hero, cleanName) {
+								isOnline = true
+								onlineShard = s
+							}
+						} else {
+							// If joinguard didn't specify hero, only the account's newest character is marked online
+							if newestChar != nil && (strings.EqualFold(newestChar.Name, charDetails.Name) || strings.EqualFold(newestChar.Name, cleanName)) {
+								isOnline = true
+								onlineShard = s
+							}
+						}
+					}
+
+					lastSeenStr := formatRelativeTime(lastTime)
+					if isOnline {
+						if onlineShard != "" {
+							lastSeenStr = "Online (" + onlineShard + ")"
+						} else {
+							lastSeenStr = "Online Now"
+						}
+					}
+
+					var lastSeenUnix int64 = 0
+					if !lastTime.IsZero() && lastTime.Year() >= 2020 {
+						lastSeenUnix = lastTime.Unix()
+					}
+
 					list = append(list, LadderCharacter{
 						AccountName:   canonicalAcctName,
 						CharacterName: charDetails.Name,
@@ -1424,6 +1808,10 @@ func getLadderCharacters() []LadderCharacter {
 						Race:          race,
 						Class:         charDetails.Class,
 						XP:            xp,
+						LastSeen:      lastSeenStr,
+						LastSeenTime:  lastSeenUnix,
+						IsOnline:      isOnline,
+						OnlineShard:   onlineShard,
 					})
 				}
 			}

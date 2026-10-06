@@ -1141,11 +1141,100 @@
             width: 100%;
         }
 
-        .ladder-head,
+        .ladder-head {
+            display: grid;
+            grid-template-columns: 46px 1fr 1fr 1fr 1fr;
+            align-items: center;
+            column-gap: 8px;
+            padding: 11px 20px;
+            box-sizing: border-box;
+        }
+
         .ladder-row {
             display: grid;
-            grid-template-columns: 50px 2fr 1.2fr 1.6fr;
+            grid-template-columns: 46px 1fr 1fr 1fr 1fr;
             align-items: center;
+            column-gap: 8px;
+            padding: 10px 8px;
+            box-sizing: border-box;
+        }
+
+        .col-lastseen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 13px;
+            color: #8b949e;
+            white-space: nowrap;
+        }
+
+        .th-lastseen {
+            white-space: nowrap;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .lastseen-badge {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            gap: 6px;
+            font-size: 12.5px;
+            color: #8b949e;
+        }
+
+        .lastseen-badge.is-online {
+            color: #2ecc71;
+            font-weight: 600;
+        }
+
+        .lastseen-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #2ecc71;
+            box-shadow: 0 0 8px rgba(46, 204, 113, 0.7);
+            display: inline-block;
+            flex-shrink: 0;
+            animation: pulse-online 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-online {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.85); }
+        }
+
+        .lastseen-mobile {
+            display: none;
+        }
+
+        @media (max-width: 640px) {
+            .ladder-head {
+                grid-template-columns: 38px 2fr 0.9fr 1.1fr;
+                column-gap: 6px;
+                padding: 11px 16px;
+            }
+            .ladder-row {
+                grid-template-columns: 38px 2fr 0.9fr 1.1fr;
+                column-gap: 6px;
+            }
+            .th-lastseen,
+            .col-lastseen {
+                display: none !important;
+            }
+            .lastseen-mobile {
+                display: inline;
+                font-size: 11px;
+                color: #8b949e;
+            }
+            .lastseen-mobile-text.is-online {
+                color: #2ecc71;
+                font-weight: 600;
+            }
         }
 
         .col-rank {
@@ -2182,6 +2271,7 @@
                             <div class="th-col">Adventurer</div>
                             <div class="th-col">Level</div>
                             <div class="th-col">Class</div>
+                            <div class="th-col th-lastseen">Last Seen</div>
                         </div>
                         <div class="roster-body" id="list-ladder">
                             <div class="empty-state">
@@ -2597,12 +2687,43 @@
         sorted.forEach((p, index) => {
             const lvl = p.level !== undefined ? p.level : 0;
             const rank = index + 1;
+            const isOnline = !!p.is_online;
+            const lastSeenText = p.last_seen || (isOnline ? 'Online Now' : 'Unknown');
+
+            let fullDateTitle = '';
+            if (isOnline) {
+                fullDateTitle = 'Currently connected to ' + (p.online_shard ? p.online_shard : 'realm');
+            } else if (p.last_seen_time && p.last_seen_time > 0) {
+                try {
+                    const d = new Date(p.last_seen_time * 1000);
+                    if (d.getFullYear() < 2020) {
+                        fullDateTitle = 'Unknown';
+                    } else {
+                        fullDateTitle = d.toLocaleString(undefined, {
+                            month: 'short', day: 'numeric', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                        });
+                    }
+                } catch (_) {
+                    fullDateTitle = lastSeenText;
+                }
+            } else {
+                fullDateTitle = lastSeenText;
+            }
+
+            const badgeHTML = isOnline
+                ? `<span class="lastseen-badge is-online"><span class="lastseen-dot"></span><span>${escapeHTML(lastSeenText)}</span></span>`
+                : `<span class="lastseen-badge">${escapeHTML(lastSeenText)}</span>`;
+
             html += `
                 <div class="roster-row ladder-row">
                     <div class="col-rank">#${rank}</div>
                     <div class="col-adventurer">
                         <div class="hero-name">${escapeHTML(p.character_name || 'Hero')}</div>
-                        <div class="account-tag">Account: <span>${escapeHTML(p.account_name || '')}</span></div>
+                        <div class="account-tag">
+                            Account: <span>${escapeHTML(p.account_name || '')}</span>
+                            <span class="lastseen-mobile"> • <span class="lastseen-mobile-text ${isOnline ? 'is-online' : ''}">${isOnline ? '🟢 ' : ''}${escapeHTML(lastSeenText)}</span></span>
+                        </div>
                     </div>
                     <div class="col-level">
                         <div class="level-shield">
@@ -2611,6 +2732,9 @@
                     </div>
                     <div class="col-class">
                         <span class="class-pill">${escapeHTML(p.class || 'Adventurer')}</span>
+                    </div>
+                    <div class="col-lastseen" title="${escapeHTML(fullDateTitle)}">
+                        ${badgeHTML}
                     </div>
                 </div>
             `;
