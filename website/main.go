@@ -1696,6 +1696,31 @@ func formatRelativeTime(t time.Time) string {
 	return fmt.Sprintf("%d years ago", years)
 }
 
+func normalizeCharName(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, "_", "")
+	s = strings.ReplaceAll(s, " ", "")
+	return s
+}
+
+func matchCharRec(chars map[string]*CharRec, cleanName string) *CharRec {
+	if chars == nil {
+		return nil
+	}
+	for k, c := range chars {
+		if strings.EqualFold(k, cleanName) || strings.EqualFold(c.Name, cleanName) {
+			return c
+		}
+	}
+	cleanNorm := normalizeCharName(cleanName)
+	for k, c := range chars {
+		if normalizeCharName(k) == cleanNorm || normalizeCharName(c.Name) == cleanNorm {
+			return c
+		}
+	}
+	return nil
+}
+
 func buildLadderCharacters() []LadderCharacter {
 	accounts := loadAccounts()
 	var list []LadderCharacter
@@ -1726,12 +1751,7 @@ func buildLadderCharacters() []LadderCharacter {
 
 					var charRec *CharRec
 					if acct.Chars != nil {
-						for k, c := range acct.Chars {
-							if strings.EqualFold(k, cleanName) || strings.EqualFold(c.Name, cleanName) {
-								charRec = c
-								break
-							}
-						}
+						charRec = matchCharRec(acct.Chars, cleanName)
 					}
 
 					charDetails := resolveCharacterDetails(canonicalAcctName, cleanName, acct.SaveSHA, charRec)
@@ -1760,6 +1780,7 @@ func buildLadderCharacters() []LadderCharacter {
 					isOnline := false
 					onlineShard := ""
 					lookupKey := acctLower + ":" + strings.ToLower(charDetails.Name)
+					cleanNorm := normalizeCharName(cleanName)
 					if s, ok := onlineMap[lookupKey]; ok {
 						isOnline = true
 						onlineShard = s
@@ -1768,13 +1789,13 @@ func buildLadderCharacters() []LadderCharacter {
 						onlineShard = s
 					} else if s, ok := onlineAccts[acctLower]; ok {
 						if hero, ok2 := onlineHeroes[acctLower]; ok2 {
-							if strings.EqualFold(hero, charDetails.Name) || strings.EqualFold(hero, cleanName) {
+							if strings.EqualFold(hero, charDetails.Name) || strings.EqualFold(hero, cleanName) || normalizeCharName(hero) == cleanNorm {
 								isOnline = true
 								onlineShard = s
 							}
 						} else {
 							// If joinguard didn't specify hero, only the account's newest character is marked online
-							if newestChar != nil && (strings.EqualFold(newestChar.Name, charDetails.Name) || strings.EqualFold(newestChar.Name, cleanName)) {
+							if newestChar != nil && (strings.EqualFold(newestChar.Name, charDetails.Name) || strings.EqualFold(newestChar.Name, cleanName) || normalizeCharName(newestChar.Name) == cleanNorm) {
 								isOnline = true
 								onlineShard = s
 							}
@@ -1946,12 +1967,7 @@ func getAccountCharacters(accountName string) []UserCharacter {
 				cleanName := strings.TrimSuffix(strings.TrimPrefix(f.Name, "Save/"), ".dsparty")
 				var charRec *CharRec
 				if acct != nil && acct.Chars != nil {
-					for k, c := range acct.Chars {
-						if strings.EqualFold(k, cleanName) || strings.EqualFold(c.Name, cleanName) {
-							charRec = c
-							break
-						}
-					}
+					charRec = matchCharRec(acct.Chars, cleanName)
 				}
 				details := resolveCharacterDetails(accountName, cleanName, saveSHA, charRec)
 				race := details.Race
