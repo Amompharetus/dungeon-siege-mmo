@@ -25,7 +25,7 @@
     <meta name="twitter:image" content="https://dungeonsiegemmo.online/static/og-image.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Cinzel+Decorative:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Cinzel+Decorative:wght@700;900&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
     <style>
         :root {
             --ds-gold: #e5b85c;
@@ -593,9 +593,11 @@
 
         .empty-desc {
             font-size: 12px;
-            max-width: 280px;
+            max-width: 320px;
             line-height: 1.5;
             color: #57606a;
+            text-align: center;
+            margin: 0 auto;
         }
 
         /* ========================================================
@@ -1269,6 +1271,1298 @@
             gap: 5px;
         }
 
+
+        /* WIKI STYLES */
+        .wiki-card-wrapper {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .wiki-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+
+
+        .wiki-toolbar {
+            padding: 18px 24px 14px;
+            background: rgba(14, 17, 22, 0.7);
+            border-bottom: 1px solid var(--ds-card-border);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .wiki-search-row {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .wiki-search-box {
+            flex: 1;
+            min-width: 280px;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .wiki-search-icon {
+            position: absolute;
+            left: 14px;
+            width: 18px;
+            height: 18px;
+            fill: var(--ds-gray);
+            pointer-events: none;
+        }
+
+        .wiki-search-box input {
+            width: 100%;
+            padding: 11px 40px 11px 42px;
+            background: rgba(8, 10, 14, 0.85);
+            border: 1.5px solid var(--ds-card-border);
+            border-radius: 6px;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .wiki-search-box input:focus {
+            outline: none;
+            border-color: var(--ds-gold);
+            box-shadow: 0 0 12px rgba(229, 184, 92, 0.25);
+        }
+
+        .wiki-search-clear {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: var(--ds-gray);
+            font-size: 18px;
+            cursor: pointer;
+            display: none;
+            padding: 4px;
+            line-height: 1;
+        }
+
+        .wiki-search-clear:hover {
+            color: #fff;
+        }
+
+        .wiki-sort-select-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--ds-gray);
+        }
+
+        .wiki-select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding: 9px 34px 9px 10px;
+            background-color: rgba(8, 10, 14, 0.85);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23e5b85c'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 11px center;
+            background-size: 16px 16px;
+            border: 1.5px solid var(--ds-card-border);
+            border-radius: 6px;
+            color: #e5b85c;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .wiki-select:hover,
+        .wiki-select:focus {
+            border-color: var(--ds-gold);
+            outline: none;
+            box-shadow: 0 0 10px rgba(229, 184, 92, 0.2);
+        }
+
+        .wiki-select option {
+            background: #0d1117;
+            color: #e5b85c;
+            padding: 8px 12px;
+        }
+
+        .wiki-categories {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            padding-bottom: 4px;
+            width: 100%;
+        }
+
+        .wiki-cat-lane {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            width: 100%;
+        }
+
+        .wiki-cat-lane-primary {
+            flex-wrap: nowrap;
+        }
+
+        .wiki-cat-lane-primary .wiki-cat-btn {
+            flex: 1 1 auto;
+            justify-content: center;
+        }
+
+        .wiki-cat-lane-secondary {
+            flex-wrap: wrap;
+        }
+
+        .wiki-cat-lane-secondary .wiki-cat-btn {
+            flex: 0 0 auto;
+            padding: 8px 18px;
+            justify-content: center;
+        }
+
+        .wiki-cat-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 13px;
+            background: rgba(22, 27, 34, 0.6);
+            border: 1px solid var(--ds-card-border);
+            border-radius: 6px;
+            color: #a0aec0;
+            font-family: 'Cinzel', serif;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            white-space: nowrap;
+            box-sizing: border-box;
+        }
+
+        .wiki-cat-icon {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+
+        .wiki-cat-btn:hover {
+            color: #fff;
+            border-color: rgba(229, 184, 92, 0.5);
+            background: rgba(30, 36, 46, 0.8);
+        }
+
+        .wiki-cat-btn.active {
+            color: #fff;
+            border-color: var(--ds-gold);
+            background: linear-gradient(180deg, rgba(70, 52, 22, 0.8) 0%, rgba(28, 22, 14, 0.95) 100%);
+            box-shadow: 0 0 12px rgba(229, 184, 92, 0.3);
+        }
+
+        .wiki-cat-count {
+            padding: 1.5px 6.5px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            font-size: 11px;
+            font-family: 'Inter', sans-serif;
+            color: var(--ds-gold);
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 1050px) {
+            .wiki-cat-lane-primary {
+                flex-wrap: wrap;
+            }
+            .wiki-cat-lane-primary .wiki-cat-btn {
+                flex: 1 1 calc(25% - 7px);
+            }
+        }
+
+        @media (max-width: 650px) {
+            .wiki-header {
+                padding: 12px 14px;
+                gap: 8px;
+            }
+
+            .wiki-toolbar {
+                padding: 12px 14px 10px;
+                gap: 10px;
+            }
+
+            .wiki-search-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .wiki-search-box {
+                min-width: 0;
+                width: 100%;
+            }
+
+            .wiki-search-box input {
+                padding: 9px 34px 9px 38px;
+                font-size: 13px;
+            }
+
+            .wiki-search-icon {
+                left: 12px;
+                width: 16px;
+                height: 16px;
+            }
+
+            .wiki-sort-select-wrapper {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .wiki-select {
+                flex: 1;
+                width: 100%;
+                font-size: 12px;
+                padding: 8px 30px 8px 10px;
+                background-position: right 8px center;
+                background-size: 14px 14px;
+            }
+
+            .wiki-cat-lane-primary .wiki-cat-btn,
+            .wiki-cat-lane-secondary .wiki-cat-btn {
+                flex: 1 1 calc(50% - 7px);
+                padding: 7px 10px;
+                font-size: 11.5px;
+            }
+
+            .wiki-tag-filter-bar {
+                gap: 6px;
+            }
+
+            .wiki-tag-pills {
+                gap: 5px;
+            }
+
+            .wiki-pill {
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+
+            .wiki-grid-container {
+                padding: 12px 10px;
+                min-height: 250px;
+            }
+
+            .wiki-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .wiki-item-card {
+                padding: 14px 12px;
+            }
+
+            .wiki-pagination-bar {
+                flex-wrap: wrap;
+                padding: 12px 14px;
+                gap: 10px;
+                justify-content: center;
+            }
+
+            .wiki-page-info {
+                order: -1;
+                width: 100%;
+                text-align: center;
+                font-size: 12px;
+            }
+
+            .wiki-page-btn {
+                flex: 1 1 calc(50% - 6px);
+                text-align: center;
+                padding: 9px 12px;
+                font-size: 11.5px;
+            }
+
+            .wiki-modal-overlay {
+                padding: 10px;
+            }
+
+            .wiki-modal-card {
+                padding: 18px 14px;
+                max-height: 88vh;
+            }
+
+            .wiki-modal-close {
+                top: 10px;
+                right: 12px;
+                font-size: 26px;
+            }
+
+            .wiki-modal-icon-box {
+                width: 58px;
+                height: 58px;
+                min-width: 58px;
+            }
+
+            .wiki-modal-title {
+                font-size: 17px;
+            }
+
+            .wiki-modal-sub {
+                font-size: 12px;
+            }
+
+            .wiki-modal-stats {
+                padding: 10px 12px;
+                gap: 6px;
+            }
+
+            .wiki-modal-set-box {
+                padding: 10px 12px;
+                margin-bottom: 12px;
+            }
+
+            .wiki-set-piece-row {
+                padding: 5px 6px;
+                font-size: 11.5px;
+            }
+
+            .wiki-template-id-box {
+                flex-direction: column;
+                gap: 8px;
+                align-items: stretch;
+                text-align: center;
+                font-size: 11px;
+            }
+
+            .wiki-template-id-box span {
+                word-break: break-all;
+            }
+
+            .admin-toast {
+                bottom: 20px;
+                right: 16px;
+                left: 16px;
+                text-align: center;
+                font-size: 12.5px;
+                padding: 11px 16px;
+            }
+        }
+
+        .wiki-tag-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .wiki-tags-label {
+            font-size: 11.5px;
+            color: var(--ds-gray);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .wiki-tag-pills {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .wiki-pill {
+            padding: 4px 10px;
+            border-radius: 14px;
+            background: rgba(18, 22, 28, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #8b949e;
+            font-size: 11.5px;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+
+        .wiki-pill:hover {
+            color: #fff;
+            border-color: rgba(229, 184, 92, 0.4);
+        }
+
+        .wiki-pill.active {
+            background: rgba(229, 184, 92, 0.18);
+            border-color: var(--ds-gold);
+            color: var(--ds-gold);
+            font-weight: 600;
+        }
+
+        .wiki-pill-divider {
+            width: 1px;
+            height: 18px;
+            background: rgba(255, 255, 255, 0.15);
+            margin: auto 4px;
+            align-self: center;
+        }
+
+        /* Rarity Quick Filter Buttons (Ascending Order: Rare, Unique, Set Item) */
+        .wiki-pill[data-tag="Rare"] {
+            border-color: rgba(155, 155, 251, 0.4);
+            color: #9b9bfb;
+        }
+
+        .wiki-pill[data-tag="Rare"]:hover {
+            border-color: #9b9bfb;
+            background: rgba(155, 155, 251, 0.12);
+            color: #c4c4ff;
+        }
+
+        .wiki-pill[data-tag="Rare"].active {
+            background: rgba(155, 155, 251, 0.25);
+            border-color: #9b9bfb;
+            color: #ffffff;
+            font-weight: 700;
+            box-shadow: 0 0 10px rgba(155, 155, 251, 0.35);
+        }
+
+        .wiki-pill[data-tag="Unique"] {
+            border-color: rgba(202, 203, 68, 0.4);
+            color: #cacb44;
+        }
+
+        .wiki-pill[data-tag="Unique"]:hover {
+            border-color: #cacb44;
+            background: rgba(202, 203, 68, 0.12);
+            color: #f5f685;
+        }
+
+        .wiki-pill[data-tag="Unique"].active {
+            background: rgba(202, 203, 68, 0.25);
+            border-color: #cacb44;
+            color: #ffffff;
+            font-weight: 700;
+            box-shadow: 0 0 10px rgba(202, 203, 68, 0.35);
+        }
+
+        .wiki-pill[data-tag="Set Item"] {
+            border-color: rgba(0, 232, 232, 0.4);
+            color: #00e8e8;
+        }
+
+        .wiki-pill[data-tag="Set Item"]:hover {
+            border-color: #00e8e8;
+            background: rgba(0, 232, 232, 0.12);
+            color: #5cfbfb;
+        }
+
+        .wiki-pill[data-tag="Set Item"].active {
+            background: rgba(0, 232, 232, 0.25);
+            border-color: #00e8e8;
+            color: #ffffff;
+            font-weight: 700;
+            box-shadow: 0 0 10px rgba(0, 232, 232, 0.35);
+        }
+
+        /* Item Tier & In-Game Name Colors */
+        /* Normal Items (Standard White 0xffffffff) */
+        .wiki-item-card.tier-normal {
+            border-color: #282118;
+        }
+        .wiki-item-card.tier-normal:hover {
+            border-color: var(--ds-gold);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 14px rgba(229, 184, 92, 0.2);
+        }
+        .wiki-item-card.tier-normal .wiki-item-name {
+            color: #ffffff;
+        }
+
+        /* Set Items (In-Game Cyan / Teal 0xff00e8e8) */
+        .wiki-item-card.tier-set {
+            border-color: rgba(0, 232, 232, 0.35);
+        }
+        .wiki-item-card.tier-set:hover {
+            border-color: #00e8e8;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 16px rgba(0, 232, 232, 0.35);
+        }
+        .wiki-item-card.tier-set .wiki-item-name {
+            color: #00e8e8;
+        }
+        .wiki-item-card.tier-set .wiki-item-icon-box {
+            border-color: rgba(0, 232, 232, 0.5);
+        }
+        .wiki-item-card.tier-set:hover .wiki-item-icon-box {
+            border-color: #00e8e8;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 0 12px rgba(0, 232, 232, 0.4);
+        }
+
+        /* Unique Items (In-Game Gold / Yellow 0xffcacb44) */
+        .wiki-item-card.tier-unique {
+            border-color: rgba(202, 203, 68, 0.35);
+        }
+        .wiki-item-card.tier-unique:hover {
+            border-color: #cacb44;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 16px rgba(202, 203, 68, 0.35);
+        }
+        .wiki-item-card.tier-unique .wiki-item-name {
+            color: #cacb44;
+        }
+        .wiki-item-card.tier-unique .wiki-item-icon-box {
+            border-color: rgba(202, 203, 68, 0.5);
+        }
+        .wiki-item-card.tier-unique:hover .wiki-item-icon-box {
+            border-color: #cacb44;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 0 12px rgba(202, 203, 68, 0.4);
+        }
+
+        /* Rare Items (In-Game Purple / Violet 0xff9b9bfb) */
+        .wiki-item-card.tier-rare {
+            border-color: rgba(155, 155, 251, 0.35);
+        }
+        .wiki-item-card.tier-rare:hover {
+            border-color: #9b9bfb;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 16px rgba(155, 155, 251, 0.35);
+        }
+        .wiki-item-card.tier-rare .wiki-item-name {
+            color: #9b9bfb;
+        }
+        .wiki-item-card.tier-rare .wiki-item-icon-box {
+            border-color: rgba(155, 155, 251, 0.5);
+        }
+        .wiki-item-card.tier-rare:hover .wiki-item-icon-box {
+            border-color: #9b9bfb;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 0 12px rgba(155, 155, 251, 0.4);
+        }
+
+        .wiki-grid-container {
+            padding: 24px;
+            min-height: 400px;
+        }
+
+        .wiki-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(295px, 1fr));
+            gap: 16px;
+        }
+
+        .wiki-item-card {
+            background: rgba(16, 20, 26, 0.9);
+            border: 1px solid #282118;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+        }
+
+        .wiki-item-card:hover {
+            border-color: var(--ds-gold);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 14px rgba(229, 184, 92, 0.2);
+            background: rgba(22, 27, 36, 0.95);
+        }
+
+        .wiki-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .wiki-card-header-flex {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .wiki-item-icon-box {
+            width: 50px;
+            height: 50px;
+            min-width: 50px;
+            background: radial-gradient(circle at center, rgba(32, 28, 22, 0.95) 0%, rgba(12, 10, 8, 0.98) 100%);
+            border: 1.5px solid #4a3b22;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            padding: 4px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 2px 6px rgba(0, 0, 0, 0.5);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .wiki-item-card:hover .wiki-item-icon-box {
+            border-color: var(--ds-gold);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 0 12px rgba(229, 184, 92, 0.35);
+        }
+
+        .wiki-item-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.85));
+        }
+
+        .wiki-card-title-col {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .wiki-item-name {
+            font-family: 'Cinzel', serif;
+            font-size: 14.5px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.25;
+            word-break: break-word;
+        }
+
+        .wiki-item-sub {
+            font-size: 11.5px;
+            color: #8b949e;
+            margin-top: 1px;
+        }
+
+        .wiki-source-badge {
+            font-size: 9.5px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.04);
+            color: #abb2bf;
+        }
+
+        .badge-unlocked-loot {
+            border-color: #9b59b6;
+            color: #d7bde2;
+            background: rgba(155, 89, 182, 0.12);
+        }
+
+        .badge-loa-expansion {
+            border-color: #3498db;
+            color: #aed6f1;
+            background: rgba(52, 152, 219, 0.12);
+        }
+
+        .badge-buffed-buffs {
+            border-color: #2ecc71;
+            color: #abebc6;
+            background: rgba(46, 204, 113, 0.12);
+        }
+
+        .wiki-stats-body {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 10px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            margin-bottom: 10px;
+            font-size: 12.5px;
+        }
+
+        .wiki-stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .wiki-stat-icon {
+            width: 14px;
+            height: 14px;
+            object-fit: contain;
+            vertical-align: -2px;
+            margin-right: 2px;
+            margin-left: 3px;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+        }
+
+        .stat-lbl {
+            color: #8b949e;
+        }
+
+        .stat-val {
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .stat-val.dmg {
+            color: #f39c12;
+        }
+
+        .stat-val.def {
+            color: #cbd5e1;
+        }
+
+        .stat-val.mana {
+            color: #38bdf8;
+        }
+
+        .stat-val.req {
+            color: #e74c3c;
+        }
+
+        .stat-val.gold {
+            color: #f1c40f;
+        }
+
+        .wiki-desc-box {
+            font-size: 12.5px;
+            color: #94a3b8;
+            line-height: 1.45;
+            margin-bottom: 10px;
+        }
+
+        .wiki-card-pills {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .wiki-card-tag {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #718096;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .wiki-card-tag.tag-set {
+            background: rgba(0, 232, 232, 0.15);
+            color: #00e8e8;
+            border-color: rgba(0, 232, 232, 0.4);
+            font-weight: 700;
+        }
+
+        .wiki-card-tag.tag-unique {
+            background: rgba(202, 203, 68, 0.15);
+            color: #cacb44;
+            border-color: rgba(202, 203, 68, 0.45);
+            font-weight: 700;
+        }
+
+        .wiki-card-tag.tag-rare {
+            background: rgba(155, 155, 251, 0.15);
+            color: #9b9bfb;
+            border-color: rgba(155, 155, 251, 0.45);
+            font-weight: 700;
+        }
+
+        .wiki-pagination-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 24px;
+            border-top: 1px solid var(--ds-card-border);
+            background: rgba(12, 15, 20, 0.8);
+        }
+
+        .wiki-page-btn {
+            padding: 8px 18px;
+            background: rgba(24, 28, 36, 0.9);
+            border: 1.5px solid var(--ds-border-gold);
+            color: #d1d5db;
+            border-radius: 6px;
+            font-family: 'Cinzel', serif;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .wiki-page-btn:hover:not(:disabled) {
+            border-color: var(--ds-gold);
+            color: var(--ds-gold);
+            background: rgba(36, 42, 54, 0.9);
+        }
+
+        .wiki-page-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .wiki-page-info {
+            font-size: 13px;
+            color: #8b949e;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .wiki-loading, .wiki-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            padding: 60px 0;
+            color: var(--ds-gold);
+            font-family: 'Cinzel', serif;
+        }
+
+        .wiki-spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(229, 184, 92, 0.2);
+            border-top-color: var(--ds-gold);
+            border-radius: 50%;
+            animation: wikiSpin 0.9s linear infinite;
+        }
+
+        /* WIKI MODAL */
+        .wiki-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 6, 10, 0.88);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+            will-change: opacity;
+        }
+
+        .wiki-modal-card {
+            background: linear-gradient(180deg, #181d24 0%, #0e1117 100%);
+            border: 2px solid var(--ds-gold);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.85), 0 0 18px rgba(229, 184, 92, 0.25);
+            border-radius: 10px;
+            width: 100%;
+            max-width: 580px;
+            max-height: 85vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 24px;
+            position: relative;
+            transform: translateZ(0);
+            will-change: transform, opacity;
+            animation: wikiModalIn 0.15s ease-out;
+        }
+
+        .wiki-modal-card::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .wiki-modal-card::-webkit-scrollbar-track {
+            background: rgba(14, 17, 22, 0.6);
+            border-radius: 4px;
+        }
+
+        .wiki-modal-card::-webkit-scrollbar-thumb {
+            background: rgba(229, 184, 92, 0.4);
+            border-radius: 4px;
+        }
+
+        .wiki-modal-card::-webkit-scrollbar-thumb:hover {
+            background: rgba(229, 184, 92, 0.7);
+        }
+
+        @keyframes wikiModalIn {
+            from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .wiki-modal-close {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: var(--ds-gray);
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .wiki-modal-close:hover {
+            color: #fff;
+        }
+
+        .wiki-modal-hero {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .wiki-modal-icon-box {
+            width: 76px;
+            height: 76px;
+            min-width: 76px;
+            background: radial-gradient(circle at center, rgba(38, 32, 24, 0.95) 0%, rgba(14, 12, 10, 0.98) 100%);
+            border: 2px solid var(--ds-gold);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            padding: 6px;
+            box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.9), 0 4px 14px rgba(0, 0, 0, 0.7);
+        }
+
+        .wiki-modal-icon-box img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.9));
+        }
+
+        .wiki-modal-header-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .wiki-modal-title {
+            font-family: 'Cinzel', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 2px;
+            word-break: break-word;
+        }
+
+        .wiki-modal-sub {
+            font-size: 13px;
+            color: var(--ds-gold);
+        }
+
+        /* Modal Set Box (In-Game Cyan / Teal) */
+        .wiki-modal-set-box {
+            background: rgba(10, 26, 30, 0.7);
+            border: 1px solid rgba(0, 232, 232, 0.35);
+            border-radius: 6px;
+            padding: 12px 14px;
+            margin-bottom: 14px;
+            font-size: 12px;
+        }
+
+        .wiki-set-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Cinzel', serif;
+            font-weight: 700;
+            color: #00e8e8;
+            font-size: 13px;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(0, 232, 232, 0.2);
+        }
+
+        .wiki-set-items-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .wiki-set-piece-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 8px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.3);
+            transition: all 0.15s ease;
+            text-decoration: none;
+            color: #d1d5db;
+        }
+
+        .wiki-set-piece-row.is-current {
+            background: rgba(0, 232, 232, 0.18);
+            border: 1px solid rgba(0, 232, 232, 0.5);
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .wiki-set-piece-row.is-other {
+            cursor: pointer;
+            color: #7efbfb;
+        }
+
+        .wiki-set-piece-row.is-other:hover {
+            background: rgba(0, 232, 232, 0.25);
+            color: #ffffff;
+            transform: translateX(3px);
+        }
+
+        .wiki-set-piece-badge {
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 3px;
+            font-family: 'Cinzel', serif;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .wiki-set-piece-badge.badge-viewing {
+            background: rgba(0, 232, 232, 0.35);
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .wiki-set-piece-badge.badge-inspect {
+            background: rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
+        }
+
+        .wiki-modal-stats {
+            background: rgba(0, 0, 0, 0.45);
+            border-radius: 6px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .wiki-spell-scaling-box {
+            background: rgba(10, 14, 20, 0.7);
+            border: 1px solid rgba(229, 184, 92, 0.3);
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .wiki-spell-scaling-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #ffd875;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(229, 184, 92, 0.18);
+            padding-bottom: 6px;
+        }
+
+        .wiki-spell-scaling-title .wiki-stat-icon {
+            margin-left: 0;
+            margin-right: 3px;
+        }
+
+        .wiki-spell-scaling-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .wiki-spell-scaling-table th {
+            text-align: left;
+            color: #8b949e;
+            font-weight: 600;
+            padding: 4px 6px 6px 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .wiki-spell-scaling-table th:last-child,
+        .wiki-spell-scaling-table td:last-child {
+            text-align: right;
+        }
+
+        .wiki-spell-scaling-table th:nth-child(2),
+        .wiki-spell-scaling-table td:nth-child(2) {
+            text-align: center;
+        }
+
+        .wiki-spell-scaling-table td {
+            padding: 7px 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .wiki-spell-scaling-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .scaling-lbl {
+            color: #c9d1d9;
+            font-weight: 500;
+        }
+
+        .scaling-val {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .scaling-val.mana, .stat-val.mana {
+            color: #79c0ff;
+        }
+
+        .scaling-val.dmg, .stat-val.dmg {
+            color: #ff7b72;
+        }
+
+        .scaling-val.dur, .stat-val.dur {
+            color: #ffd875;
+        }
+
+        .scaling-val.range, .stat-val.range {
+            color: #d2a8ff;
+        }
+
+        .wiki-spell-scaling-note {
+            font-size: 11.5px;
+            color: #8b949e;
+            font-style: italic;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.08);
+            line-height: 1.4;
+        }
+
+        .wiki-variants-box {
+            background: rgba(10, 14, 20, 0.7);
+            border: 1px solid rgba(229, 184, 92, 0.3);
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .wiki-variants-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #ffd875;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(229, 184, 92, 0.18);
+            padding-bottom: 6px;
+        }
+
+        .wiki-variants-desc {
+            font-size: 11.5px;
+            color: #8b949e;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .wiki-variants-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.5px;
+        }
+
+        .wiki-variants-table th {
+            text-align: left;
+            color: #8b949e;
+            font-weight: 600;
+            padding: 4px 6px 6px 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .wiki-variants-table th:last-child,
+        .wiki-variants-table td:last-child {
+            text-align: right;
+        }
+
+        .wiki-variants-table td {
+            padding: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: middle;
+        }
+
+        .wiki-variants-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .wiki-variants-table tr.is-base-tier td {
+            background: rgba(229, 184, 92, 0.04);
+        }
+
+        .wiki-variant-tier-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #e5b85c;
+        }
+
+        .wiki-variant-thumb {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 2px;
+            flex-shrink: 0;
+        }
+
+        .wiki-variant-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 5px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #8b949e;
+            letter-spacing: 0.5px;
+        }
+
+        .wiki-template-id-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px dashed rgba(229, 184, 92, 0.35);
+            margin-top: 14px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #abb2bf;
+        }
+
+        .wiki-btn-copy {
+            padding: 4px 10px;
+            background: rgba(229, 184, 92, 0.2);
+            border: 1px solid var(--ds-gold);
+            color: var(--ds-gold);
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        .wiki-btn-copy:hover {
+            background: var(--ds-gold);
+            color: #000;
+        }
+
         /* TOP RIGHT RUNESTONE SEAL BUTTON (GAME MASTER) */
         .top-admin-container {
             position: fixed;
@@ -1625,6 +2919,21 @@
 
         .admin-toast.hidden {
             display: none !important;
+        }
+
+        .admin-toast.toast-fade-out {
+            opacity: 0 !important;
+            transform: translateY(8px) !important;
+        }
+
+        .admin-toast.toast-pulse {
+            animation: adminToastPulse 0.22s ease-out;
+        }
+
+        @keyframes adminToastPulse {
+            0% { transform: scale(0.96); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
         }
 
         /* GM ACTION CONFIRMATION MODAL */
@@ -2087,6 +3396,10 @@
         </svg>
         <span>Ladder</span>
     </a>
+    <a href="/wiki" class="nav-btn disabled" id="nav-btn-wiki" data-view="wiki" title="Sign in with your MMO account to access MMO Wiki">
+        <img src="/static/wiki_icons/gui/scroll.png?v=4" class="nav-icon" style="width: 18px; height: 18px; object-fit: contain;" alt="Wiki">
+        <span>MMO Wiki</span>
+    </a>
     <a href="/gm-panel" class="nav-btn" id="nav-btn-gm" data-view="gm" style="display: none;">
         <svg class="nav-icon" viewBox="0 0 24 24">
             <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
@@ -2283,6 +3596,204 @@
                 </section>
             </div>
         </div>
+
+        <!-- VIEW: WIKI (The MMO Compendium & Wiki) -->
+        <div class="view-container" id="view-wiki" style="display: none; width: 100%;">
+            <div class="wiki-card-wrapper">
+                <section class="server-card wiki-card" id="card-wiki">
+                    <div class="card-header wiki-header">
+                        <div class="card-title-group">
+                            <img src="/static/wiki_icons/gui/scroll.png?v=4" class="nav-icon" style="width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 0 3px rgba(229, 184, 92, 0.45));" alt="Wiki">
+                            <div class="server-name">MMO Wiki</div>
+                        </div>
+                        <div class="header-adventurers">
+                            Items: <span class="count-highlight" id="wiki-count-total">0</span>
+                        </div>
+                    </div>
+
+                    <!-- WIKI CONTROLS & FILTERS -->
+                    <div class="wiki-toolbar">
+                        <div class="wiki-search-row">
+                            <div class="wiki-search-box">
+                                <svg class="wiki-search-icon" viewBox="0 0 24 24">
+                                    <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                                </svg>
+                                <input type="text" id="wiki-search-input" placeholder="Search 1,168 items..." autocomplete="off">
+                                <button class="wiki-search-clear" id="wiki-search-clear" title="Clear Search">&times;</button>
+                            </div>
+                            <div class="wiki-sort-select-wrapper">
+                                <label for="wiki-sort-select">Sort:</label>
+                                <select id="wiki-sort-select" class="wiki-select">
+                                    <option value="rarity_asc" selected>Rarity (Low → High)</option>
+                                    <option value="rarity_desc">Rarity (High → Low)</option>
+                                    <option value="name_asc">Name (A → Z)</option>
+                                    <option value="name_desc">Name (Z → A)</option>
+                                    <option value="req_asc">Stat Req (Low → High)</option>
+                                    <option value="req_desc">Stat Req (High → Low)</option>
+                                    <option value="dmg_asc">Damage (Low → High)</option>
+                                    <option value="dmg_desc">Damage (High → Low)</option>
+                                    <option value="def_asc">Armor/Defense (Low → High)</option>
+                                    <option value="def_desc">Armor/Defense (High → Low)</option>
+                                    <option value="mana_asc">Mana Cost (Low → High)</option>
+                                    <option value="mana_desc">Mana Cost (High → Low)</option>
+                                    <option value="val_asc">Gold Value (Low → High)</option>
+                                    <option value="val_desc">Gold Value (High → Low)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- CATEGORY TABS -->
+                        <div class="wiki-categories" id="wiki-categories">
+                            <div class="wiki-cat-lane wiki-cat-lane-primary">
+                                <button class="wiki-cat-btn active" data-cat="all">
+                                    <img src="/static/wiki_icons/gui/all.png?v=4" class="wiki-cat-icon" alt="All">
+                                    <span>All Items</span>
+                                    <span class="wiki-cat-count" id="cat-count-all">0</span>
+                                </button>
+                                <button class="wiki-cat-btn" data-cat="melee">
+                                    <img src="/static/wiki_icons/gui/melee.png?v=4" class="wiki-cat-icon" alt="Melee">
+                                    <span>Melee</span>
+                                    <span class="wiki-cat-count" id="cat-count-melee">0</span>
+                                </button>
+                                <button class="wiki-cat-btn" data-cat="ranged">
+                                    <img src="/static/wiki_icons/gui/ranged.png?v=4" class="wiki-cat-icon" alt="Ranged">
+                                    <span>Ranged</span>
+                                    <span class="wiki-cat-count" id="cat-count-ranged">0</span>
+                                </button>
+                                <button class="wiki-cat-btn" data-cat="nature_magic">
+                                    <img src="/static/wiki_icons/gui/nature_magic.png?v=4" class="wiki-cat-icon" alt="Nature Magic">
+                                    <span>Nature Magic</span>
+                                    <span class="wiki-cat-count" id="cat-count-nature_magic">0</span>
+                                </button>
+                                <button class="wiki-cat-btn" data-cat="combat_magic">
+                                    <img src="/static/wiki_icons/gui/combat_magic.png?v=4" class="wiki-cat-icon" alt="Combat Magic">
+                                    <span>Combat Magic</span>
+                                    <span class="wiki-cat-count" id="cat-count-combat_magic">0</span>
+                                </button>
+                                <button class="wiki-cat-btn" data-cat="armor">
+                                    <img src="/static/wiki_icons/gui/armor.png?v=4" class="wiki-cat-icon" alt="Armor">
+                                    <span>Armor</span>
+                                    <span class="wiki-cat-count" id="cat-count-armor">0</span>
+                                </button>
+                                <button class="wiki-cat-btn" data-cat="shields">
+                                    <img src="/static/wiki_icons/gui/shields.png?v=4" class="wiki-cat-icon" alt="Shields">
+                                    <span>Shields</span>
+                                    <span class="wiki-cat-count" id="cat-count-shields">0</span>
+                                </button>
+                                <button class="wiki-cat-btn" data-cat="jewelry">
+                                    <img src="/static/wiki_icons/gui/jewelry.png?v=4" class="wiki-cat-icon" alt="Jewelry">
+                                    <span>Jewelry</span>
+                                    <span class="wiki-cat-count" id="cat-count-jewelry">0</span>
+                                </button>
+                            </div>
+                            <div class="wiki-cat-lane wiki-cat-lane-secondary">
+                                <button class="wiki-cat-btn" data-cat="relics">
+                                    <img src="/static/wiki_icons/gui/relics.png?v=4" class="wiki-cat-icon" alt="Relics">
+                                    <span>Relics</span>
+                                    <span class="wiki-cat-count" id="cat-count-relics">0</span>
+                                </button>
+                                <button class="wiki-cat-btn" data-cat="quests">
+                                    <img src="/static/wiki_icons/gui/quests.png?v=4" class="wiki-cat-icon" alt="Quests">
+                                    <span>Quests</span>
+                                    <span class="wiki-cat-count" id="cat-count-quests">0</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- QUICK TAG FILTERS -->
+                        <div class="wiki-tag-filter-bar">
+                            <span class="wiki-tags-label">Filters:</span>
+                            <div class="wiki-tag-pills" id="wiki-tag-pills">
+                                <button class="wiki-pill" data-tag="Rare">Rare</button>
+                                <button class="wiki-pill" data-tag="Unique">Unique</button>
+                                <button class="wiki-pill" data-tag="Set Item">Set Items</button>
+                                <span class="wiki-pill-divider"></span>
+                                <button class="wiki-pill" data-tag="One-Handed">1-Handed</button>
+                                <button class="wiki-pill" data-tag="Two-Handed">2-Handed</button>
+                                <button class="wiki-pill" data-tag="Fast">Fast Speed</button>
+                                <button class="wiki-pill" data-tag="Slow">Slow Speed</button>
+                                <button class="wiki-pill" data-tag="Sword">Swords</button>
+                                <button class="wiki-pill" data-tag="Axe">Axes</button>
+                                <button class="wiki-pill" data-tag="Mace">Maces</button>
+                                <button class="wiki-pill" data-tag="Dagger">Daggers</button>
+                                <button class="wiki-pill" data-tag="Bow">Bows</button>
+                                <button class="wiki-pill" data-tag="Crossbow">Crossbows</button>
+                                <button class="wiki-pill" data-tag="Staff">Staves</button>
+                                <button class="wiki-pill" data-tag="Spell">Spells</button>
+                                <button class="wiki-pill" data-tag="Scroll">Scrolls</button>
+                                <button class="wiki-pill" data-tag="Healing">Healing</button>
+                                <button class="wiki-pill" data-tag="Buff">Buffs</button>
+                                <button class="wiki-pill" data-tag="Summon">Summons</button>
+                                <button class="wiki-pill" data-tag="Shield">Shields</button>
+                                <button class="wiki-pill" data-tag="Helmet">Helmets</button>
+                                <button class="wiki-pill" data-tag="Body Armor">Body Armor</button>
+                                <button class="wiki-pill" data-tag="Gloves">Gloves</button>
+                                <button class="wiki-pill" data-tag="Boots">Boots</button>
+                                <button class="wiki-pill" data-tag="Plate">Plate</button>
+                                <button class="wiki-pill" data-tag="Chain">Chain</button>
+                                <button class="wiki-pill" data-tag="Leather">Leather</button>
+                                <button class="wiki-pill" data-tag="Cloth">Cloth / Robes</button>
+                                <button class="wiki-pill" data-tag="Ring">Rings</button>
+                                <button class="wiki-pill" data-tag="Amulet">Amulets</button>
+                                <button class="wiki-pill" data-tag="Potion">Potions</button>
+                                <button class="wiki-pill" data-tag="Spellbook">Spellbooks</button>
+                                <button class="wiki-pill" data-tag="Backpack">Backpacks</button>
+                                <button class="wiki-pill" data-tag="Artifact">Artifacts</button>
+                                <button class="wiki-pill" data-tag="Town Stone">Town Stones</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WIKI RESULTS GRID -->
+                    <div class="wiki-grid-container">
+                        <div class="wiki-loading" id="wiki-loading">
+                            <div class="wiki-spinner"></div>
+                            <span>Loading items...</span>
+                        </div>
+                        <div class="wiki-grid" id="wiki-grid" style="display: none;"></div>
+                        <div class="wiki-empty" id="wiki-empty" style="display: none;">
+                            <div class="empty-title">No Items Found</div>
+                            <div class="empty-desc">No items matched your current search and filter criteria.</div>
+                        </div>
+                    </div>
+
+                    <!-- WIKI PAGINATION -->
+                    <div class="wiki-pagination-bar" id="wiki-pagination-bar" style="display: none;">
+                        <button class="wiki-page-btn" id="wiki-btn-prev">&laquo; Previous</button>
+                        <div class="wiki-page-info" id="wiki-page-info">Page 1 of 1</div>
+                        <button class="wiki-page-btn" id="wiki-btn-next">Next &raquo;</button>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- WIKI DETAIL MODAL -->
+        <div class="wiki-modal-overlay" id="wiki-modal-overlay" onclick="closeWikiModal(event)">
+            <div class="wiki-modal-card" id="wiki-modal-card" onclick="event.stopPropagation()">
+                <button class="wiki-modal-close" onclick="closeWikiModal()">&times;</button>
+                <div class="wiki-modal-hero">
+                    <div class="wiki-modal-icon-box" id="wiki-modal-icon-box">
+                        <img id="wiki-modal-img" src="/static/wiki_icons/gui/all.png" alt="Item Icon">
+                    </div>
+                    <div class="wiki-modal-header-info">
+                        <div class="wiki-modal-title" id="wiki-modal-title">Item Name</div>
+                        <div class="wiki-modal-sub" id="wiki-modal-sub">Item Category</div>
+                    </div>
+                </div>
+                <!-- Set Items Container -->
+                <div class="wiki-modal-set-box" id="wiki-modal-set-box" style="display: none;"></div>
+                <div class="wiki-modal-stats" id="wiki-modal-stats"></div>
+                <div class="wiki-spell-scaling-box" id="wiki-modal-scaling" style="display: none;"></div>
+                <div class="wiki-variants-box" id="wiki-modal-variants" style="display: none;"></div>
+                <div class="wiki-desc-box" id="wiki-modal-desc" style="display: none;"></div>
+                <div class="wiki-card-pills" id="wiki-modal-pills"></div>
+                <div class="wiki-template-id-box">
+                    <span id="wiki-modal-tid">template_id</span>
+                    <button class="wiki-btn-copy" id="wiki-btn-copy" onclick="copyWikiTemplateId()">Copy Template ID</button>
+                </div>
+            </div>
+        </div>
+
         <!-- VIEW: GM PANEL -->
         <div class="view-container" id="view-gm" style="display: none;">
             <div class="gm-panel-wrapper">
@@ -2821,6 +4332,7 @@
         const navBtnRealms = document.getElementById('nav-btn-realms');
         const navBtnWorld = document.getElementById('nav-btn-world');
         const navBtnLadder = document.getElementById('nav-btn-ladder');
+        const navBtnWiki = document.getElementById('nav-btn-wiki');
         const navBtnGM = document.getElementById('nav-btn-gm');
 
         const loginPane = document.getElementById('admin-login-pane');
@@ -2848,6 +4360,12 @@
             }
             if (navBtnGM) navBtnGM.style.display = isGM ? 'inline-flex' : 'none';
 
+            // Wiki button: enable for all authenticated MMO players
+            if (navBtnWiki) {
+                navBtnWiki.classList.remove('disabled');
+                navBtnWiki.removeAttribute('title');
+            }
+
             if (navBtnAdmin) {
                 if (isGM) {
                     navBtnAdmin.classList.add('admin-active');
@@ -2867,8 +4385,8 @@
             if (authedTitle) authedTitle.innerText = isGM ? 'Game Master Session' : 'Active Adventurer Session';
             if (authedDesc) {
                 authedDesc.innerText = isGM 
-                    ? 'You have Game Master privileges and full access to realms, world, and ladder.' 
-                    : 'You have full access to realms, the Utraean Peninsula world map, and the character ladder.';
+                    ? 'You have Game Master privileges and full access to realms, world, ladder, and the MMO wiki.' 
+                    : 'You have full access to realms, the Utraean Peninsula world map, the character ladder, and the MMO wiki.';
             }
             // Total online meta pill
             const totalOnlineEl = document.getElementById('total-online');
@@ -2895,6 +4413,10 @@
                 navBtnLadder.setAttribute('title', 'Sign in with your MMO account to access Ladder');
             }
             if (navBtnGM) navBtnGM.style.display = 'none';
+            if (navBtnWiki) {
+                navBtnWiki.classList.add('disabled');
+                navBtnWiki.setAttribute('title', 'Sign in with your MMO account to access MMO Wiki');
+            }
 
             if (navBtnAdmin) {
                 navBtnAdmin.classList.remove('admin-active');
@@ -3089,14 +4611,40 @@
             });
     }
 
+    let adminToastTimer = null;
+    let adminToastFadeTimer = null;
     function showAdminToast(msg) {
         const toast = document.getElementById('admin-toast');
         if (!toast) return;
+
+        // Cancel and forget any previous display or fade timer
+        if (adminToastTimer) {
+            clearTimeout(adminToastTimer);
+            adminToastTimer = null;
+        }
+        if (adminToastFadeTimer) {
+            clearTimeout(adminToastFadeTimer);
+            adminToastFadeTimer = null;
+        }
+
         toast.innerText = msg;
-        toast.classList.remove('hidden');
-        setTimeout(() => {
-            toast.classList.add('hidden');
-        }, 3500);
+        toast.classList.remove('hidden', 'toast-fade-out');
+
+        // Re-trigger visual pulse animation
+        toast.classList.remove('toast-pulse');
+        void toast.offsetWidth;
+        toast.classList.add('toast-pulse');
+
+        // Notification lasts for 3 seconds, unless overwritten by another action
+        adminToastTimer = setTimeout(() => {
+            toast.classList.add('toast-fade-out');
+            adminToastFadeTimer = setTimeout(() => {
+                toast.classList.add('hidden');
+                toast.classList.remove('toast-fade-out', 'toast-pulse');
+                adminToastFadeTimer = null;
+            }, 300);
+            adminToastTimer = null;
+        }, 3000);
     }
 
     async function fetchGMServers() {
@@ -3359,12 +4907,14 @@
         if (p === '/realms' || p.includes('realm')) return 'realms';
         if (p === '/world' || p.includes('world') || p === '/map' || p.includes('map') || p === '/world-map') return 'world';
         if (p === '/ladder' || p.includes('ladder')) return 'ladder';
+        if (p === '/wiki' || p.includes('wiki')) return 'wiki';
         if (p === '/gm' || p === '/gm-panel' || p.includes('gm')) return 'gm';
 
         const hash = (window.location.hash || '').toLowerCase();
         if (hash.includes('realm')) return 'realms';
         if (hash.includes('world') || hash.includes('map')) return 'world';
         if (hash.includes('ladder')) return 'ladder';
+        if (hash.includes('wiki')) return 'wiki';
         if (hash.includes('gm')) return 'gm';
 
         return 'home';
@@ -3375,41 +4925,47 @@
         const viewRealms = document.getElementById('view-realms');
         const viewWorld = document.getElementById('view-world') || document.getElementById('view-map');
         const viewLadder = document.getElementById('view-ladder');
+        const viewWiki = document.getElementById('view-wiki');
         const viewGM = document.getElementById('view-gm');
 
         const btnHome = document.getElementById('nav-btn-home');
         const btnRealms = document.getElementById('nav-btn-realms');
         const btnWorld = document.getElementById('nav-btn-world') || document.getElementById('nav-btn-map');
         const btnLadder = document.getElementById('nav-btn-ladder');
+        const btnWiki = document.getElementById('nav-btn-wiki');
         const btnGM = document.getElementById('nav-btn-gm');
 
         if (viewHome) viewHome.style.display = target === 'home' ? 'block' : 'none';
         if (viewRealms) viewRealms.style.display = target === 'realms' ? 'grid' : 'none';
         if (viewWorld) viewWorld.style.display = target === 'world' ? 'grid' : 'none';
         if (viewLadder) viewLadder.style.display = target === 'ladder' ? 'flex' : 'none';
+        if (viewWiki) viewWiki.style.display = target === 'wiki' ? 'block' : 'none';
         if (viewGM) viewGM.style.display = target === 'gm' ? 'block' : 'none';
 
         if (btnHome) btnHome.classList.toggle('active', target === 'home');
         if (btnRealms) btnRealms.classList.toggle('active', target === 'realms');
         if (btnWorld) btnWorld.classList.toggle('active', target === 'world');
         if (btnLadder) btnLadder.classList.toggle('active', target === 'ladder');
+        if (btnWiki) btnWiki.classList.toggle('active', target === 'wiki');
         if (btnGM) btnGM.classList.toggle('active', target === 'gm');
     }
 
-    // SPA View Switching (Home vs Realms vs World vs Ladder vs GM)
+    // SPA View Switching (Home vs Realms vs World vs Ladder vs Wiki vs GM)
     function switchView(viewName, pushHistory = true) {
         let target = 'home';
         if (viewName === 'realms') target = 'realms';
         else if (viewName === 'world' || viewName === 'map' || viewName === 'world-map') target = 'world';
         else if (viewName === 'ladder') target = 'ladder';
+        else if (viewName === 'wiki') target = 'wiki';
         else if (viewName === 'gm') target = 'gm';
 
-        // Authentication guard: realms, world, ladder, gm are restricted unless logged in
+        // Authentication guard: realms, world, ladder, wiki, gm are restricted unless logged in
         const isAuthenticated = currentAuthUser && currentAuthUser.authenticated;
+
         if (target !== 'home') {
             if (!isAuthenticated && !initialAuthPending) {
                 target = 'home';
-                showAdminToast('Please sign in with your MMO account to view ' + (viewName === 'gm' ? 'GM Panel' : viewName) + '.');
+                showAdminToast('Please sign in with your MMO account to view ' + (viewName === 'gm' ? 'GM Panel' : (viewName === 'wiki' ? 'MMO Wiki' : viewName)) + '.');
                 openAdminModal();
             } else if (target === 'gm' && isAuthenticated && (!currentAuthUser.is_gm && !isGMLoggedIn)) {
                 target = 'home';
@@ -3430,6 +4986,10 @@
                 clearInterval(gmServersPollTimer);
                 gmServersPollTimer = null;
             }
+        }
+
+        if (target === 'wiki') {
+            initWikiView();
         }
 
         const targetPath = target === 'home' ? '/' : (target === 'gm' ? '/gm-panel' : `/${target}`);
@@ -3483,9 +5043,15 @@
 
     // Initial check for GM and Member status
     checkAuthStatus();
+
     // Global Escape key handler to dismiss active modals
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
+            const wikiModal = document.getElementById('wiki-modal-overlay');
+            if (wikiModal && (wikiModal.style.display === 'flex' || wikiModal.style.display === 'block')) {
+                closeWikiModal();
+                return;
+            }
             const gmModal = document.getElementById('gm-confirm-modal');
             if (gmModal && gmModal.classList.contains('active')) {
                 cancelGMActionModal();
@@ -3497,6 +5063,1019 @@
             }
         }
     });
+
+    // ==========================================
+    // THE MMO COMPENDIUM & WIKI MODULE
+    // ==========================================
+    let wikiItems = [];
+    let wikiItemsById = new Map();
+    let wikiLoaded = false;
+    let wikiLoading = false;
+    let wikiCurrentCat = 'all';
+    let wikiSelectedTags = new Set();
+    let wikiSearchQuery = '';
+    let wikiSortOrder = 'rarity_asc';
+    let wikiCurrentPage = 1;
+    const WIKI_PAGE_SIZE = 48;
+    let wikiListenersBound = false;
+    let wikiSearchDebounce = null;
+
+    function initWikiView() {
+        if (!wikiLoaded && !wikiLoading) {
+            fetchWikiData();
+        } else if (wikiLoaded) {
+            renderWiki();
+        }
+    }
+
+    function fetchWikiData() {
+        wikiLoading = true;
+        const loadingEl = document.getElementById('wiki-loading');
+        const gridEl = document.getElementById('wiki-grid');
+        const emptyEl = document.getElementById('wiki-empty');
+        const pagEl = document.getElementById('wiki-pagination-bar');
+
+        if (loadingEl) loadingEl.style.display = 'flex';
+        if (gridEl) gridEl.style.display = 'none';
+        if (emptyEl) emptyEl.style.display = 'none';
+        if (pagEl) pagEl.style.display = 'none';
+
+        fetch('/api/wiki/items')
+            .then(res => {
+                if (res.status === 401 || res.status === 403) {
+                    throw new Error('UNAUTHORIZED');
+                }
+                return res.json();
+            })
+            .then(data => {
+                wikiLoading = false;
+                wikiLoaded = true;
+                wikiItems = Array.isArray(data) ? data : [];
+                wikiItemsById = new Map();
+                for (let i = 0; i < wikiItems.length; i++) {
+                    wikiItemsById.set(wikiItems[i].id, wikiItems[i]);
+                }
+
+                // Update category badges with item counts
+                updateWikiCategoryCounts();
+
+                // Bind search and filter events once
+                if (!wikiListenersBound) {
+                    setupWikiEventListeners();
+                    wikiListenersBound = true;
+                }
+
+                if (loadingEl) loadingEl.style.display = 'none';
+                renderWiki();
+            })
+            .catch(err => {
+                wikiLoading = false;
+                if (loadingEl) loadingEl.style.display = 'none';
+                if (err.message === 'UNAUTHORIZED') {
+                    showAdminToast('Please sign in with your MMO account to view MMO Wiki.');
+                    switchView('home', true);
+                } else {
+                    console.error('Failed to load wiki data:', err);
+                    showAdminToast('Failed to load MMO Compendium data.');
+                }
+            });
+    }
+
+    function updateWikiCategoryCounts() {
+        const total = wikiItems.length;
+        const countTotalEl = document.getElementById('wiki-count-total');
+        const countAllEl = document.getElementById('cat-count-all');
+        const searchInputEl = document.getElementById('wiki-search-input');
+        if (countTotalEl) countTotalEl.innerText = total.toLocaleString();
+        if (countAllEl) countAllEl.innerText = total.toLocaleString();
+        if (searchInputEl) searchInputEl.placeholder = `Search ${total.toLocaleString()} items...`;
+
+        const catCounts = {
+            melee: 0,
+            ranged: 0,
+            nature_magic: 0,
+            combat_magic: 0,
+            armor: 0,
+            shields: 0,
+            jewelry: 0,
+            relics: 0,
+            quests: 0
+        };
+
+        for (let i = 0; i < wikiItems.length; i++) {
+            const cat = wikiItems[i].category;
+            if (catCounts[cat] !== undefined) {
+                catCounts[cat]++;
+            }
+        }
+
+        for (const [cat, count] of Object.entries(catCounts)) {
+            const el = document.getElementById(`cat-count-${cat}`);
+            if (el) el.innerText = count.toLocaleString();
+        }
+    }
+
+    function setupWikiEventListeners() {
+        // Search Input
+        const searchInput = document.getElementById('wiki-search-input');
+        const clearBtn = document.getElementById('wiki-search-clear');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const val = e.target.value.trim();
+                if (clearBtn) {
+                    clearBtn.style.display = val ? 'block' : 'none';
+                }
+                clearTimeout(wikiSearchDebounce);
+                wikiSearchDebounce = setTimeout(() => {
+                    wikiSearchQuery = val.toLowerCase();
+                    wikiCurrentPage = 1;
+                    renderWiki();
+                }, 150);
+            });
+        }
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.focus();
+                }
+                clearBtn.style.display = 'none';
+                wikiSearchQuery = '';
+                wikiCurrentPage = 1;
+                renderWiki();
+            });
+        }
+
+        // Sort Select
+        const sortSelect = document.getElementById('wiki-sort-select');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', (e) => {
+                wikiSortOrder = e.target.value;
+                wikiCurrentPage = 1;
+                renderWiki();
+            });
+        }
+
+        // Category Buttons
+        const catBar = document.getElementById('wiki-categories');
+        if (catBar) {
+            catBar.addEventListener('click', (e) => {
+                const btn = e.target.closest('.wiki-cat-btn');
+                if (!btn) return;
+                const cat = btn.getAttribute('data-cat') || 'all';
+                wikiCurrentCat = cat;
+                wikiCurrentPage = 1;
+                catBar.querySelectorAll('.wiki-cat-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderWiki();
+            });
+        }
+
+        // Tag Filter Pills
+        const pillsBar = document.getElementById('wiki-tag-pills');
+        if (pillsBar) {
+            pillsBar.addEventListener('click', (e) => {
+                const pill = e.target.closest('.wiki-pill');
+                if (!pill) return;
+                const tag = pill.getAttribute('data-tag');
+                if (!tag) return;
+                if (wikiSelectedTags.has(tag)) {
+                    wikiSelectedTags.delete(tag);
+                    pill.classList.remove('active');
+                } else {
+                    wikiSelectedTags.add(tag);
+                    pill.classList.add('active');
+                }
+                wikiCurrentPage = 1;
+                renderWiki();
+            });
+        }
+
+        // Pagination Buttons
+        const prevBtn = document.getElementById('wiki-btn-prev');
+        const nextBtn = document.getElementById('wiki-btn-next');
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (wikiCurrentPage > 1) {
+                    wikiCurrentPage--;
+                    renderWiki();
+                    scrollToWikiTop();
+                }
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                wikiCurrentPage++;
+                renderWiki();
+                scrollToWikiTop();
+            });
+        }
+    }
+
+    function scrollToWikiTop() {
+        const card = document.getElementById('card-wiki');
+        if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    function formatWikiRequirements(reqs, reqsMax) {
+        if (!reqs || Object.keys(reqs).length === 0) return 'None';
+        const parts = [];
+        for (const [k, v] of Object.entries(reqs)) {
+            const kl = k.toLowerCase().replace(/_/g, ' ').trim();
+            let label = k.charAt(0).toUpperCase() + k.slice(1);
+            if (kl === 'strength' || kl === 'str') label = 'Strength';
+            else if (kl === 'dexterity' || kl === 'dex') label = 'Dexterity';
+            else if (kl === 'intelligence' || kl === 'int') label = 'Intelligence';
+            else if (kl === 'nature magic' || kl === 'nature') label = 'Nature Magic';
+            else if (kl === 'combat magic' || kl === 'combat') label = 'Combat Magic';
+            else if (kl === 'melee') label = 'Melee';
+            else if (kl === 'ranged') label = 'Ranged';
+            else if (kl === 'magic level' || kl === 'magic') label = 'Magic';
+            else if (kl === 'level' || kl === 'character level') label = 'Level';
+
+            const maxVal = (reqsMax && reqsMax[k] != null && reqsMax[k] > v) ? reqsMax[k] : null;
+            if (maxVal != null) {
+                parts.push(`${escapeHTML(label)} ${escapeHTML(String(v))} &rarr; ${escapeHTML(String(maxVal))}`);
+            } else {
+                parts.push(`${escapeHTML(label)} ${escapeHTML(String(v))}`);
+            }
+        }
+        return parts.join(', ');
+    }
+
+    function getMaxRequirement(item) {
+        if (!item.requirements) return 0;
+        let max = 0;
+        for (const v of Object.values(item.requirements)) {
+            const num = Number(v) || 0;
+            if (num > max) max = num;
+        }
+        return max;
+    }
+
+    function getSourceBadgeClass(source) {
+        if (source === 'LoA Expansion') return 'badge-loa-expansion';
+        if (source === 'Unlocked Loot') return 'badge-unlocked-loot';
+        if (source === 'Buffed Buffs') return 'badge-buffed-buffs';
+        return '';
+    }
+
+    function getItemTier(it) {
+        if (!it) return { key: 'normal', name: 'Standard', color: '#ffffff', tagClass: '', badgeIcon: '' };
+        if (it.rarity === 'set' || (it.tags || []).includes('Set Item')) {
+            return { key: 'set', name: 'Set Item', color: '#00e8e8', tagClass: 'tag-set', badgeIcon: 'Set Item' };
+        }
+        if (it.rarity === 'unique' || (it.tags || []).includes('Unique')) {
+            return { key: 'unique', name: 'Unique', color: '#cacb44', tagClass: 'tag-unique', badgeIcon: 'Unique' };
+        }
+        if (it.rarity === 'rare' || (it.tags || []).includes('Rare')) {
+            return { key: 'rare', name: 'Rare', color: '#9b9bfb', tagClass: 'tag-rare', badgeIcon: 'Rare' };
+        }
+        return { key: 'normal', name: 'Standard', color: '#ffffff', tagClass: '', badgeIcon: '' };
+    }
+
+    function getItemRarityWeight(it) {
+        if (!it) return 1;
+        if (it.rarity === 'set' || (it.tags || []).includes('Set Item')) return 4;
+        if (it.rarity === 'unique' || (it.tags || []).includes('Unique')) return 3;
+        if (it.rarity === 'rare' || (it.tags || []).includes('Rare')) return 2;
+        return 1;
+    }
+
+    function getNonCombatItemRow(it) {
+        if (!it) return '<div class="wiki-stat-row"><span class="stat-lbl">Type</span><span class="stat-val">Special Item</span></div>';
+        if (it.category === 'quests') {
+            return '<div class="wiki-stat-row"><span class="stat-lbl">Type</span><span class="stat-val">Quest Item</span></div>';
+        }
+        if (it.category === 'relics') {
+            const val = it.sub_category === 'Spellbook' ? 'Spellbook Relic' : 'World Relic';
+            return `<div class="wiki-stat-row"><span class="stat-lbl">Type</span><span class="stat-val">${val}</span></div>`;
+        }
+        if (it.category === 'jewelry') {
+            const val = it.rarity === 'set' ? 'Set Accessory' : 'Jewelry';
+            return `<div class="wiki-stat-row"><span class="stat-lbl">Type</span><span class="stat-val">${val}</span></div>`;
+        }
+        const val = it.sub_category || it.category || 'Special Item';
+        return `<div class="wiki-stat-row"><span class="stat-lbl">Type</span><span class="stat-val">${escapeHTML(val)}</span></div>`;
+    }
+
+    function renderWiki() {
+        const gridEl = document.getElementById('wiki-grid');
+        const emptyEl = document.getElementById('wiki-empty');
+        const pagEl = document.getElementById('wiki-pagination-bar');
+        const pageInfoEl = document.getElementById('wiki-page-info');
+        const prevBtn = document.getElementById('wiki-btn-prev');
+        const nextBtn = document.getElementById('wiki-btn-next');
+
+        if (!gridEl) return;
+
+        // 1. Filter
+        const query = wikiSearchQuery;
+        const cat = wikiCurrentCat;
+        const requiredTags = Array.from(wikiSelectedTags);
+
+        const filtered = wikiItems.filter(item => {
+            // Category check
+            if (cat !== 'all' && item.category !== cat) {
+                return false;
+            }
+
+            // Tags check (item must have all selected tags)
+            if (requiredTags.length > 0) {
+                const itemTags = item.tags || [];
+                for (let i = 0; i < requiredTags.length; i++) {
+                    if (!itemTags.includes(requiredTags[i])) {
+                        return false;
+                    }
+                }
+            }
+
+            // Search query check
+            if (query) {
+                const matchName = (item.name || '').toLowerCase().includes(query);
+                const matchId = (item.id || '').toLowerCase().includes(query);
+                const matchSub = (item.sub_category || '').toLowerCase().includes(query);
+                const matchSrc = (item.source || '').toLowerCase().includes(query);
+                const matchDesc = (item.desc || '').toLowerCase().includes(query);
+                const matchTags = (item.tags || []).some(t => t.toLowerCase().includes(query));
+                const matchReq = item.requirements && Object.keys(item.requirements).some(r => r.toLowerCase().includes(query));
+
+                if (!matchName && !matchId && !matchSub && !matchSrc && !matchDesc && !matchTags && !matchReq) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        // 2. Sort
+        filtered.sort((a, b) => {
+            switch (wikiSortOrder) {
+                case 'rarity_desc': {
+                    const diff = getItemRarityWeight(b) - getItemRarityWeight(a);
+                    return diff !== 0 ? diff : (a.name || a.id).localeCompare(b.name || b.id);
+                }
+                case 'name_desc':
+                    return (b.name || b.id).localeCompare(a.name || a.id);
+                case 'name_asc':
+                    return (a.name || a.id).localeCompare(b.name || b.id);
+                case 'dmg_asc': {
+                    const da = (a.damage_max != null) ? a.damage_max : Infinity;
+                    const db = (b.damage_max != null) ? b.damage_max : Infinity;
+                    if (da !== db) return da - db;
+                    return (a.name || a.id).localeCompare(b.name || b.id);
+                }
+                case 'dmg_desc': {
+                    const da = (a.damage_max != null) ? a.damage_max : -Infinity;
+                    const db = (b.damage_max != null) ? b.damage_max : -Infinity;
+                    if (da !== db) return db - da;
+                    return (a.name || a.id).localeCompare(b.name || b.id);
+                }
+                case 'def_asc': {
+                    const da = (a.defense != null) ? a.defense : Infinity;
+                    const db = (b.defense != null) ? b.defense : Infinity;
+                    if (da !== db) return da - db;
+                    return (a.name || a.id).localeCompare(b.name || b.id);
+                }
+                case 'def_desc': {
+                    const da = (a.defense != null) ? a.defense : -Infinity;
+                    const db = (b.defense != null) ? b.defense : -Infinity;
+                    if (da !== db) return db - da;
+                    return (a.name || a.id).localeCompare(b.name || b.id);
+                }
+                case 'mana_asc': {
+                    const ma = (typeof a.mana_cost === 'number') ? a.mana_cost : (a.mana_cost ? 999999 : Infinity);
+                    const mb = (typeof b.mana_cost === 'number') ? b.mana_cost : (b.mana_cost ? 999999 : Infinity);
+                    if (ma !== mb) return ma - mb;
+                    return (a.name || a.id).localeCompare(b.name || b.id);
+                }
+                case 'mana_desc': {
+                    const ma = (typeof a.mana_cost === 'number') ? a.mana_cost : (a.mana_cost ? 999999 : -Infinity);
+                    const mb = (typeof b.mana_cost === 'number') ? b.mana_cost : (b.mana_cost ? 999999 : -Infinity);
+                    if (ma !== mb) return mb - ma;
+                    return (a.name || a.id).localeCompare(b.name || b.id);
+                }
+                case 'req_asc': {
+                    const ra = getMaxRequirement(a);
+                    const rb = getMaxRequirement(b);
+                    if (ra !== rb) return ra - rb;
+                    return (a.name || a.id).localeCompare(b.name || b.id);
+                }
+                case 'req_desc': {
+                    const ra = getMaxRequirement(a);
+                    const rb = getMaxRequirement(b);
+                    if (ra !== rb) return rb - ra;
+                    return (a.name || a.id).localeCompare(b.name || b.id);
+                }
+                case 'val_asc': {
+                    const va = (a.gold_value != null && a.gold_value > 0) ? a.gold_value : Infinity;
+                    const vb = (b.gold_value != null && b.gold_value > 0) ? b.gold_value : Infinity;
+                    if (va !== vb) return va - vb;
+                    return (a.name || a.id).localeCompare(b.name || b.id);
+                }
+                case 'val_desc': {
+                    const va = (a.gold_value != null) ? a.gold_value : -Infinity;
+                    const vb = (b.gold_value != null) ? b.gold_value : -Infinity;
+                    if (va !== vb) return vb - va;
+                    return (a.name || a.id).localeCompare(b.name || b.id);
+                }
+                case 'rarity_asc':
+                default: {
+                    const diff = getItemRarityWeight(a) - getItemRarityWeight(b);
+                    return diff !== 0 ? diff : (a.name || a.id).localeCompare(b.name || b.id);
+                }
+            }
+        });
+
+        // 3. Check Empty
+        if (filtered.length === 0) {
+            gridEl.style.display = 'none';
+            if (emptyEl) emptyEl.style.display = 'flex';
+            if (pagEl) pagEl.style.display = 'none';
+            return;
+        }
+
+        if (emptyEl) emptyEl.style.display = 'none';
+        gridEl.style.display = 'grid';
+
+        // 4. Pagination
+        const totalPages = Math.max(1, Math.ceil(filtered.length / WIKI_PAGE_SIZE));
+        if (wikiCurrentPage > totalPages) wikiCurrentPage = totalPages;
+        if (wikiCurrentPage < 1) wikiCurrentPage = 1;
+
+        const startIndex = (wikiCurrentPage - 1) * WIKI_PAGE_SIZE;
+        const pageItems = filtered.slice(startIndex, startIndex + WIKI_PAGE_SIZE);
+
+        // 5. Generate Item Cards HTML
+        let cardsHTML = '';
+        for (let i = 0; i < pageItems.length; i++) {
+            const it = pageItems[i];
+
+            // Build Stats Summary Rows
+            let statsRows = '';
+            const isSpell = (it.category === 'nature_magic' || it.category === 'combat_magic');
+
+            if (isSpell) {
+                // Spell order: 1. Mana Cost, 2. Damage, 3. Duration, 4. Range, 5. Speed, 6. Requirements
+                if (it.mana_cost != null) {
+                    let manaDisplay = escapeHTML(String(it.mana_cost));
+                    if (it.mana_cost_max != null && it.mana_cost_max !== it.mana_cost) {
+                        manaDisplay = `${escapeHTML(String(it.mana_cost))} &rarr; ${escapeHTML(String(it.mana_cost_max))}`;
+                    }
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Mana Cost</span><span class="stat-val mana"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/mana.png?v=4" alt="Mana">${manaDisplay}</span></div>`;
+                }
+                if (it.damage_min != null && it.damage_max != null) {
+                    let dmgDisplay = `${it.damage_min} - ${it.damage_max}`;
+                    if (it.damage_min_max != null && it.damage_max_max != null && (it.damage_min_max !== it.damage_min || it.damage_max_max !== it.damage_max)) {
+                        dmgDisplay = `${it.damage_min}&ndash;${it.damage_max} &rarr; ${it.damage_min_max}&ndash;${it.damage_max_max}`;
+                    }
+                    const dmgIcon = (it.category === 'nature_magic') ? 'nature_magic' : 'combat_magic';
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Damage</span><span class="stat-val dmg"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/${dmgIcon}.png?v=4" alt="Damage">${dmgDisplay}</span></div>`;
+                }
+                if (it.duration != null) {
+                    let durDisplay = `${it.duration}s`;
+                    if (it.duration_max != null && it.duration_max !== it.duration) {
+                        durDisplay = `${it.duration}s &rarr; ${it.duration_max}s`;
+                    }
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Duration</span><span class="stat-val dur"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/duration.png?v=1" alt="Duration">${durDisplay}</span></div>`;
+                }
+                if (it.range != null) {
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Range</span><span class="stat-val range"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/ranged.png?v=4" alt="Range">${it.range}m</span></div>`;
+                }
+                if (it.attack_speed) {
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Speed</span><span class="stat-val">${escapeHTML(it.attack_speed)}</span></div>`;
+                }
+                if (it.requirements && Object.keys(it.requirements).length > 0) {
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Requirements</span><span class="stat-val req">${formatWikiRequirements(it.requirements, it.requirements_max)}</span></div>`;
+                }
+            } else {
+                // Non-spell order: 1. Damage, 2. Defense, 3. Speed, 4. Range, 5. Requirements
+                if (it.damage_min != null && it.damage_max != null) {
+                    const dmgIcon = (it.category === 'ranged') ? 'ranged' : 'melee';
+                    let dmgDisplay = `${it.damage_min} - ${it.damage_max}`;
+                    if (it.damage_min_max != null && it.damage_max_max != null && (it.damage_min_max !== it.damage_min || it.damage_max_max !== it.damage_max)) {
+                        dmgDisplay = `${it.damage_min}&ndash;${it.damage_max} &rarr; ${it.damage_min_max}&ndash;${it.damage_max_max}`;
+                    }
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Damage</span><span class="stat-val dmg"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/${dmgIcon}.png?v=4" alt="Damage">${dmgDisplay}</span></div>`;
+                }
+                if (it.defense != null) {
+                    let defDisplay = `${it.defense}`;
+                    if (it.defense_max != null && it.defense_max > it.defense) {
+                        defDisplay = `${it.defense} &rarr; ${it.defense_max}`;
+                    }
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Defense</span><span class="stat-val def"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/shields.png?v=4" alt="Defense">${defDisplay}</span></div>`;
+                }
+                if (it.stat_bonus) {
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Stat Bonus</span><span class="stat-val mana">${escapeHTML(it.stat_bonus)}</span></div>`;
+                }
+                if (it.attack_speed) {
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Speed</span><span class="stat-val">${escapeHTML(it.attack_speed)}</span></div>`;
+                }
+                if (it.is_two_handed != null || (it.tags && (it.tags.includes('One-Handed') || it.tags.includes('Two-Handed')))) {
+                    const isTwoH = (it.is_two_handed != null) ? it.is_two_handed : it.tags.includes('Two-Handed');
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Handling</span><span class="stat-val">${isTwoH ? 'Two-Handed' : 'One-Handed'}</span></div>`;
+                }
+                if (it.range != null) {
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Range</span><span class="stat-val range"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/ranged.png?v=4" alt="Range">${it.range}m</span></div>`;
+                }
+                if (it.mana_cost != null) {
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Mana Cost</span><span class="stat-val mana"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/mana.png?v=4" alt="Mana">${it.mana_cost}</span></div>`;
+                }
+                if (it.requirements && Object.keys(it.requirements).length > 0) {
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Requirements</span><span class="stat-val req">${formatWikiRequirements(it.requirements, it.requirements_max)}</span></div>`;
+                }
+            }
+            const isCurrency = (it.id === 'gold');
+            if (!isCurrency) {
+                const sellVal = (typeof it.sell_value === 'number' && it.sell_value > 0) ? it.sell_value : ((typeof it.gold_value === 'number' && it.gold_value > 0) ? it.gold_value : null);
+                if (sellVal != null && sellVal > 0) {
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Sell Value</span><span class="stat-val gold"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/gold.png?v=4" alt="Gold">${Number(sellVal).toLocaleString()} Gold</span></div>`;
+                    
+                    if (it.buy_value === 'Drop Only') {
+                        statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Buy Value</span><span class="stat-val" style="color:#94a3b8; font-weight:600;">Drop Only</span></div>`;
+                    } else {
+                        const buyVal = (typeof it.buy_value === 'number' && it.buy_value > 0) ? it.buy_value : Math.round(sellVal * 3);
+                        if (buyVal != null && buyVal > 0) {
+                            statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Buy Value</span><span class="stat-val gold"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/gold.png?v=4" alt="Gold">${Number(buyVal).toLocaleString()} Gold</span></div>`;
+                        }
+                    }
+                }
+            }
+
+            // Description (truncate cleanly to word boundary with hooked ellipsis)
+            let descHTML = '';
+            if (it.desc) {
+                let text = it.desc.trim();
+                if (text.length > 75) {
+                    let truncated = text.substring(0, 72);
+                    const lastSpace = truncated.lastIndexOf(' ');
+                    if (lastSpace > 35) {
+                        truncated = truncated.substring(0, lastSpace);
+                    }
+                    truncated = truncated.replace(/[\s,;.:\-]+$/, '');
+                    text = truncated + '...';
+                } else if (!/[.!?]$/.test(text)) {
+                    text += '.';
+                }
+                descHTML = `<div class="wiki-desc-box">${escapeHTML(text)}</div>`;
+            }
+
+            // Tags & Tier Badge
+            const tier = getItemTier(it);
+            const isSet = (tier.key === 'set');
+
+            // Subtitle text: for set items, show set name if available
+            let subTitleText = it.sub_category || it.category || 'Equipment';
+            if (isSet && it.set_name) {
+                subTitleText = `${escapeHTML(subTitleText)} &bull; <span style="color:#00e8e8; font-weight:700;">${escapeHTML(it.set_name)}</span>`;
+            } else if (it.variants && it.variants.length > 1) {
+                subTitleText = `${escapeHTML(subTitleText)} &bull; <span style="color:#ffd875; font-weight:600;">${it.variants.length} Tiers</span>`;
+            } else {
+                subTitleText = escapeHTML(subTitleText);
+            }
+
+            // Tags / Badges: Tier badge first if present
+            let tagsHTML = '';
+            if (tier.badgeIcon) {
+                tagsHTML += `<span class="wiki-card-tag ${tier.tagClass}">${escapeHTML(tier.badgeIcon)}</span>`;
+            }
+            const otherTags = (it.tags || []).filter(t => t !== 'Set Item' && t !== 'Unique' && t !== 'Rare');
+            const maxOther = tier.badgeIcon ? 2 : 3;
+            for (let t = 0; t < Math.min(otherTags.length, maxOther); t++) {
+                tagsHTML += `<span class="wiki-card-tag">${escapeHTML(otherTags[t])}</span>`;
+            }
+
+            const iconSrc = it.icon ? `/static/wiki_icons/${it.icon.toLowerCase()}.png?v=6` : '/static/wiki_icons/gui/all.png?v=6';
+
+            cardsHTML += `
+                <div class="wiki-item-card tier-${tier.key}" onclick="openWikiItemModal('${escapeHTML(it.id)}')">
+                    <div class="wiki-card-header-flex">
+                        <div class="wiki-item-icon-box">
+                            <img class="wiki-item-img" src="${iconSrc}" alt="${escapeHTML(it.name || it.id)}" loading="lazy" onerror="this.src='/static/wiki_icons/gui/all.png?v=6'">
+                        </div>
+                        <div class="wiki-card-title-col">
+                            <div class="wiki-item-name">${escapeHTML(it.name || it.id)}</div>
+                            <div class="wiki-item-sub">${subTitleText}</div>
+                        </div>
+                    </div>
+                    <div class="wiki-stats-body">
+                        ${statsRows || getNonCombatItemRow(it)}
+                    </div>
+                    ${descHTML}
+                    <div class="wiki-card-pills">
+                        ${tagsHTML}
+                    </div>
+                </div>
+            `;
+        }
+
+        gridEl.innerHTML = cardsHTML;
+
+        // 6. Update Pagination Bar
+        if (pagEl) {
+            pagEl.style.display = totalPages > 1 ? 'flex' : 'none';
+        }
+        if (pageInfoEl) {
+            pageInfoEl.innerText = `Page ${wikiCurrentPage} of ${totalPages} (${filtered.length.toLocaleString()} items)`;
+        }
+        if (prevBtn) prevBtn.disabled = (wikiCurrentPage <= 1);
+        if (nextBtn) nextBtn.disabled = (wikiCurrentPage >= totalPages);
+    }
+
+    function openWikiItemModal(itemId) {
+        const item = (wikiItemsById && wikiItemsById.get(itemId)) || wikiItems.find(it => it.id === itemId);
+        if (!item) return;
+
+        const overlay = document.getElementById('wiki-modal-overlay');
+        const cardEl = document.getElementById('wiki-modal-card');
+        const iconBoxEl = document.getElementById('wiki-modal-icon-box');
+        const titleEl = document.getElementById('wiki-modal-title');
+        const subEl = document.getElementById('wiki-modal-sub');
+        const modalImg = document.getElementById('wiki-modal-img');
+        const setBoxEl = document.getElementById('wiki-modal-set-box');
+        const statsEl = document.getElementById('wiki-modal-stats');
+        const descEl = document.getElementById('wiki-modal-desc');
+        const pillsEl = document.getElementById('wiki-modal-pills');
+        const tidEl = document.getElementById('wiki-modal-tid');
+        const copyBtn = document.getElementById('wiki-btn-copy');
+
+        const tier = getItemTier(item);
+        const isSet = (tier.key === 'set');
+
+        if (titleEl) {
+            titleEl.innerText = item.name || item.id;
+            titleEl.style.color = tier.color;
+        }
+
+        if (cardEl) {
+            cardEl.style.borderColor = tier.color;
+            cardEl.style.boxShadow = `0 12px 32px rgba(0, 0, 0, 0.85), 0 0 20px ${tier.color}44`;
+        }
+        if (iconBoxEl) {
+            iconBoxEl.style.borderColor = tier.color;
+        }
+
+        if (subEl) {
+            if (isSet && item.set_name) {
+                subEl.innerHTML = `${escapeHTML(item.sub_category || item.category || 'Equipment')} &bull; <span style="color:#00e8e8; font-weight:700;">${escapeHTML(item.set_name)}</span>`;
+            } else if (item.variants && item.variants.length > 1) {
+                subEl.innerHTML = `${escapeHTML(item.sub_category || item.category || 'Equipment')} &bull; <span style="color:#ffd875; font-weight:600;">${item.variants.length} Tiers</span>`;
+            } else {
+                subEl.innerText = item.sub_category || item.category || 'Equipment';
+            }
+        }
+        if (tidEl) tidEl.innerText = item.id;
+        if (copyBtn) copyBtn.innerText = 'Copy Template ID';
+
+        if (modalImg) {
+            const iconSrc = item.icon ? `/static/wiki_icons/${item.icon.toLowerCase()}.png?v=6` : '/static/wiki_icons/gui/all.png?v=6';
+            modalImg.src = iconSrc;
+            modalImg.onerror = function() { this.src = '/static/wiki_icons/gui/all.png?v=6'; };
+        }
+
+        // SET ITEMS LIST BOX
+        if (setBoxEl) {
+            if (isSet && item.set_name) {
+                const setPieces = wikiItems.filter(x => (x.set_name && x.set_name === item.set_name) || (x.set_compare_name && x.set_compare_name === item.set_compare_name));
+                const totalPieces = item.set_num_items || setPieces.length;
+                let setHtml = `
+                    <div class="wiki-set-header">
+                        <span>${escapeHTML(item.set_name)}</span>
+                        <span style="font-size:11px; opacity:0.85;">${setPieces.length} of ${totalPieces} Set Pieces Discovered</span>
+                    </div>
+                    <div class="wiki-set-items-list">
+                `;
+                for (let s = 0; s < setPieces.length; s++) {
+                    const piece = setPieces[s];
+                    const isCurrent = (piece.id === item.id);
+                    setHtml += `
+                        <div class="wiki-set-piece-row ${isCurrent ? 'is-current' : 'is-other'}" 
+                             ${!isCurrent ? `onclick="openWikiItemModal('${escapeHTML(piece.id)}');"` : ''}>
+                            <span>${isCurrent ? '▶ ' : '• '}${escapeHTML(piece.name || piece.id)} <small style="opacity:0.75; font-size:10.5px;">(${escapeHTML(piece.sub_category || piece.category)})</small></span>
+                            <span class="wiki-set-piece-badge ${isCurrent ? 'badge-viewing' : 'badge-inspect'}">
+                                ${isCurrent ? 'Viewing' : 'Inspect'}
+                            </span>
+                        </div>
+                    `;
+                }
+                setHtml += '</div>';
+                setBoxEl.innerHTML = setHtml;
+                setBoxEl.style.display = 'block';
+            } else {
+                setBoxEl.style.display = 'none';
+            }
+        }
+
+        // Full Stats
+        let statsHTML = '';
+        const isSpell = (item.category === 'nature_magic' || item.category === 'combat_magic');
+
+        if (isSpell) {
+            // Spell order: 1. Mana Cost, 2. Damage, 3. Duration, 4. Range, 5. Speed, 6. Requirements
+            if (item.mana_cost != null) {
+                let manaDisplay = escapeHTML(String(item.mana_cost));
+                if (item.mana_cost_max != null && item.mana_cost_max !== item.mana_cost) {
+                    manaDisplay = `${escapeHTML(String(item.mana_cost))} &rarr; ${escapeHTML(String(item.mana_cost_max))}`;
+                }
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Mana Cost</span><span class="stat-val mana"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/mana.png?v=4" alt="Mana">${manaDisplay}</span></div>`;
+            }
+            if (item.damage_min != null && item.damage_max != null) {
+                let dmgDisplay = `${item.damage_min} - ${item.damage_max}`;
+                if (item.damage_min_max != null && item.damage_max_max != null && (item.damage_min_max !== item.damage_min || item.damage_max_max !== item.damage_max)) {
+                    dmgDisplay = `${item.damage_min}&ndash;${item.damage_max} &rarr; ${item.damage_min_max}&ndash;${item.damage_max_max}`;
+                }
+                const dmgIcon = (item.category === 'nature_magic') ? 'nature_magic' : 'combat_magic';
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Damage</span><span class="stat-val dmg"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/${dmgIcon}.png?v=4" alt="Damage">${dmgDisplay}</span></div>`;
+            }
+            if (item.duration != null) {
+                let durDisplay = `${item.duration}s`;
+                if (item.duration_max != null && item.duration_max !== item.duration) {
+                    durDisplay = `${item.duration}s &rarr; ${item.duration_max}s`;
+                }
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Duration</span><span class="stat-val dur"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/duration.png?v=1" alt="Duration">${durDisplay}</span></div>`;
+            }
+            if (item.range != null) {
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Range</span><span class="stat-val range"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/ranged.png?v=4" alt="Range">${item.range}m</span></div>`;
+            }
+            if (item.attack_speed) {
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Attack Speed</span><span class="stat-val">${escapeHTML(item.attack_speed)}</span></div>`;
+            }
+            if (item.requirements && Object.keys(item.requirements).length > 0) {
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Requirements</span><span class="stat-val req">${formatWikiRequirements(item.requirements, item.requirements_max)}</span></div>`;
+            }
+        } else {
+            // Non-spell order: 1. Damage, 2. Defense, 3. Speed, 4. Handling, 5. Range, 6. Requirements
+            if (item.damage_min != null && item.damage_max != null) {
+                const dmgIcon = (item.category === 'ranged') ? 'ranged' : 'melee';
+                let dmgDisplay = `${item.damage_min} - ${item.damage_max}`;
+                if (item.damage_min_max != null && item.damage_max_max != null && (item.damage_min_max !== item.damage_min || item.damage_max_max !== item.damage_max)) {
+                    dmgDisplay = `${item.damage_min}&ndash;${item.damage_max} &rarr; ${item.damage_min_max}&ndash;${item.damage_max_max}`;
+                }
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Damage</span><span class="stat-val dmg"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/${dmgIcon}.png?v=4" alt="Damage">${dmgDisplay}</span></div>`;
+            }
+            if (item.defense != null) {
+                let defDisplay = `${item.defense}`;
+                if (item.defense_max != null && item.defense_max > item.defense) {
+                    defDisplay = `${item.defense} &rarr; ${item.defense_max}`;
+                }
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Defense</span><span class="stat-val def"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/shields.png?v=4" alt="Defense">${defDisplay}</span></div>`;
+            }
+            if (item.stat_bonus) {
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Stat Bonus</span><span class="stat-val mana">${escapeHTML(item.stat_bonus)}</span></div>`;
+            }
+            if (item.attack_speed) {
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Attack Speed</span><span class="stat-val">${escapeHTML(item.attack_speed)}</span></div>`;
+            }
+            if (item.is_two_handed != null || (item.tags && (item.tags.includes('One-Handed') || item.tags.includes('Two-Handed')))) {
+                const isTwoH = (item.is_two_handed != null) ? item.is_two_handed : item.tags.includes('Two-Handed');
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Handling</span><span class="stat-val">${isTwoH ? 'Two-Handed' : 'One-Handed'}</span></div>`;
+            }
+            if (item.range != null) {
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Range</span><span class="stat-val range"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/ranged.png?v=4" alt="Range">${item.range}m</span></div>`;
+            }
+            if (item.mana_cost != null) {
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Mana Cost</span><span class="stat-val mana"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/mana.png?v=4" alt="Mana">${item.mana_cost}</span></div>`;
+            }
+            if (item.requirements && Object.keys(item.requirements).length > 0) {
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Requirements</span><span class="stat-val req">${formatWikiRequirements(item.requirements, item.requirements_max)}</span></div>`;
+            }
+        }
+        const isCurrency = (item.id === 'gold');
+        if (!isCurrency) {
+            const mSellVal = (typeof item.sell_value === 'number' && item.sell_value > 0) ? item.sell_value : ((typeof item.gold_value === 'number' && item.gold_value > 0) ? item.gold_value : null);
+            if (mSellVal != null && mSellVal > 0) {
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Sell Value</span><span class="stat-val gold"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/gold.png?v=4" alt="Gold">${Number(mSellVal).toLocaleString()} Gold</span></div>`;
+                
+                if (item.buy_value === 'Drop Only') {
+                    statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Buy Value</span><span class="stat-val" style="color:#94a3b8; font-weight:600;">Drop Only</span></div>`;
+                } else {
+                    const mBuyVal = (typeof item.buy_value === 'number' && item.buy_value > 0) ? item.buy_value : Math.round(mSellVal * 3);
+                    if (mBuyVal != null && mBuyVal > 0) {
+                        statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Buy Value</span><span class="stat-val gold"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/gold.png?v=4" alt="Gold">${Number(mBuyVal).toLocaleString()} Gold</span></div>`;
+                    }
+                }
+            }
+        }
+        if (!statsHTML) {
+            statsHTML = getNonCombatItemRow(item);
+        }
+        if (statsEl) statsEl.innerHTML = statsHTML;
+
+        // Dedicated Spell Scaling Table in Modal
+        const scalingEl = document.getElementById('wiki-modal-scaling');
+        if (scalingEl) {
+            const isScalingSpell = (item.category === 'nature_magic' || item.category === 'combat_magic') && (item.max_level != null);
+            if (isScalingSpell) {
+                const skillName = item.category === 'nature_magic' ? 'Nature Magic' : 'Combat Magic';
+                const scalingIcon = item.category === 'nature_magic' ? 'nature_magic' : 'combat_magic';
+                const hasDmg = (item.damage_min != null && item.damage_max != null && item.damage_min_max != null && item.damage_max_max != null);
+                const hasDur = (item.duration != null);
+                const hasRange = (item.range != null);
+                
+                const manaMinDisplay = (item.mana_cost != null) ? escapeHTML(String(item.mana_cost)) : 'None';
+                const manaMaxDisplay = (item.mana_cost_max != null) ? escapeHTML(String(item.mana_cost_max)) : manaMinDisplay;
+                
+                let rowsHTML = `
+                    <tr>
+                        <td class="scaling-lbl">Skill Requirement</td>
+                        <td class="scaling-val">${skillName} ${item.required_level ?? 0}</td>
+                        <td class="scaling-val">${skillName} ${item.max_level}</td>
+                    </tr>
+                    <tr>
+                        <td class="scaling-lbl">Mana Cost</td>
+                        <td class="scaling-val mana"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/mana.png?v=4" alt="Mana">${manaMinDisplay}</td>
+                        <td class="scaling-val mana"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/mana.png?v=4" alt="Mana">${manaMaxDisplay}</td>
+                    </tr>
+                `;
+                if (hasDmg) {
+                    rowsHTML += `
+                        <tr>
+                            <td class="scaling-lbl">Damage Output</td>
+                            <td class="scaling-val dmg">${item.damage_min}&ndash;${item.damage_max}</td>
+                            <td class="scaling-val dmg">${item.damage_min_max}&ndash;${item.damage_max_max}</td>
+                        </tr>
+                    `;
+                }
+                if (hasDur) {
+                    const durMin = `${item.duration}s`;
+                    const durMax = `${item.duration_max ?? item.duration}s`;
+                    rowsHTML += `
+                        <tr>
+                            <td class="scaling-lbl">Duration</td>
+                            <td class="scaling-val dur"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/duration.png?v=1" alt="Duration">${durMin}</td>
+                            <td class="scaling-val dur"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/duration.png?v=1" alt="Duration">${durMax}</td>
+                        </tr>
+                    `;
+                }
+                if (hasRange) {
+                    rowsHTML += `
+                        <tr>
+                            <td class="scaling-lbl">Range</td>
+                            <td class="scaling-val range"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/ranged.png?v=4" alt="Range">${item.range}m</td>
+                            <td class="scaling-val range"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/ranged.png?v=4" alt="Range">${item.range}m</td>
+                        </tr>
+                    `;
+                }
+                
+                const manaScales = (item.mana_cost != null && item.mana_cost_max != null && item.mana_cost !== item.mana_cost_max);
+                let scalingNoteText = '';
+                if (item.mana_cost === 'Target-Dependent') {
+                    scalingNoteText = `This spell's mana cost is dynamically determined by the power/health of the targeted enemy.`;
+                } else if (manaScales) {
+                    scalingNoteText = `This spell automatically scales in potency and mana cost as your skill advances up to Level ${item.max_level}.`;
+                } else {
+                    scalingNoteText = `This spell automatically scales in potency as your skill advances up to Level ${item.max_level} (mana cost remains constant).`;
+                }
+
+                scalingEl.innerHTML = `
+                    <div class="wiki-spell-scaling-title"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/${scalingIcon}.png?v=5" alt="Spell Scaling"><span>Spell Scaling</span></div>
+                    <table class="wiki-spell-scaling-table">
+                        <thead>
+                            <tr>
+                                <th>Attribute</th>
+                                <th>Minimum Level</th>
+                                <th>Maximum Level</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHTML}
+                        </tbody>
+                    </table>
+                    <div class="wiki-spell-scaling-note">
+                        ${scalingNoteText}
+                    </div>
+                `;
+                scalingEl.style.display = 'block';
+            } else {
+                scalingEl.style.display = 'none';
+            }
+        }
+
+        // Quality Variants & Tiers Table in Modal
+        const variantsEl = document.getElementById('wiki-modal-variants');
+        if (variantsEl) {
+            if (item.variants && item.variants.length > 1) {
+                const statColName = (item.damage_min != null) ? 'Damage' : ((item.defense != null) ? 'Defense' : 'Stats');
+                const countTiers = item.variants.length;
+                let rowsHTML = '';
+                for (const vr of item.variants) {
+                    const isBase = (vr.code === 'base');
+                    const rowClass = isBase ? 'class="is-base-tier"' : '';
+                    const badge = isBase 
+                        ? '<span class="wiki-variant-badge" style="color:#e5b85c; border:1px solid rgba(229,184,92,0.3);">Base</span>' 
+                        : `<span class="wiki-variant-badge">${escapeHTML(vr.code)}</span>`;
+                    const iconUrl = vr.icon ? `/static/wiki_icons/${vr.icon.toLowerCase()}.png?v=6` : '/static/wiki_icons/gui/all.png?v=6';
+                    
+                    let statVal = '-';
+                    if (vr.damage_min != null && vr.damage_max != null) {
+                        statVal = `<span class="stat-val dmg">${vr.damage_min}&ndash;${vr.damage_max}</span>`;
+                    } else if (vr.defense != null) {
+                        statVal = `<span class="stat-val def">${vr.defense}</span>`;
+                    }
+
+                    const reqVal = formatWikiRequirements(vr.requirements);
+
+                    rowsHTML += `
+                        <tr ${rowClass}>
+                            <td>
+                                <div class="wiki-variant-tier-cell">
+                                    <img class="wiki-variant-thumb" src="${iconUrl}" onerror="this.src='/static/wiki_icons/gui/all.png'" alt="${escapeHTML(vr.label)}">
+                                    <span>${escapeHTML(vr.label)}</span>
+                                    ${badge}
+                                </div>
+                            </td>
+                            <td>${statVal}</td>
+                            <td class="stat-val req">${reqVal}</td>
+                        </tr>
+                    `;
+                }
+
+                variantsEl.innerHTML = `
+                    <div class="wiki-variants-title">
+                        <span>Quality Variants & Tiers</span>
+                        <span class="wiki-variant-badge" style="color:#ffd875; border:1px solid rgba(229,184,92,0.3);">${countTiers} Tiers</span>
+                    </div>
+                    <div class="wiki-variants-desc">
+                        Procedural item tiers scaled by quality. Each variant features unique visuals, scaled baseline combat attributes, and higher equip requirements.
+                    </div>
+                    <table class="wiki-variants-table">
+                        <thead>
+                            <tr>
+                                <th>Tier / Quality</th>
+                                <th>${statColName}</th>
+                                <th>Requirements</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHTML}
+                        </tbody>
+                    </table>
+                `;
+                variantsEl.style.display = 'block';
+            } else {
+                variantsEl.style.display = 'none';
+                variantsEl.innerHTML = '';
+            }
+        }
+
+        // Description
+        if (descEl) {
+            if (item.desc) {
+                let dText = item.desc.trim();
+                if (dText && !/[.!?]$/.test(dText)) {
+                    dText += '.';
+                }
+                descEl.innerText = dText;
+                descEl.style.display = 'block';
+            } else {
+                descEl.style.display = 'none';
+            }
+        }
+
+        // Tag Pills
+        if (pillsEl) {
+            let pillsHTML = '';
+            if (tier.badgeIcon) {
+                pillsHTML += `<span class="wiki-card-tag ${tier.tagClass}" style="font-size:11px; padding:3px 8px;">${escapeHTML(tier.badgeIcon)}</span>`;
+            }
+            const allTags = (item.tags || []).filter(t => t !== 'Set Item' && t !== 'Unique' && t !== 'Rare');
+            for (let i = 0; i < allTags.length; i++) {
+                pillsHTML += `<span class="wiki-card-tag" style="font-size:11px; padding:3px 8px;">${escapeHTML(allTags[i])}</span>`;
+            }
+            pillsEl.innerHTML = pillsHTML;
+        }
+
+        if (overlay) overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeWikiModal(e) {
+        if (e && e.target && e.target.id !== 'wiki-modal-overlay' && !e.target.classList.contains('wiki-modal-close')) {
+            return;
+        }
+        const overlay = document.getElementById('wiki-modal-overlay');
+        if (overlay) overlay.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    function copyWikiTemplateId() {
+        const tidEl = document.getElementById('wiki-modal-tid');
+        const btn = document.getElementById('wiki-btn-copy');
+        if (!tidEl) return;
+        const text = tidEl.innerText || '';
+        navigator.clipboard.writeText(text).then(() => {
+            if (btn) {
+                btn.innerText = 'Copied!';
+                setTimeout(() => {
+                    btn.innerText = 'Copy Template ID';
+                }, 2000);
+            }
+        }).catch(() => {
+            if (btn) btn.innerText = 'Error copying';
+        });
+    }
 </script>
 
 <!-- ACCOUNT SIGN IN / STATUS MODAL -->

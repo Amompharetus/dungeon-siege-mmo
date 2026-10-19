@@ -35,9 +35,11 @@ const (
 	tankdumpBin  = "/usr/local/bin/tankdump"
 	listenAddr   = "127.0.0.1:8088"
 	gmCookieName = "ds1mmo_gm_session"
-	awsCredsFile = "/etc/ds1mmo/aws-eu.csv"
-	awsRegion    = "eu-central-1"
-	awsInstance  = "i-00000000000000001"
+	awsCredsFile  = "/etc/ds1mmo/aws-eu.csv"
+	awsEURegion   = "eu-central-1"
+	awsEUInstance = "i-00000000000000001"
+	awsNARegion   = "us-east-1"
+	awsNAInstance = "i-00000000000000002"
 )
 
 var gmUsers = map[string]bool{
@@ -693,12 +695,12 @@ func signV4(creds awsCreds, region, service, host, path string, params map[strin
 	return
 }
 
-func callEC2(action string, extraParams map[string]string) ([]byte, int, error) {
+func callEC2(region, action string, extraParams map[string]string) ([]byte, int, error) {
 	creds, err := loadAWSCreds(awsCredsFile)
 	if err != nil {
 		return nil, 0, fmt.Errorf("load credentials: %w", err)
 	}
-	endpoint := fmt.Sprintf("https://ec2.%s.amazonaws.com/", awsRegion)
+	endpoint := fmt.Sprintf("https://ec2.%s.amazonaws.com/", region)
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, 0, err
@@ -710,7 +712,7 @@ func callEC2(action string, extraParams map[string]string) ([]byte, int, error) 
 	for k, v := range extraParams {
 		params[k] = v
 	}
-	query, authz, amzDate := signV4(creds, awsRegion, "ec2", u.Host, u.Path, params, time.Now())
+	query, authz, amzDate := signV4(creds, region, "ec2", u.Host, u.Path, params, time.Now())
 	req, err := http.NewRequest("GET", u.Scheme+"://"+u.Host+u.Path+"?"+query, nil)
 	if err != nil {
 		return nil, 0, err
@@ -727,33 +729,9 @@ func callEC2(action string, extraParams map[string]string) ([]byte, int, error) 
 	return body, resp.StatusCode, err
 }
 
-func getNAServerState() string {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, "systemctl", "is-active", "ds1mmo-na").CombinedOutput()
-	state := strings.TrimSpace(string(out))
-	if err != nil && state == "" {
-		return "stopped"
-	}
-	switch state {
-	case "active":
-		return "running"
-	case "inactive":
-		return "stopped"
-	case "failed":
-		return "failed"
-	case "activating":
-		return "starting"
-	case "deactivating":
-		return "stopping"
-	default:
-		return state
-	}
-}
-
-func getEUServerState() string {
-	body, code, err := callEC2("DescribeInstances", map[string]string{
-		"InstanceId.1": awsInstance,
+func getEC2InstanceState(region, instanceId string) string {
+	body, code, err := callEC2(region, "DescribeInstances", map[string]string{
+		"InstanceId.1": instanceId,
 	})
 	if err != nil || code != 200 {
 		return "unknown"
@@ -770,34 +748,13 @@ func getEUServerState() string {
 	return r.Instances[0].State
 }
 
-func executeNAAction(action string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	var cmd *exec.Cmd
-	switch action {
-	case "start":
-		cmd = exec.CommandContext(ctx, "sudo", "/usr/bin/systemctl", "start", "ds1mmo-na")
-	case "restart":
-		cmd = exec.CommandContext(ctx, "sudo", "/usr/bin/systemctl", "restart", "ds1mmo-na")
-	case "stop":
-		cmd = exec.CommandContext(ctx, "sudo", "/usr/bin/systemctl", "stop", "ds1mmo-na")
-	default:
-		return fmt.Errorf("invalid action: %s", action)
-	}
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("%s failed: %v (%s)", action, err, strings.TrimSpace(string(out)))
-	}
-	return nil
-}
-
-func executeEUAction(action string) error {
+func executeEC2Action(region, instanceId, action string) error {
 	var ec2Action string
 	switch action {
 	case "start":
 		ec2Action = "StartInstances"
 	case "restart":
-		st := getEUServerState()
+		st := getEC2InstanceState(region, instanceId)
 		if st == "stopped" {
 			ec2Action = "StartInstances"
 		} else {
@@ -808,8 +765,8 @@ func executeEUAction(action string) error {
 	default:
 		return fmt.Errorf("invalid action: %s", action)
 	}
-	body, code, err := callEC2(ec2Action, map[string]string{
-		"InstanceId.1": awsInstance,
+	body, code, err := callEC2(region, ec2Action, map[string]string{
+		"InstanceId.1": instanceId,
 	})
 	if err != nil {
 		return fmt.Errorf("ec2 %s: %w", ec2Action, err)
@@ -820,12 +777,29 @@ func executeEUAction(action string) error {
 	return nil
 }
 
+func getNAServerState() string {
+	return getEC2InstanceState(awsNARegion, awsNAInstance)
+}
+
+func getEUServerState() string {
+	return getEC2InstanceState(awsEURegion, awsEUInstance)
+}
+
+func executeNAAction(action string) error {
+	return executeEC2Action(awsNARegion, awsNAInstance, action)
+}
+
+func executeEUAction(action string) error {
+	return executeEC2Action(awsEURegion, awsEUInstance, action)
+}
+
 func main() {
 	loadSessions()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/status", handleAPIStatus)
 	mux.HandleFunc("GET /api/ladder", handleAPILadder)
+	mux.HandleFunc("GET /api/wiki/items", handleAPIWikiItems)
 	mux.HandleFunc("GET /api/auth/status", handleAuthStatus)
 	mux.HandleFunc("POST /api/auth/login", handleAuthLogin)
 	mux.HandleFunc("POST /api/auth/logout", handleAuthLogout)
@@ -846,6 +820,7 @@ func main() {
 	mux.HandleFunc("GET /realms", handleIndex)
 	mux.HandleFunc("GET /world", handleIndex)
 	mux.HandleFunc("GET /ladder", handleIndex)
+	mux.HandleFunc("GET /wiki", handleIndex)
 	mux.HandleFunc("GET /gm-panel", handleIndex)
 	mux.HandleFunc("GET /gm", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/gm-panel", http.StatusMovedPermanently)
@@ -862,8 +837,8 @@ func main() {
 	srv := &http.Server{
 		Addr:         listenAddr,
 		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second,
 	}
 	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("Server error: %v", err)
@@ -1883,6 +1858,28 @@ func handleAPILadder(w http.ResponseWriter, r *http.Request) {
 
 	ladder := getLadderCharacters()
 	_ = json.NewEncoder(w).Encode(ladder)
+}
+
+func handleAPIWikiItems(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	_, authed := getSession(r)
+	if !authed {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status":  "error",
+			"message": "Sign in with your MMO account to view MMO Wiki",
+		})
+		return
+	}
+
+	wikiPath := filepath.Join(webDir, "data", "wiki_items.json")
+	if _, err := os.Stat(wikiPath); os.IsNotExist(err) {
+		wikiPath = filepath.Join(webDir, "wiki_items.json")
+	}
+	http.ServeFile(w, r, wikiPath)
 }
 
 func handleGMLogin(w http.ResponseWriter, r *http.Request) {
