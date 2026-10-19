@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -35,13 +36,23 @@ import (
 )
 
 type OnDemand struct {
-	Provider           string `json:"provider"`             // "aws"
-	Region             string `json:"region"`               // "eu-central-1"
-	InstanceID         string `json:"instance_id"`          // "i-00000000000000001"
-	CredentialsFile    string `json:"credentials_file"`     // AWS console "Download .csv file" (Access key ID,Secret access key)
-	Endpoint           string `json:"endpoint"`             // optional override (tests); default https://ec2.<region>.amazonaws.com/
+	Provider           string `json:"provider"`             // "aws", "systemd"
+	Region             string `json:"region,omitempty"`     // "eu-central-1"
+	InstanceID         string `json:"instance_id,omitempty"` // "i-00000000000000001"
+	CredentialsFile    string `json:"credentials_file,omitempty"` // AWS console "Download .csv file" (Access key ID,Secret access key)
+	Endpoint           string `json:"endpoint,omitempty"`   // optional override (tests); default https://ec2.<region>.amazonaws.com/
 	IdleMinutes        int    `json:"idle_minutes"`         // stop after this long with nobody on it (default 15)
 	BootTimeoutMinutes int    `json:"boot_timeout_minutes"` // stop a running instance that never reaches in-game (default 15)
+	Unit               string `json:"unit,omitempty"`       // systemd unit (default instance_id if set)
+
+	cmdRunner func(name string, args ...string) ([]byte, error) `json:"-"`
+}
+
+func (od *OnDemand) runCmd(name string, args ...string) ([]byte, error) {
+	if od.cmdRunner != nil {
+		return od.cmdRunner(name, args...)
+	}
+	return exec.Command(name, args...).CombinedOutput()
 }
 
 type odState struct {
@@ -135,6 +146,31 @@ func signV4(c awsCreds, region, service, host, path string, params map[string]st
 var ec2Client = &http.Client{Timeout: 20 * time.Second}
 
 func (od *OnDemand) call(action string) ([]byte, error) {
+	if od.Provider == "systemd" || od.Provider == "local" {
+		unit := od.Unit
+		if unit == "" {
+			unit = od.InstanceID
+		}
+		if unit == "" {
+			return nil, errors.New("systemd on-demand requires unit or instance_id")
+		}
+		switch action {
+		case "StartInstances":
+			out, err := od.runCmd("sudo", "/bin/systemctl", "start", unit)
+			if err != nil {
+				return nil, fmt.Errorf("systemctl start %s: %v: %s", unit, err, strings.TrimSpace(string(out)))
+			}
+			return nil, nil
+		case "StopInstances":
+			out, err := od.runCmd("sudo", "/bin/systemctl", "stop", unit)
+			if err != nil {
+				return nil, fmt.Errorf("systemctl stop %s: %v: %s", unit, err, strings.TrimSpace(string(out)))
+			}
+			return nil, nil
+		default:
+			return nil, fmt.Errorf("unknown action %s", action)
+		}
+	}
 	c, err := loadAWSCreds(od.CredentialsFile)
 	if err != nil {
 		return nil, fmt.Errorf("credentials: %v", err)
@@ -179,6 +215,32 @@ func (od *OnDemand) call(action string) ([]byte, error) {
 }
 
 func (od *OnDemand) describe() (string, error) {
+	if od.Provider == "systemd" || od.Provider == "local" {
+		unit := od.Unit
+		if unit == "" {
+			unit = od.InstanceID
+		}
+		if unit == "" {
+			return "unknown", errors.New("systemd on-demand requires unit or instance_id")
+		}
+		out, err := od.runCmd("systemctl", "is-active", unit)
+		status := strings.TrimSpace(string(out))
+		switch status {
+		case "active":
+			return "running", nil
+		case "activating":
+			return "pending", nil
+		case "deactivating":
+			return "stopping", nil
+		case "inactive", "failed":
+			return "stopped", nil
+		default:
+			if err != nil && status == "" {
+				return "unknown", fmt.Errorf("systemctl is-active %s: %v", unit, err)
+			}
+			return "stopped", nil
+		}
+	}
 	body, err := od.call("DescribeInstances")
 	if err != nil {
 		return "unknown", err
@@ -229,10 +291,18 @@ func (p *Portal) startOnDemandLoops() {
 		if od.BootTimeoutMinutes <= 0 {
 			od.BootTimeoutMinutes = 15
 		}
-		if _, err := loadAWSCreds(od.CredentialsFile); err != nil {
-			log.Printf("on-demand %s: WARNING credentials unusable (%v) — wake/stop will fail", s.ID, err)
+		if od.Provider == "systemd" || od.Provider == "local" {
+			unit := od.Unit
+			if unit == "" {
+				unit = od.InstanceID
+			}
+			log.Printf("on-demand %s: systemd unit %s idle=%dm boot_timeout=%dm", s.ID, unit, od.IdleMinutes, od.BootTimeoutMinutes)
+		} else {
+			if _, err := loadAWSCreds(od.CredentialsFile); err != nil {
+				log.Printf("on-demand %s: WARNING credentials unusable (%v) — wake/stop will fail", s.ID, err)
+			}
+			log.Printf("on-demand %s: %s %s %s idle=%dm boot_timeout=%dm", s.ID, od.Provider, od.Region, od.InstanceID, od.IdleMinutes, od.BootTimeoutMinutes)
 		}
-		log.Printf("on-demand %s: %s %s %s idle=%dm boot_timeout=%dm", s.ID, od.Provider, od.Region, od.InstanceID, od.IdleMinutes, od.BootTimeoutMinutes)
 		go p.onDemandLoop(s.ID, od)
 	}
 }
