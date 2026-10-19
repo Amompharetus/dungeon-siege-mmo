@@ -51,6 +51,8 @@ struct Config {
     int nearbyOnly = 1;         // client: 1 = top-left panel shows only players in your area group (0.7.6)
     int portraitFix = 1;        // client: 1 = frame other players' portraits from the screen centre (0.7.6)
     int exitAfterGame = 1;      // client: close DSLOA.exe once the player has left the MMO game (0.6.1)
+    // [World] (1.5.2) - one shard only: the level a veteran world asks for, whatever its map says.
+    int veteranRequiredLevel = 0;   // 0 = leave every world exactly as the map set it
     // [JoinGuard] (0.6.0)
     std::string iniPath;        // the SiegeHost.ini that was loaded (the client re-reads Ticket= from it at every Connect)
     int jgEnabled = 1;          // server: refuse players without a valid launcher join ticket (needs Key + ServerId)
@@ -80,6 +82,7 @@ std::string JG_JipHeartbeatLines();
 void JipQueueInstall();                 // 0.8.6: ready-first joining (src/jipqueue.cpp)
 void JipQueueTick();
 std::string JipQueueHeartbeatLines();
+std::string WorldLevelHeartbeatLines();
 void PvpZoneInstall();                  // 1.5.6: zone-based PvP + dio_nothing (src/pvpzone.cpp)
 void PvpZoneTick();
 std::string PvpZoneHeartbeatLines();

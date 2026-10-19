@@ -60,6 +60,7 @@ void PanelFilterTick();
 void ChatHistoryTick();
 void LabMoveLocTick();
 void AreaScaleInstall();
+void WorldLevelInstall();
 void AreaScaleTick();
 void AreaScaleClientDiagInstall();
 void PartyPanelDiagTick();
@@ -150,6 +151,7 @@ static void LoadConfig() {
     g_cfg.playerName = IniString(j, "PlayerName", "Player", ini);
     g_cfg.joinRetries = GetPrivateProfileIntA(j, "Retries", 20, ini.c_str());
     g_cfg.exitAfterGame = GetPrivateProfileIntA(j, "ExitAfterGame", 1, ini.c_str());
+    g_cfg.veteranRequiredLevel = GetPrivateProfileIntA("World", "VeteranRequiredLevel", 0, ini.c_str());
     g_cfg.iniPath = ini;
     g_cfg.jgEnabled = GetPrivateProfileIntA("JoinGuard", "Enabled", 1, ini.c_str());
     g_cfg.jgKey = IniString("JoinGuard", "Key", "", ini);
@@ -680,6 +682,9 @@ static void Startup() {
     // 0.7.3: stop a player sitting in the character-select screen from freezing everyone else's world.
     // Both roles: the freeze is a per-machine branch, so the game server AND every player needs it.
     JG_InstallJipGuard();
+    // 1.5.2: both roles. The level a world demands is refused on the player's own machine as well as
+    // asked for by the host, and the key that drives this is absent everywhere except the one shard.
+    WorldLevelInstall();
     // 1.5.6: both roles. Zone-based PvP (Endless Dunes, Pit of Despair, Eastern Island) + dio_nothing.
     PvpZoneInstall();
     if (g_cfg.role == Role::Server) { AreaScaleInstall(); ShopStockInstall(); InvFixInstall(); QuestModeInstall(); JipQueueInstall(); }
