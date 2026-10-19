@@ -1,0 +1,21 @@
+{
+  "game_dir": "/path/to/dungeon_siege",
+  "game_exe": "DSLOA.exe",
+  "server_name": "Dungeon Siege Server",
+  "host_character": "ServerHost",
+  "map": "multiplayer_world",
+  "world": "regular",
+  "start_location": "elddim",
+  "pick_start_town": true,
+  "max_players": 30,
+  "game_port": 2350,
+  "no_dpnsvr": true,
+  "send_frequency": 30,
+  "allow_pausing": false,
+  "startup_seconds": 120,
+  "reset_when_empty_minutes": 5,
+  "shard_id": "na",
+  "shard_key": "0123456789abcdef0123456789abcdef0123456789abcdef",
+  "join_guard": true,
+  "veteran_required_level": 0
+}
