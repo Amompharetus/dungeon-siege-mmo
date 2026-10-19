@@ -2,12 +2,13 @@
 #include <windows.h>
 #include <string>
 
-#define SIEGEHOST_VERSION "1.5.6"
+#define SIEGEHOST_VERSION "1.5.9"
 
 enum class Role { None, Server, Client };
 
 struct Config {
     int enabled = 1;
+    int snapshots = 0;       // 0 = disabled (default); 1 = save debug screenshots on screen transitions
     Role role = Role::None;
     int maxPlayers = 0;      // 0 = vanilla; N (9..30) = raise human cap (host AND clients must match)
     int maxSlots = 9;        // Server slots incl. index 0 (auto = MaxPlayers+1)

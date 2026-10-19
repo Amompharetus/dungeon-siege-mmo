@@ -1,7 +1,8 @@
-// snapshot.cpp — captures in-game screenshots for headless host monitoring and diagnostics.
+// snapshot.cpp — asks the game itself to take a screenshot (same code path as the in-game PrintScreen key), so
+// problems can be diagnosed from logs + images without manual description of the screen.
 //
 // 0.4.1 used GDI PrintWindow/BitBlt: on real Windows the Direct3D (DDrawCompat) surface came out fully black
-// and the desktop fallback could capture other apps. The engine screenshot reads the game's own
+//  and the desktop fallback could capture other apps. The engine screenshot reads the game's own
 // back buffer, so it shows only the game.
 //
 // Files land in "<user_path>\Screen Shots\Dungeon Siege Screen - NNNN.bmp"; the log line records which label
@@ -16,6 +17,7 @@ std::set<std::string> g_seen;
 }  // namespace
 
 void Snapshot(const char* label) {
+    if (!Cfg().snapshots) return;
     if (g_count >= 40 || !g_seen.insert(label).second) return;  // one shot per distinct screen, max 40 (~1.4 MB each)
     void* app = eng::RapiAppModule_Singleton();
     if (!app) { Log("Snapshot skipped (no RapiAppModule): %s", label); return; }
