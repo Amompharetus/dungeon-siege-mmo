@@ -16,6 +16,9 @@
 #include "engine.h"
 #include <cstdint>
 #include <cstring>
+#include <string>
+#include <cwctype>
+#include <algorithm>
 
 namespace {
 const DWORD kOffsetLoadVa = 0x006E619B;
@@ -191,5 +194,193 @@ void ChatHistoryTick() {
     } else {
         if (g_histStarted && box == g_histBox && b[0x1F8]) EndBrowsing(box);  // the game's own end of history mode
         g_histStarted = false;
+    }
+}
+
+// ----------------------------------------------------------------------------------------------
+// 1.5.10: In-game chat edit controls (Ctrl+Backspace: delete word; Ctrl+A: select all)
+// ----------------------------------------------------------------------------------------------
+namespace {
+static bool g_eatNextChar = false;
+static WPARAM g_eatCharVal = 0;
+
+static const wchar_t* GetEditBoxWide(void* box, int& outLen) {
+    outLen = 0;
+    if (!box) return L"";
+    const wchar_t* p = *(const wchar_t**)((const char*)box + 0x1A8);
+    if (!p) return L"";
+    int len = *(const int*)((const char*)p - 10);
+    if (len < 0) len = 0;
+    outLen = len;
+    return p;
+}
+
+static void UpdateEditBoxText(void* box, const std::wstring& ws, int newCaret) {
+    std::string s;
+    if (!ws.empty()) {
+        int n = WideCharToMultiByte(CP_ACP, 0, ws.c_str(), (int)ws.length(), nullptr, 0, nullptr, nullptr);
+        if (n > 0) {
+            s.resize(n);
+            WideCharToMultiByte(CP_ACP, 0, ws.c_str(), (int)ws.length(), &s[0], n, nullptr, nullptr);
+        }
+    }
+    eng::SetEditText("console_edit", "game_console_mp", s.c_str());
+    eng::UIEditBox_SetPromptIndex(box, newCaret);
+    eng::UIEditBox_SetTextPosition(box, newCaret, newCaret);
+}
+}  // namespace
+
+void ChatKeyFilter(LPMSG msg) {
+    if (!msg) return;
+    if (!eng::WindowVisible("console_edit", "game_console_mp")) return;
+    void* box = eng::FindWindow("console_edit", "game_console_mp");
+    if (!box) return;
+
+    int selStart = *(int*)((char*)box + 0x21C);
+    int selEnd = *(int*)((char*)box + 0x220);
+
+    if (msg->message == WM_KEYDOWN) {
+        bool ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+
+        if (msg->wParam == VK_BACK) {
+            if (ctrl) {
+                // Ctrl + Backspace: delete previous word (or active selection)
+                int len = 0;
+                const wchar_t* p = GetEditBoxWide(box, len);
+                std::wstring ws(p, len);
+
+                if (selStart != selEnd) {
+                    if (selStart > selEnd) std::swap(selStart, selEnd);
+                    if (selStart < 0) selStart = 0;
+                    if (selEnd > (int)ws.length()) selEnd = (int)ws.length();
+                    ws.erase(selStart, selEnd - selStart);
+                    UpdateEditBoxText(box, ws, selStart);
+                } else {
+                    int caret = eng::UIEditBox_GetPromptIndex(box);
+                    if (caret > (int)ws.length()) caret = (int)ws.length();
+                    if (caret > 0) {
+                        int i = caret;
+                        while (i > 0 && iswspace(ws[i - 1])) i--;
+                        if (i > 0) {
+                            bool isAlpha = iswalnum(ws[i - 1]) || ws[i - 1] == L'_';
+                            if (isAlpha) {
+                                while (i > 0 && (iswalnum(ws[i - 1]) || ws[i - 1] == L'_')) i--;
+                            } else {
+                                while (i > 0 && !iswalnum(ws[i - 1]) && ws[i - 1] != L'_' && !iswspace(ws[i - 1])) i--;
+                            }
+                        }
+                        ws.erase(i, caret - i);
+                        UpdateEditBoxText(box, ws, i);
+                    }
+                }
+                msg->message = WM_NULL;
+                msg->wParam = 0;
+                msg->lParam = 0;
+                g_eatNextChar = true;
+                g_eatCharVal = 0x7F;  // Ctrl+Backspace emits 0x7F in Win32
+                return;
+            } else if (selStart != selEnd) {
+                // Backspace with active selection: delete selection
+                if (selStart > selEnd) std::swap(selStart, selEnd);
+                int len = 0;
+                const wchar_t* p = GetEditBoxWide(box, len);
+                std::wstring ws(p, len);
+                if (selStart < 0) selStart = 0;
+                if (selEnd > (int)ws.length()) selEnd = (int)ws.length();
+                ws.erase(selStart, selEnd - selStart);
+                UpdateEditBoxText(box, ws, selStart);
+                msg->message = WM_NULL;
+                msg->wParam = 0;
+                msg->lParam = 0;
+                g_eatNextChar = true;
+                g_eatCharVal = 0x08;  // Backspace char
+                return;
+            }
+        } else if (msg->wParam == VK_DELETE) {
+            if (selStart != selEnd) {
+                // Delete with active selection: delete selection
+                if (selStart > selEnd) std::swap(selStart, selEnd);
+                int len = 0;
+                const wchar_t* p = GetEditBoxWide(box, len);
+                std::wstring ws(p, len);
+                if (selStart < 0) selStart = 0;
+                if (selEnd > (int)ws.length()) selEnd = (int)ws.length();
+                ws.erase(selStart, selEnd - selStart);
+                UpdateEditBoxText(box, ws, selStart);
+                msg->message = WM_NULL;
+                msg->wParam = 0;
+                msg->lParam = 0;
+                return;
+            } else if (ctrl) {
+                // Ctrl + Delete: delete next word
+                int len = 0;
+                const wchar_t* p = GetEditBoxWide(box, len);
+                std::wstring ws(p, len);
+                int caret = eng::UIEditBox_GetPromptIndex(box);
+                if (caret < 0) caret = 0;
+                if (caret < (int)ws.length()) {
+                    int i = caret;
+                    while (i < (int)ws.length() && iswspace(ws[i])) i++;
+                    if (i < (int)ws.length()) {
+                        bool isAlpha = iswalnum(ws[i]) || ws[i] == L'_';
+                        if (isAlpha) {
+                            while (i < (int)ws.length() && (iswalnum(ws[i]) || ws[i] == L'_')) i++;
+                        } else {
+                            while (i < (int)ws.length() && !iswalnum(ws[i]) && ws[i] != L'_' && !iswspace(ws[i])) i++;
+                        }
+                    }
+                    ws.erase(caret, i - caret);
+                    UpdateEditBoxText(box, ws, caret);
+                }
+                msg->message = WM_NULL;
+                msg->wParam = 0;
+                msg->lParam = 0;
+                return;
+            }
+        } else if (ctrl && (msg->wParam == 'A' || msg->wParam == 'a')) {
+            // Ctrl + A: select all text
+            int len = 0;
+            GetEditBoxWide(box, len);
+            eng::UIEditBox_SetTextPosition(box, 0, len);
+            eng::UIEditBox_SetPromptIndex(box, len);
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
+            g_eatNextChar = true;
+            g_eatCharVal = 0x01;  // Ctrl+A emits SOH (0x01) in Win32
+            return;
+        }
+    } else if (msg->message == WM_CHAR) {
+        if (g_eatNextChar && (msg->wParam == g_eatCharVal || msg->wParam == 0x7F || msg->wParam == 0x01 || msg->wParam == 0x08)) {
+            g_eatNextChar = false;
+            g_eatCharVal = 0;
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
+            return;
+        }
+        // Always block raw unprintable ASCII control codes that leak into the chat edit box
+        if (msg->wParam == 0x7F || msg->wParam == 0x01) {
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
+            return;
+        }
+        // If typing a printable character while text is selected, replace selection
+        if (selStart != selEnd && msg->wParam >= 32) {
+            if (selStart > selEnd) std::swap(selStart, selEnd);
+            int len = 0;
+            const wchar_t* p = GetEditBoxWide(box, len);
+            std::wstring ws(p, len);
+            if (selStart < 0) selStart = 0;
+            if (selEnd > (int)ws.length()) selEnd = (int)ws.length();
+            wchar_t ch = (wchar_t)msg->wParam;
+            ws.replace(selStart, selEnd - selStart, 1, ch);
+            UpdateEditBoxText(box, ws, selStart + 1);
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
+            return;
+        }
     }
 }
