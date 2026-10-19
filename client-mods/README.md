@@ -11,6 +11,20 @@ A mod is distributed by placing its files in the portal's `updates/` folder. The
 manifest from that folder's contents, and the launcher downloads anything whose hash does not match
 on the next run. No launcher or portal code change is required to add one.
 
+## Active Mods
+
+The following mods are currently delivered to players via the update manifest:
+
+| Mod | Distributed File | Target Location | Description |
+|---|---|---|---|
+| **Ground Tooltip** | `groundtooltip_loa.dsdll`, `groundtooltip.ini` | Root (`DSLOA.exe` folder) | Shows item tooltips when hovering over ground item labels. |
+| **BuffedBuffs** | `BuffedBuffsMod.dsres` | `DSLOA/` | Extends buff durations to 30 minutes and improves orb spell replacement. |
+| **Unlocked Loot** | `Unlocked Loot.dsres` | `DSLOA/` | Restores 80+ cut and bugged weapons and armor pieces to monster drop tables. |
+| **Difficulty Patch** | `DS1_Difficulty_Patch.dsres` | `DSLOA/` | Adjusts multiplayer encounter scaling and difficulty progression. |
+| **UberUI** | `UberUI_LoA_v0.02.dsres` | `DSLOA/` | Quality-of-life interface tweaks and layout improvements for Legends of Aranna. |
+| **Fairy Companion Fix** | `fairyfix.dsres` | `Resources/` | Fixes pathing and state issues for fairy companion summons. |
+| **SeeFar ResolutionFix** | `sf_ResolutionFix.dsres` | `Resources/` | Corrects paperdoll positions and interface scaling at high modern resolutions. |
+
 ## Ground Tooltip 1.1.2
 
 Shows the normal item tooltip when the mouse is over an item label on the ground.
@@ -41,7 +55,7 @@ Extends Nature Magic and Combat Magic buff durations and adjusts orb spell repla
 | | |
 |---|---|
 | Files | `BuffedBuffsMod.dsres` (distributed binary), sources in `buffedbuffs/` |
-| Installed to | `DSLOA/` or `Resources/` |
+| Installed to | `DSLOA/` |
 | Requires | Legends of Aranna 1.50 |
 | Scope | Spell duration rebalance and orb replacement logic |
 
@@ -52,4 +66,3 @@ The mod includes:
 - `spl_spell.gas` & `dsx_spl_spell.gas`: Spell template definitions updating duration parameters across base game and expansion buff spells.
 
 The compiled `.dsres` archive is distributed to players via the launcher update manifest. Source scripts and templates are preserved in `buffedbuffs/` for review and maintenance.
-
