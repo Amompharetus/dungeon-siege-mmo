@@ -10,7 +10,7 @@ Dedicated server infrastructure and client launcher for Dungeon Siege: Legends o
 - `server/SiegeServer/`: Watchdog daemon (Go). Keeps `DSLOA.exe` and `SiegePortal` running, auto-restarts on crash/hang, and resets world when empty.
 - `server/wine-directplay/`: Linux Wine DirectPlay setup files and test tools.
 - `website/`: Status dashboard and web portal (Go).
-- `client-mods/`: Configuration for the third-party client mods distributed through the launcher manifest.
+- `mods/`: Sources, configurations, and documentation for client and server mods distributed through the launcher manifest.
 
 ## Build Instructions
 
