@@ -143,6 +143,8 @@ static void LoadConfig() {
     g_cfg.shopBackpackTemplate = IniString(st, "BackpackTemplate", "dsx_backpack_empty", ini);
     g_cfg.invFix = GetPrivateProfileIntA(st, "BackpackPickup", 1, ini.c_str());
     g_cfg.jipQueue = GetPrivateProfileIntA(a, "ReadyFirst", 1, ini.c_str());
+    g_cfg.pvpLocations = IniString(a, "PvpLocations", "402,409,901", ini);
+    g_cfg.dropInvNothing = GetPrivateProfileIntA(a, "DropInvNothing", 1, ini.c_str());
     const char* j = "AutoJoin";
     g_cfg.joinAddress = IniString(j, "Address", "", ini);
     g_cfg.playerName = IniString(j, "PlayerName", "Player", ini);
@@ -302,7 +304,7 @@ static HRESULT WINAPI HookedHandler(PVOID pvCtx, DWORD id, PVOID msg) {
     HRESULT hr = ctx->role[0] == 's' ? JG_ServerMessage(id, msg, ctx->original, ctx->userCtx)
                                      : ctx->original(ctx->userCtx, id, msg);
     if (id == 0xFFFF0005 && ctx->role[0] == 'c') JG_ClientConnectComplete(msg);
-    if (g_cfg.logDirectPlay && (id == 0xFFFF000A || id == 0xFFFF000B)) {  // Join diagnostics: enum query/response details
+    if (g_cfg.logDirectPlay && (id == 0xFFFF000A || id == 0xFFFF000B)) {  // Diagnostics: enum query/response details
         static LONG nQ = 0, nR = 0;
         LONG n = InterlockedIncrement(id == 0xFFFF000A ? &nQ : &nR);
         if (n <= 3 || n % 20 == 0) {
@@ -399,7 +401,7 @@ static HRESULT WINAPI HookHost(void* self, const DpnAppDesc* desc, void** dev, D
         Log("DP8[server] Host device[%lu] = %s (hostFlags=0x%lX)", i, u, flags);
     }
     if (!g_cfg.noDpnsvr && g_cfg.gamePort > 0 && dev) {
-        // Pin the host port. dpnsvr (6073) forwards a client's search to the host, but the host answers from its
+        // pin the host port. dpnsvr (6073) forwards a client's search to the host, but the host answers from its
         // own port; home NAT routers drop that answer because the client only sent to :6073. Clients search this fixed
         // port directly ([AutoJoin] Port) so query and answer use the same address pair.
         for (DWORD i = 0; i < cDev; ++i) {
@@ -584,7 +586,7 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
     if (GetCurrentThreadId() == g_mainThread) {
         NR_PumpTick();
         JG_JipTick();  // both roles: the join freeze is a per-machine thing (src/jipguard.h)
-        if (g_cfg.role == Role::Server) { AutoHostTick(); LabMoveLocTick(); AreaScaleTick(); ShopStockTick(); InvFixTick(); QuestModeTick(); JipQueueTick(); }
+        if (g_cfg.role == Role::Server) { AutoHostTick(); LabMoveLocTick(); AreaScaleTick(); ShopStockTick(); InvFixTick(); QuestModeTick(); JipQueueTick(); PvpZoneTick(); }
         else if (g_cfg.role == Role::Client) { AutoJoinTick(); InvFixTick(); QuestModeTick(); ShopStockClientTick(); ChatFixTick(); ChatHistoryTick(); PartyPanelTick(); PanelFilterTick(); ChatDiagTick(); PartyPanelDiagTick(); }
     }
     return g_origPeek(msg, wnd, fmin, fmax, remove);
@@ -678,6 +680,8 @@ static void Startup() {
     // 0.7.3: stop a player sitting in the character-select screen from freezing everyone else's world.
     // Both roles: the freeze is a per-machine branch, so the game server AND every player needs it.
     JG_InstallJipGuard();
+    // 1.5.6: both roles. Zone-based PvP (Endless Dunes, Pit of Despair, Eastern Island) + dio_nothing.
+    PvpZoneInstall();
     if (g_cfg.role == Role::Server) { AreaScaleInstall(); ShopStockInstall(); InvFixInstall(); QuestModeInstall(); JipQueueInstall(); }
     else { InvFixInstall(); QuestModeInstall(); ShopStockClientInstall(); }   // 0.9.0: the backpack cap has to come off on a player's own machine too
     if (g_cfg.role == Role::Client) { ChatFixInstall(); PartyPanelInstall(); PortraitFixInstall(); if (g_cfg.showOtherPlayers) PanelHostFilterInstall(); PortraitDiagInstall(); ChatDiagInstall(); AreaScaleClientDiagInstall(); }

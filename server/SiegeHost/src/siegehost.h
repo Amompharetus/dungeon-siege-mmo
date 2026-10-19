@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <string>
 
-#define SIEGEHOST_VERSION "1.5.0"
+#define SIEGEHOST_VERSION "1.5.6"
 
 enum class Role { None, Server, Client };
 
@@ -38,6 +38,8 @@ struct Config {
     int jipQueue = 1;                   // server: 1 = whoever ticks ready joins without waiting for the others (0.8.6)
     int invFix = 1;                     // server: 1 = an item that will not fit goes to the player's backpack (0.8.4)
     int allowStartSelect = 0;   // 0.7.0: 1 = let each player pick their start town in staging (StartLocation is then only the default)
+    std::string pvpLocations = "402,409,901";  // 1.5.6: world_locations.gas IDs with PvP enabled (Endless Dunes=402, Pit of Despair=409, Eastern Island=901)
+    int dropInvNothing = 1;                    // 1.5.6: 1 = dio_nothing (keep all equipped, inventory, and gold on death)
     // [AutoJoin] (Role=client)
     std::string joinAddress;    // IPv4 of the game server (the edit box only accepts digits and dots)
     std::string playerName = "Player";
@@ -78,6 +80,9 @@ std::string JG_JipHeartbeatLines();
 void JipQueueInstall();                 // 0.8.6: ready-first joining (src/jipqueue.cpp)
 void JipQueueTick();
 std::string JipQueueHeartbeatLines();
+void PvpZoneInstall();                  // 1.5.6: zone-based PvP + dio_nothing (src/pvpzone.cpp)
+void PvpZoneTick();
+std::string PvpZoneHeartbeatLines();
 void InvFixInstall();                   // 0.8.4: pickups that do not fit go to the backpack (src/invfix.cpp)
 void InvFixTick();
 std::string InvFixHeartbeatLines();

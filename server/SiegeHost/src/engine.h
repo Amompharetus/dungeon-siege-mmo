@@ -97,6 +97,7 @@ static const auto TattooGame_Singleton = (void* (__cdecl*)())0x004856D3;
 static const auto TattooGame_RequestPause = (void (__thiscall*)(void*, bool))0x00475AF8;
 static const auto Server_RCSetAllowJIP = (void (__thiscall*)(void*, bool))0x00570465;
 static const auto Server_RCSetMaxPlayers = (void* (__thiscall*)(void*, unsigned))0x0056FD9F;
+static const auto Server_RCSetDropInvOption = (void (__thiscall*)(void*, int))0x005707A8;
 // Player* Server::GetLocalHumanPlayer()
 static const auto Server_GetLocalHumanPlayer = (void* (__thiscall*)(void*))0x0056EBF8;
 
