@@ -27,10 +27,10 @@ import (
 	"time"
 )
 
-const version = "0.7.1"
+const version = "0.7.3"
 
 // defaultSendFrequency is the engine multiplayer send rate we ship. The engine's own default is 5 Hz
-// (200 ms between network flushes, measured in lab ); 30 Hz is the lab-verified value.
+// (200 ms between network flushes, measured in lab testing); 30 Hz is the lab-verified value.
 // An absent "send_frequency" key means "use this", so a server whose config update.sh preserved
 // still picks the fix up. An explicit 0 keeps the engine default.
 const defaultSendFrequency = 30
@@ -85,6 +85,18 @@ type Config struct {
 
 	// Join guard (0.6.0): only players with a launcher join ticket may join (needs shard_id + shard_key). Default on.
 	JoinGuard *bool `json:"join_guard,omitempty"`
+
+	// 0.7.2: the level a veteran world asks for on this shard, whatever the map says. 0 = leave it alone.
+	// SiegeHost-server.ini is written from scratch before every game start, so a hand-edited copy does not
+	// survive one restart; a shard that needs this key has to say so here.
+	VeteranRequiredLevel int `json:"veteran_required_level,omitempty"`
+
+	// 0.7.3: host without dpnsvr.exe. DirectPlay's discovery helper wants UDP 6073 and there is only one of
+	// that port on a machine, so the first game server to start takes it and every later one fails its
+	// Host() with DPNERR_DPNSVRNOTAVAILABLE (0x80158185) after a 13 second timeout. A box running more than
+	// one shard needs this on. The host then listens on game_port itself, which is where the launcher sends
+	// players anyway, so nothing is lost: dpnsvr only ever served the engine's own LAN browser.
+	NoDpnsvr bool `json:"no_dpnsvr,omitempty"`
 }
 
 var logger *log.Logger
@@ -192,11 +204,20 @@ func gameCmd(cfg Config, base string) *exec.Cmd {
 		}
 		return v
 	}
-	content := fmt.Sprintf("[SiegeHost]\r\nEnabled=1\r\nRole=server\r\nMaxPlayers=%d\r\nLogDirectPlay=1\r\nGamePort=%d\r\n[AutoHost]\r\nGameName=%s\r\nHostCharacter=%s\r\nStuckTimeoutSec=%d\r\nAllowPausing=%d\r\nMap=%s\r\nWorld=%s\r\nStartLocation=%s\r\n",
+	// With NoDpnsvr the engine never starts dpnsvr.exe and listens on HostPort itself, so HostPort has to be
+	// this shard's own game port rather than the 6073 it defaults to, which is the port being fought over.
+	dpnsvr := ""
+	if cfg.NoDpnsvr {
+		dpnsvr = fmt.Sprintf("NoDpnsvr=1\r\nHostPort=%d\r\n", gamePort)
+	}
+	content := fmt.Sprintf("[SiegeHost]\r\nEnabled=1\r\nRole=server\r\nMaxPlayers=%d\r\nLogDirectPlay=1\r\nGamePort=%d\r\n"+dpnsvr+"[AutoHost]\r\nGameName=%s\r\nHostCharacter=%s\r\nStuckTimeoutSec=%d\r\nAllowPausing=%d\r\nMap=%s\r\nWorld=%s\r\nStartLocation=%s\r\n",
 		clamp(cfg.MaxPlayers, 1, 30), gamePort, cfg.ServerName, cfg.HostCharacter, cfg.StartupSeconds, b2i(cfg.AllowPausing), opt(cfg.Map), opt(cfg.World), opt(cfg.StartLocation))
 	content += fmt.Sprintf("AllowStartLocationSelection=%d\r\n", b2i(pickStartTown(cfg.PickStartTown)))
 	if hz := sendHz(cfg.SendFrequency); hz > 0 {
 		content += fmt.Sprintf("[Net]\r\nSendFrequency=%d\r\n", hz)
+	}
+	if cfg.VeteranRequiredLevel > 0 {
+		content += fmt.Sprintf("[World]\r\nVeteranRequiredLevel=%d\r\n", clamp(cfg.VeteranRequiredLevel, 1, 200))
 	}
 	if cfg.ShardKey != "" && cfg.ShardID != "" && (cfg.JoinGuard == nil || *cfg.JoinGuard) {
 		m := hmac.New(sha256.New, []byte(cfg.ShardKey))
