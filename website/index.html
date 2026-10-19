@@ -182,25 +182,25 @@
 
         @media (max-width: 800px) {
             .container {
-                padding: 20px 12px 40px;
+                padding: 18px 12px 40px;
             }
             .top-nav {
                 position: static;
                 flex-direction: row;
                 flex-wrap: wrap;
                 justify-content: center;
-                gap: 8px;
+                gap: 6px;
                 margin: 0 auto 16px;
                 width: 100%;
                 max-width: 100%;
-                padding: 0 4px;
+                padding: 0 54px 0 10px;
                 box-sizing: border-box;
             }
             .nav-btn {
                 width: auto;
-                padding: 7px 10px;
-                font-size: 11px;
-                gap: 5px;
+                padding: 6.5px 9px;
+                font-size: 10.5px;
+                gap: 4px;
             }
             .nav-btn:hover {
                 transform: none;
@@ -1538,11 +1538,40 @@
                 background-size: 14px 14px;
             }
 
+            .wiki-cat-lane-primary,
+            .wiki-cat-lane-secondary {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 6px;
+                width: 100%;
+            }
+
             .wiki-cat-lane-primary .wiki-cat-btn,
             .wiki-cat-lane-secondary .wiki-cat-btn {
-                flex: 1 1 calc(50% - 7px);
-                padding: 7px 10px;
-                font-size: 11.5px;
+                flex: none;
+                width: 100%;
+                padding: 6.5px 8px;
+                font-size: 11px;
+                gap: 5px;
+                box-sizing: border-box;
+                justify-content: space-between;
+            }
+
+            .wiki-cat-lane-primary .wiki-cat-btn span:first-of-type,
+            .wiki-cat-lane-secondary .wiki-cat-btn span:first-of-type {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .wiki-cat-icon {
+                width: 15px;
+                height: 15px;
+            }
+
+            .wiki-cat-count {
+                padding: 1px 5px;
+                font-size: 10.5px;
             }
 
             .wiki-tag-filter-bar {
@@ -1556,6 +1585,10 @@
             .wiki-pill {
                 padding: 4px 8px;
                 font-size: 11px;
+            }
+
+            .wiki-pill-divider {
+                display: none;
             }
 
             .wiki-grid-container {
@@ -2653,10 +2686,19 @@
             filter: drop-shadow(0 0 6px rgba(86, 211, 100, 0.5));
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 800px) {
             .top-admin-container {
-                top: 16px;
-                right: 16px;
+                position: absolute;
+                top: 12px;
+                right: 12px;
+            }
+            .admin-seal-btn {
+                width: 42px;
+                height: 42px;
+            }
+            .admin-seal-btn .admin-seal-svg {
+                width: 22px;
+                height: 22px;
             }
         }
 
