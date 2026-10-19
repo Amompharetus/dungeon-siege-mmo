@@ -33,3 +33,23 @@ this stack does not use.
 
 Verified alongside SiegeHost 1.3.0: the mod loads, a client joins and plays normally, and no
 SiegeHost feature is affected.
+
+## BuffedBuffs (Spell Duration Rebalance)
+
+Extends Nature Magic and Combat Magic buff durations and adjusts orb spell replacement behavior.
+
+| | |
+|---|---|
+| Files | `BuffedBuffsMod.dsres` (distributed binary), sources in `buffedbuffs/` |
+| Installed to | `DSLOA/` or `Resources/` |
+| Requires | Legends of Aranna 1.50 |
+| Scope | Spell duration rebalance and orb replacement logic |
+
+Replaces default short spell buff durations (typically 30–60 seconds) with extended durations to reduce repetitive buff recasting during exploration and multiplayer sessions.
+
+The mod includes:
+- `spell_orb.skrit`: Component script ensuring newly cast orb spells replace active ones.
+- `spl_spell.gas` & `dsx_spl_spell.gas`: Spell template definitions updating duration parameters across base game and expansion buff spells.
+
+The compiled `.dsres` archive is distributed to players via the launcher update manifest. Source scripts and templates are preserved in `buffedbuffs/` for review and maintenance.
+
