@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-const version = "0.9.2"
+const version = "0.9.6"
 
 type Settings struct {
 	PortalURL   string `json:"portal_url"` // e.g. http://my-server.example.com:8440
@@ -100,8 +100,10 @@ func settingsPath() string { return filepath.Join(gameDir, "launcher.json") }
 // that a player whose settings file is damaged is not stranded at a dead end with nobody to ask.
 const defaultPortalURL = "http://72.60.164.124:8440"
 
-// If launcher.json is corrupted or filled with zeros (e.g. after a hard crash or power cut),
-// automatically repair the settings file with defaults and continue launching.
+// 0.8.7. launcher.json turned into 330 bytes of zeros after the game was force-closed, and
+// the launcher answered with "launcher.json is invalid" and a "send that file to the server admin"
+// that no ordinary player can act on. A launcher that can be bricked by its own settings file is not
+// shippable: anything wrong with that file is now repaired here and the launch continues.
 //
 // A file of NUL bytes is what Windows leaves behind when a file is extended and the data never
 // reaches the disk, which a hard kill or a power cut during a save will do. saveSettings below no
@@ -177,7 +179,9 @@ func recoverSettings(bad []byte) error {
 	return nil
 }
 
-// Avoid truncating the existing file in place to prevent file corruption on sudden exit.
+// saveSettings writes through a temporary file in the same folder and renames it into place, so a
+// crash, a kill or a power cut can never leave a half-written or zero-filled launcher.json behind.
+// The old behaviour truncated the real file first, which could leave the file empty.
 func saveSettings() {
 	b, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
@@ -237,6 +241,9 @@ func run() error {
 			OnDemand    bool              `json:"on_demand"`
 			Instance    string            `json:"instance_state"`
 			SendFreq    int               `json:"send_frequency"`
+			NeedCode    bool              `json:"join_code_required"` // 0.9.3: ask for a code before starting the session
+			VetLevel    int               `json:"veteran_level"`      // 0.9.3: the level a veteran world asks for on this shard
+			HostChar    string            `json:"host_character"`     // 0.9.4: this shard's idle host character, so it can be left out of the party panel
 		} `json:"servers"`
 	}
 	if err := getJSON("/api/status", "", &status); err != nil {
@@ -244,6 +251,9 @@ func run() error {
 	}
 	onDemand, onDemandOnline := false, false
 	sendFreq := 0
+	needCode := false
+	veteranLevel := 0
+	hostChar := ""
 	if len(status.Servers) > 0 {
 		pick := -1
 		want := serverArg
@@ -306,6 +316,7 @@ func run() error {
 		}
 		sv := status.Servers[pick]
 		sendFreq = sv.SendFreq
+		needCode, veteranLevel, hostChar = sv.NeedCode, sv.VetLevel, sv.HostChar
 		onDemand, onDemandOnline = sv.OnDemand, sv.Online
 		settings.ServerID = sv.ID
 		saveSettings()
@@ -353,7 +364,29 @@ func run() error {
 		SaveRev int    `json:"save_rev"`
 		Ticket  string `json:"ticket"` // 0.6.0 join ticket: the game server only lets in players who have one
 	}
-	if err := postJSON("/api/session/start", settings.Token, map[string]any{"Machine": host, "Server": settings.ServerID}, &sess); err != nil {
+	// 0.9.3: some shards are not open to everyone and ask for a code first. A wrong code costs nothing,
+	// because the portal refuses before it touches the lease, so it is worth retrying rather than making
+	// the player start the launcher again.
+	joinCode := ""
+	for attempt := 0; ; attempt++ {
+		if needCode {
+			fmt.Printf("Join code for %s: ", status.ServerName)
+			line, _ := stdin.ReadString('\n')
+			joinCode = strings.TrimSpace(line)
+			if joinCode == "" {
+				return fmt.Errorf("%s needs a join code", status.ServerName)
+			}
+		}
+		err := postJSON("/api/session/start", settings.Token,
+			map[string]any{"Machine": host, "Server": settings.ServerID, "Code": joinCode}, &sess)
+		if err == nil {
+			break
+		}
+		var ae *apiError
+		if needCode && errors.As(err, &ae) && ae.Code == 403 && attempt < 2 {
+			say("%s", ae.Msg)
+			continue
+		}
 		return err
 	}
 	_ = os.MkdirAll(filepath.Join(gameDir, "MMOProfile", settings.Account), 0o755) // DSLOA needs user_path to exist
@@ -361,7 +394,8 @@ func run() error {
 	if strings.Contains(profile, " ") {
 		return fmt.Errorf("could not find a profile folder without spaces (the game can't use it): %s", profile)
 	}
-	if err := downloadSave(profile, sess.SaveRev); err != nil {
+	lastServerRev = sess.SaveRev
+	if err := syncProfile(profile, sess.Session, sess.SaveRev); err != nil {
 		endSession(sess.Session)
 		return err
 	}
@@ -377,7 +411,7 @@ func run() error {
 		endSession(sess.Session)
 		return fmt.Errorf("cannot resolve game address %q: %v", status.GameAddress, err)
 	}
-	// Search the host's fixed port directly; a reply routed via dpnsvr (6073) comes from another port and home NATs drop it.
+	// search the host's fixed port directly; a reply routed via dpnsvr (6073) comes from another port and home NATs drop it.
 	joinPort := status.GamePort
 	if joinPort == 0 {
 		joinPort = 2350
@@ -389,6 +423,18 @@ func run() error {
 	// 0.7.0: the server decides the engine multiplayer send rate; host and client must match.
 	if sendFreq > 0 {
 		iniBase += fmt.Sprintf("[Net]\r\nSendFrequency=%d\r\n", clamp(sendFreq, 1, 60))
+	}
+	// 0.9.3: the level a veteran world asks for is decided by the shard, not the map, and the check that
+	// refuses a character runs on this PC, so SiegeHost here needs the same number the shard uses.
+	if veteranLevel > 0 {
+		iniBase += fmt.Sprintf("[World]\r\nVeteranRequiredLevel=%d\r\n", clamp(veteranLevel, 1, 200))
+	}
+	// 0.9.4: a shard's idle host character is kept out of the party panel by name, and that filter runs
+	// here rather than on the server, so this PC has to be told which name. Without it SiegeHost falls
+	// back to "ServerHost" and any shard hosting under another name shows its host to everyone.
+	// AutoHost itself never arms on a client, so the section is only read, never acted on.
+	if hostChar != "" && !strings.ContainsAny(hostChar, "\r\n") {
+		iniBase += fmt.Sprintf("[AutoHost]\r\nHostCharacter=%s\r\n", hostChar)
 	}
 	writeIni := func(ticket string) error {
 		return os.WriteFile(filepath.Join(gameDir, "SiegeHost.ini"), []byte(iniBase+"[JoinGuard]\r\nTicket="+ticket+"\r\n"), 0o644)
@@ -410,7 +456,7 @@ func run() error {
 	// 6. Launch
 	dargs, dw, dh := displayArgs()
 	if dw > 0 && dh > 0 {
-		syncIniResolution(profile, dw, dh) // The ini and the command line must agree
+		syncIniResolution(profile, dw, dh) // the ini and the command line must agree
 	}
 	args := append([]string{"nointro=true", "zonematch=true", "multi=true", "user_path=" + profile}, dargs...)
 	if settings.ExtraArgs != "" {
@@ -492,8 +538,16 @@ func run() error {
 			}
 			endSession(sess.Session)
 			if upErr != nil {
+				// The next run must not download over this character. The marker is what stops it.
+				savePending(settings.Account, lastServerRev, upErr.Error())
+				say("")
+				say("Your character could NOT be saved online, so it is being kept on this PC.")
+				say("Start the launcher again when you can and it will be uploaded before anything else.")
+				say("Until then, do not delete anything in MMOProfile.")
+				say("")
 				return fmt.Errorf("your save could NOT be uploaded (it is still safe on this PC in %s): %v", profile, upErr)
 			}
+			clearPending()
 			say("All saved online. See you next time!")
 			time.Sleep(3 * time.Second)
 			return nil
@@ -509,7 +563,7 @@ func windowMode() bool { return false }
 
 // gameDecides (0.7.5): pass no display arguments at all and let Dungeon Siege use whatever is in
 // its own DungeonSiege.ini — i.e. start exactly as it does when the player launches it themselves.
-// The escape hatch for machines where our forced display mode does not work .
+// The escape hatch for machines where our forced display mode does not work.
 // 0.8.10: the "let the game choose" option is gone too. 0.8.9 had already stopped it producing a
 // window, but a second display option earning its keep on a server where full screen is the only
 // supported mode was never a strong case. The resolution is the one thing still worth changing, and
@@ -526,7 +580,7 @@ func gameDecides() bool { return false }
 // machine where the working setup needs something specific (16-bit, a particular driver, a wrapper
 // like dgVoodoo or DDrawCompat) that guess fails and the player gets "D3D Initialization Failure:
 // Dungeon Siege was unable to properly create a 3D graphics device" — while the same game started
-// outside the launcher, on their normal profile, runs fine. 
+// outside the launcher, on their normal profile, runs fine. Profile loading verification.
 //
 // Only the keys above the first [section] are copied: those are the device settings. The
 // [multiplayer] block is deliberately left alone, because the source file may point at matchmaking
@@ -568,7 +622,7 @@ func seedDisplayConfig(profile string) {
 	logf("display: no existing DungeonSiege.ini found to seed from; the game will choose its own device")
 }
 
-// Keys deliberately NOT seeded from another profile (0.7.5): the launcher decides the
+// Keys deliberately NOT seeded from another profile (0.7.5, ): the launcher decides the
 // resolution and passes it on DSLOA.exe's command line, so a width/height copied out of some other
 // profile can only ever disagree with what we are about to pass. When it does, the game renders at
 // the ini's size and presents at the command line's, and the player sees the top-left corner of a
@@ -840,7 +894,7 @@ func orDash(s string) string {
 
 // dsFatalExit is Dungeon Siege's own critical-error exit code: the four bytes spell "Fatl".
 // It is what the engine returns after showing a dialog such as "D3D Initialization Failure",
-// so seeing it seconds after launch means the game never got as far as running .
+// so seeing it seconds after launch means the game never got as far as running.
 const dsFatalExit = 0x4661746c
 
 func failedToStart(err error, ran time.Duration) bool {
@@ -1217,11 +1271,19 @@ func uploadSave(profile, session string) error {
 		Unchanged bool `json:"unchanged"`
 	}
 	_ = json.NewDecoder(resp.Body).Decode(&r)
+	if r.Rev > 0 {
+		lastServerRev = r.Rev
+	}
 	if !r.Unchanged {
 		say("  character backed up online (revision %d, %d KB)", r.Rev, len(z)/1024)
 	}
 	return nil
 }
+
+// lastServerRev is the online revision this run knows about: the one handed out at session start, moved on by
+// every upload the server accepts. A marker written when the final uploads fail names this, so the next run
+// can tell "nobody else has touched it" from "another PC has uploaded since".
+var lastServerRev int
 
 var hashOfEmpty = hashDir("")
 
@@ -1255,8 +1317,17 @@ func hashDir(dir string) string {
 // script and loaded it from the host, which is why quest progress used to be shared by everybody.
 // SiegeHost 1.0.0 turns on the engine's own per-character quest journal instead, so the mod is not
 // only redundant but works against it, and its replacement journal window carries the mod's name.
+//
+// Return to Arhok (.dsmap / .dsres and XPMap / XPRes): Raid event files that cause mod mismatch
+// errors when players connect to the MMO server without them installed.
 var retiredFiles = []string{
 	"Resources/ikkyo_mpsave_beta_6.dsres",
+	"Maps/Return to Arhok.dsmap",
+	"Resources/Return to Arhok.dsres",
+	"DSLOA/XPMap.dsmap",
+	"DSLOA/XPRes.dsres",
+	"Maps/XPMap.dsmap",
+	"Resources/XPRes.dsres",
 }
 
 // isRetired compares on forward slashes so it behaves the same whichever way the path arrived and
@@ -1308,6 +1379,7 @@ func autoUpdate() error {
 			Size   int64  `json:"size"`
 			SHA256 string `json:"sha256"`
 		} `json:"files"`
+		Retired []string `json:"retired"`
 	}
 	if err := getJSON("/api/manifest", "", &man); err != nil {
 		var ae *apiError
@@ -1316,6 +1388,11 @@ func autoUpdate() error {
 		}
 		say("WARNING: update check failed (%v). Continuing with the files you have.", err)
 		return nil
+	}
+	for _, r := range man.Retired {
+		if !isRetired(r) {
+			retiredFiles = append(retiredFiles, r)
+		}
 	}
 	selfUpdated := false
 	updated := 0
