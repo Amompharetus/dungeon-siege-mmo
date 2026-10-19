@@ -1,0 +1,58 @@
+{
+  "server_name": "Dungeon Siege MMO",
+  "listen": ":8440",
+  "data_dir": "./portal-data",
+  "update_dir": "./updates",
+  "allow_registration": true,
+  "invite_code": "",
+  "keep_backups": 20,
+  "lease_seconds": 300,
+  "max_save_mb": 64,
+  "servers": [
+    {
+      "id": "na",
+      "name": "North America",
+      "region": "NA",
+      "game_address": "auto",
+      "game_port": 2350,
+      "max_players": 30,
+      "shard_key": "0123456789abcdef0123456789abcdef0123456789abcdef",
+      "send_frequency": 30
+    },
+    {
+      "id": "eu",
+      "name": "Central Europe (Veteran)",
+      "region": "EU",
+      "game_address": "auto",
+      "game_port": 2350,
+      "max_players": 30,
+      "shard_key": "0123456789abcdef0123456789abcdef0123456789abcdef",
+      "veteran_level": 54,
+      "on_demand": {
+        "provider": "aws",
+        "region": "eu-central-1",
+        "instance_id": "i-0123456789abcdef0",
+        "credentials_file": "/etc/ds1mmo/aws.csv",
+        "idle_minutes": 15,
+        "boot_timeout_minutes": 15
+      }
+    },
+    {
+      "id": "raid",
+      "name": "Event Raid (Veteran)",
+      "region": "NA",
+      "game_address": "127.0.0.1",
+      "game_port": 2352,
+      "max_players": 30,
+      "shard_key": "0123456789abcdef0123456789abcdef0123456789abcdef",
+      "join_code": "example-code",
+      "veteran_level": 54,
+      "on_demand": {
+        "provider": "systemd",
+        "unit": "ds1mmo-raid.service",
+        "idle_minutes": 15,
+        "boot_timeout_minutes": 5
+      }
+    }
+  ]
+}
