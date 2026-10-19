@@ -596,7 +596,13 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         if (g_cfg.role == Role::Server) { AutoHostTick(); LabMoveLocTick(); AreaScaleTick(); ShopStockTick(); InvFixTick(); QuestModeTick(); JipQueueTick(); PvpZoneTick(); }
         else if (g_cfg.role == Role::Client) { AutoJoinTick(); InvFixTick(); QuestModeTick(); ShopStockClientTick(); ChatFixTick(); ChatHistoryTick(); PartyPanelTick(); PanelFilterTick(); ChatDiagTick(); PartyPanelDiagTick(); }
     }
-    return g_origPeek(msg, wnd, fmin, fmax, remove);
+    BOOL res = g_origPeek(msg, wnd, fmin, fmax, remove);
+    if (res && msg && (remove & PM_REMOVE)) {
+        if (g_cfg.role == Role::Client) {
+            ChatKeyFilter(msg);
+        }
+    }
+    return res;
 }
 
 // ----------------------------------------------------------------------------------------------

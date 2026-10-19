@@ -102,3 +102,4 @@ void NR_PumpTick();
 void NR_Tick();
 std::string NR_HeartbeatLines();
 void CompareSessionInfo(const BYTE* remoteAppReserved);  // join compatibility diagnostics
+void ChatKeyFilter(LPMSG msg);  // 1.5.10: in-game chat Ctrl+Backspace, Ctrl+A filter

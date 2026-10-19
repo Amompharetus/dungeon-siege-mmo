@@ -39,6 +39,12 @@ static const auto UIShell_SendUIMessage = (bool (__thiscall*)(void*, int, const 
 static const auto UIWindow_GetVisible = (bool (__thiscall*)(void*))0x0047B07A;
 // UIEditBox::SetText(const gpstring&)  (converts to wide and sets)
 static const auto UIEditBox_SetText = (void (__thiscall*)(void*, const gpstring*))0x0047F74E;
+// UIEditBox::SetPromptIndex(int) @ 0x006FB649
+static const auto UIEditBox_SetPromptIndex = (void (__thiscall*)(void*, int))0x006FB649;
+// UIEditBox::GetPromptIndex() @ 0x00702E73
+static const auto UIEditBox_GetPromptIndex = (int (__thiscall*)(void*))0x00702E73;
+// UIEditBox::SetTextPosition(int start, int end) @ 0x0047F723
+static const auto UIEditBox_SetTextPosition = (void (__thiscall*)(void*, int, int))0x0047F723;
 // UICheckbox::SetCheckState(bool)
 static const auto UICheckbox_SetCheckState = (void (__thiscall*)(void*, bool))0x0047B491;
 
