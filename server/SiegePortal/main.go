@@ -28,7 +28,7 @@ import (
 	"time"
 )
 
-const version = "0.6.0"
+const version = "0.7.2"
 
 // See SiegeServer-24-7: absent means 30 Hz, so a portal.json that update.sh preserved still tells
 // launchers the new rate. Host and client must agree, so this comes from the server entry.
@@ -84,6 +84,9 @@ type ServerEntry struct {
 	ShardKey      string    `json:"shard_key"`           // shared secret for heartbeat pushes
 	HeartbeatFile string    `json:"heartbeat_file"`      // optional local heartbeat.txt
 	OnDemand      *OnDemand `json:"on_demand,omitempty"` // 0.3.0: cloud instance started on demand, stopped when empty
+	JoinCode      string    `json:"join_code,omitempty"`     // 0.7.0: players must type this before a ticket is issued. Never sent to a client.
+	VeteranLevel  int       `json:"veteran_level,omitempty"` // 0.7.0: the level a veteran world asks for on this shard. 0 = whatever the map says.
+	HostCharacter string    `json:"host_character,omitempty"` // 0.7.1: this shard's idle host character. Clients need the name to leave it out of the party panel; they default to "ServerHost" and so show it by name on any shard that uses another.
 }
 
 type shardState struct {
@@ -127,6 +130,8 @@ type Portal struct {
 	refusals   map[string]refusal // account (lower) -> last refusal/kick reported by a game server
 	charsSaved time.Time
 	charsDirty bool
+
+	leasesDirty bool // 0.7.2: an expiry moved; leasesFlushLoop writes it. Starts and ends write immediately.
 }
 
 var nameRe = regexp.MustCompile(`^[A-Za-z0-9_]{3,20}$`)
@@ -169,7 +174,9 @@ func main() {
 	p.secret = p.loadSecret()
 	p.loadAccounts()
 	p.initAllChars()
+	p.loadLeases() // before the listener opens, so a session that was live across the restart is honoured on its first request
 	go p.charsFlushLoop()
+	go p.leasesFlushLoop()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/status", p.handleStatus)
@@ -436,6 +443,15 @@ func (p *Portal) serverList() []map[string]any {
 		entry := map[string]any{"id": s.ID, "name": s.Name, "region": s.Region, "game_address": addr, "game_port": gp(s.GamePort),
 			"max_players": s.MaxPlayers, "online": game["online"] == "true", "players": game["players"], "game": game,
 			"send_frequency": sendHz(s.SendFrequency)}
+		if s.JoinCode != "" { // whether one is needed, never what it is
+			entry["join_code_required"] = true
+		}
+		if s.VeteranLevel > 0 {
+			entry["veteran_level"] = s.VeteranLevel
+		}
+		if s.HostCharacter != "" {
+			entry["host_character"] = s.HostCharacter
+		}
 		if s.OnDemand != nil {
 			entry["on_demand"] = true
 			entry["instance_state"] = odStates[s.ID]
@@ -612,13 +628,41 @@ func (p *Portal) handleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 // Session lease: stops two PCs from using (and overwriting) the same online save at the same time.
+// joinCodeError says why this session may not start on this server, or "" if it may. The comparison
+// ignores case and surrounding spaces: the code is something a player is told and types by hand.
+// Servers without a code are unaffected, which is every server that does not set one.
+func (p *Portal) joinCodeError(serverID, given string) string {
+	for _, s := range p.cfg.Servers {
+		if !strings.EqualFold(s.ID, serverID) || s.JoinCode == "" {
+			continue
+		}
+		given = strings.TrimSpace(given)
+		switch {
+		case strings.EqualFold(given, s.JoinCode):
+			return ""
+		case given == "":
+			return "this server needs a join code"
+		default:
+			return "that join code is not right for this server"
+		}
+	}
+	return ""
+}
+
 func (p *Portal) handleSessionStart(w http.ResponseWriter, r *http.Request, acct *Account) {
 	var req struct {
 		Machine string
 		Force   bool
 		Server  string
+		Code    string
 	}
 	_ = json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req)
+	// Before the lease, not after: a wrong code must not cost the player the session they already had.
+	if msg := p.joinCodeError(req.Server, req.Code); msg != "" {
+		log.Printf("session start refused: %s on %s (%s)", acct.Name, req.Server, msg)
+		jsonErr(w, 403, msg)
+		return
+	}
 	key := strings.ToLower(acct.Name)
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -631,6 +675,7 @@ func (p *Portal) handleSessionStart(w http.ResponseWriter, r *http.Request, acct
 	l := &lease{Session: hex.EncodeToString(b), Machine: req.Machine, Server: req.Server, Expires: time.Now().Add(time.Duration(p.cfg.LeaseSeconds) * time.Second), Started: time.Now()}
 	p.leases[key] = l
 	delete(p.refusals, key)
+	p.flushLeasesLocked()
 	ticket := p.ticketLocked(acct, req.Server)
 	log.Printf("session start: %s on %s (server %q, join ticket %v)", acct.Name, req.Machine, req.Server, ticket != "")
 	jsonOut(w, map[string]any{"session": l.Session, "lease_seconds": p.cfg.LeaseSeconds, "save_rev": acct.SaveRev, "save_sha": acct.SaveSHA, "ticket": ticket})
@@ -651,6 +696,7 @@ func (p *Portal) handleSessionRenew(w http.ResponseWriter, r *http.Request, acct
 	}
 	l := p.leases[strings.ToLower(acct.Name)]
 	l.Expires = time.Now().Add(time.Duration(p.cfg.LeaseSeconds) * time.Second)
+	p.leasesDirty = true
 	jsonOut(w, map[string]any{"ok": true, "ticket": p.ticketLocked(acct, l.Server), "refused": p.refusalTextLocked(acct, l.Started)})
 }
 
@@ -660,6 +706,7 @@ func (p *Portal) handleSessionEnd(w http.ResponseWriter, r *http.Request, acct *
 	defer p.mu.Unlock()
 	if p.checkLease(acct, session) {
 		delete(p.leases, strings.ToLower(acct.Name))
+		p.flushLeasesLocked()
 		log.Printf("session end: %s", acct.Name)
 	}
 	jsonOut(w, map[string]any{"ok": true})
@@ -707,8 +754,14 @@ func (p *Portal) handlePutSave(w http.ResponseWriter, r *http.Request, acct *Acc
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if !p.checkLease(acct, session) {
-		jsonErr(w, 409, "session expired or taken over by another PC; save NOT uploaded")
+	// 0.7.2: a save is refused only when someone else is demonstrably holding this account. "No lease" and
+	// "someone else's lease" were one check until a restart wiped every lease and turned the first case into
+	// silent data loss (RE-39). They are different situations and only the second one justifies a refusal.
+	if l := p.leases[strings.ToLower(acct.Name)]; l == nil || !time.Now().Before(l.Expires) {
+		log.Printf("save accepted without a live lease: %s (%d bytes) - no other session holds this account",
+			acct.Name, len(body))
+	} else if l.Session != session {
+		jsonErr(w, 409, "this account is in a game on another PC; save NOT uploaded")
 		return
 	}
 	if sha == acct.SaveSHA {
@@ -734,7 +787,12 @@ func (p *Portal) handlePutSave(w http.ResponseWriter, r *http.Request, acct *Acc
 	acct.SaveSHA = sha
 	acct.SaveTime = time.Now().UTC()
 	_ = p.saveAccountsLocked()
-	p.leases[strings.ToLower(acct.Name)].Expires = time.Now().Add(time.Duration(p.cfg.LeaseSeconds) * time.Second)
+	// Only the session that owns the lease extends it. Accepting a save from a launcher with no lease must not
+	// invent one, or a second PC starting up would find the account held by nobody in particular.
+	if l := p.leases[strings.ToLower(acct.Name)]; l != nil && l.Session == session {
+		l.Expires = time.Now().Add(time.Duration(p.cfg.LeaseSeconds) * time.Second)
+		p.leasesDirty = true
+	}
 	log.Printf("save uploaded: %s rev=%d %d bytes", acct.Name, acct.SaveRev, len(body))
 	jsonOut(w, map[string]any{"ok": true, "save_rev": acct.SaveRev})
 }

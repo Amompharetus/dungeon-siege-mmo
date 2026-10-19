@@ -1,5 +1,5 @@
 // account.go — account self-service (0.4.0): change password / rename while logged in, admin password reset.
-// A valid login token is the proof of identity; the old password is not required when changing credentials.
+// A valid login token is the proof of identity; the old password is not asked (by design).
 package main
 
 import (
