@@ -1,0 +1,6012 @@
+[t:template,n:spell_transmute_healthpotion]
+{
+	category_name = "magic";
+	doc = "spell Transmute to Health Potion";
+	specializes = base_spell_good;
+	[aspect]
+	{
+		gold_value = 65;
+	}
+	[common]
+	{
+		description = "Transforms objects on the ground into health potions. Move the pointer over an item and press the Cast button ('c' by default). Only weapons and armor can be transmuted.";
+		screen_name = "Transmute to Health Potion";
+	}
+	[common]
+	{
+		[template_triggers]
+			{
+				[*]
+					{
+						action* = call_sfx_script( "nature_spell_sparkle" );
+						condition* = receive_world_message("we_dropped");
+					}
+			}
+	}
+	[gui]
+	{
+		active_icon = b_gui_ig_i_ic_sp_261;
+		inventory_icon = b_gui_ig_i_ic_sp_261_inv;
+	}
+	[magic]
+	{
+		max_level = 25;
+		required_level = 5;
+
+		cast_experience = (#magic*.01)+1;
+		cast_range = 15;
+		cast_reload_delay = 0;
+		is_one_shot = true;
+		mana_cost = 0;
+		mana_cost_modifier = ((#magic*0.5)+2);
+		requires_line_of_sight = true;
+		speed_bias = 1;
+		target_type_flags = tt_transmutable | tt_and | tt_not_actor;
+		usage_context_flags = uc_passive;
+	}
+	[spell_transmute_potion]
+	{
+		effect_script = "transmute_health";
+		potion_type = "health";
+		script_params = "";
+		points_per_gold = 0.1;
+	}
+}
+
+[t:template,n:spell_transmute_manapotion]
+{
+	category_name = "magic";
+	doc = "spell Transmute to Mana Potion";
+	specializes = base_spell_good;
+	[aspect]
+		{
+			gold_value = 702;
+		}
+	[common]
+		{
+			description = "Transforms objects on the ground into mana potions. Move the pointer over an item and press the Cast button ('c' by default). Only weapons and armor can be transmuted.";
+			screen_name = "Transmute to Mana Potion";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_262;
+			inventory_icon = b_gui_ig_i_ic_sp_262_inv;
+		}
+	[magic]
+		{
+			max_level = 33;
+			required_level = 13;
+
+			cast_experience = (#magic*.01)+1;
+			cast_range = 15;
+			cast_reload_delay = 0;
+			is_one_shot = true;
+			mana_cost = 5;
+			mana_cost_modifier = ((#magic*0.5)+2);
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_transmutable | tt_and | tt_not_actor;
+			usage_context_flags = uc_passive;
+		}
+	[spell_transmute_potion]
+		{
+			effect_script = "transmute_mana";
+			potion_type = "mana";
+			script_params = "";
+			points_per_gold = 0.1;
+		}
+}
+
+[t:template,n:spell_create_healthpotion]
+{
+	category_name = "magic";
+	doc = "spell Create Health Potion";
+	specializes = base_spell_good;
+	[aspect]
+		{
+			gold_value = 79132;
+		}
+	[common]
+		{
+			description = "Generates a health potion from mana";
+			screen_name = "Create Health Potion";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_256;
+			inventory_icon = b_gui_ig_i_ic_sp_256_inv;
+		}
+	[magic]//based on major heal
+		{
+
+			cast_experience = (#magic*.1)+1;
+
+			cast_range = 12;
+			cast_reload_delay = 1;
+			is_one_shot = true;
+
+			mana_cost = 1;
+			mana_cost_modifier = (#magic*6.115); //This is mostly arbitrary.
+
+			max_level = 105;
+			required_level = 51;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			cast_experience = (#magic*3.115) - 1;
+		}
+	[spell_create_potion]
+		{
+			effect_script = "create_potion";
+			script_params = "";
+		}
+}
+
+
+[t:template,n:spell_diminution]
+{
+	category_name = "magic";
+	doc = "spell diminution";
+	specializes = base_spell_good;
+	[aspect]
+		{
+			gold_value = 463;
+		}
+	[common]
+		{
+			description = "Enemy shrinks, lowering melee and ranged attack power. Amount of shrinkage and mana cost dependent on the power of the target.";
+			screen_name = "Diminution";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_254;
+			inventory_icon = b_gui_ig_i_ic_sp_254_inv;
+		}
+	[magic]
+		{
+			max_level = 32;
+			required_level = 12;
+
+			//effect_duration = 10 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+			effect_duration = 10;
+
+			cast_range = 10;
+
+			apply_enchantments = false;
+			cast_experience = (#magic*.35)+1;
+			cast_reload_delay = 1;
+			is_one_shot = true;
+
+			mana_cost = 1;
+			mana_cost_modifier = ((#maxlife)*2) / 8;
+			//			mana_cost_modifier = 1 + #MAGIC * 4.03; //about 1/5 of the player's mana
+			mana_cost_ui = 2;
+			mana_cost_ui_modifier = (#SRC_MAXMANA)+1;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_conscious_enemy;
+			target_type_flags_not = tt_human_party_member;
+			usage_context_flags = uc_defensive;
+			state_name = diminution;
+
+			[enchantments]
+				{
+
+					[*]
+						{
+							alteration = alter_render_scale;
+							description = "Shrink it";
+							initial_delay = 0.5;
+							duration = 20;	
+							frequency = 0;
+
+							//Never decrease to less than 25%, or greater than 75% (so the player can tell it shrunk)
+							value = 0.25 + 0.50 * ( #HIGHEST_SKILL / ( #HIGHEST_SKILL + #MAGIC )); //typically between 0.5 and 1.0
+							//				value = 0.5 + 0.25	* ( #HIGHEST_SKILL / ( #HIGHEST_SKILL + #MAGIC ));
+
+							multiply_value = true;
+							is_enhancement = false;
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							description = "Lower Minimum Melee Damage";
+							duration = 20;	
+							initial_delay = 0.25;
+							value = -1 * #MELEE_DAMAGE_MIN * ( #HIGHEST_SKILL / ( #HIGHEST_SKILL + #MAGIC ));
+							is_enhancement = false;
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							description = "Lower Maximum Melee Damage";
+							duration = 20;	
+							initial_delay = 0.25;
+							value = -1 * #MELEE_DAMAGE_MAX * ( #HIGHEST_SKILL / ( #HIGHEST_SKILL + #MAGIC ));
+							is_enhancement = false;
+						}
+					[*]
+						{
+							alteration = alter_ranged_damage_min;
+							description = "Lower Minimum Ranged Damage";
+							duration = 20;	
+							initial_delay = 0.25;
+							value = -1 * #RANGED_DAMAGE_MIN * ( #HIGHEST_SKILL / ( #HIGHEST_SKILL + #MAGIC ));
+							is_enhancement = false;
+						}
+					[*]
+						{
+							alteration = alter_ranged_damage_max;
+							description = "Lower Maximum Ranged Damage";
+							duration = 20;	
+							initial_delay = 0.25;
+							value = -1 * #RANGED_DAMAGE_MAX * ( #HIGHEST_SKILL / ( #HIGHEST_SKILL + #MAGIC ));
+							is_enhancement = false;
+						}
+
+					/*
+						This doens't make any sense to be here, especially without affecting life similarly -- removed
+						-jpc 11aug2003
+						[*]
+						{
+						alteration = ALTER_MANA_RECOVERY_UNIT;
+						description = "lower regen";
+						duration = 10;	
+						frequency = 0;
+						value = -1; //halve this one
+						is_enhancement = false;
+						}
+					*/
+				}
+		}
+	[spell_status_effect]
+		{
+			description = "Diminished";
+			effect_script = dimunition;
+			immunity = "immune_polymorph";
+			pauseEffects = true;
+		}
+}
+
+[t:template,n:spell_convertcombat]
+{
+	category_name = "magic";
+	doc = "spell convert combat";
+	specializes = base_spell_dark;
+	[aspect]
+		{
+			gold_value = 37991;
+		}
+	[common]
+		{
+			description = "Temporarily changes a Combat Magician into a Nature Magician of the same skill level.";
+			screen_name = "Convert Combat";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_223;
+			inventory_icon = b_gui_ig_i_ic_sp_223_inv;
+		}
+	[magic]//based on convert (nature)
+		{
+			//for the transformed monster/buff spell bug
+			updates_on_transformed = false;
+
+			apply_enchantments = false;
+			cast_experience = (#magic*.25);
+			cast_range = 8;
+			cast_reload_delay = 1;
+			effect_duration = (#magic*1.95)+33;
+			is_one_shot = true;
+			mana_cost = 10;
+			mana_cost_modifier = (#magic+1)*7.2-0.7;
+
+			max_level = 65;
+			required_level = 45;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_self;
+			usage_context_flags = uc_defensive;
+			state_name = convert;
+			require_state_check = true;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_combat_magic_to_nature_magic;
+							description = "transfer magic";
+							duration = (#combat_magic_level*1.95)+33;
+							frequency = 0;
+							value = (#combat_magic_level-#nature_magic_level);
+						}
+					[*]
+						{
+							alteration = alter_combat_magic;
+							description = "transfer magic";
+							duration = (#combat_magic_level*1.95)+33;
+							frequency = 0;
+							value = (-#nature_magic_level);
+						}
+				}
+		}
+	[spell_status_effect]
+		{
+			description = "Convert";
+			effect_script = combat_convert;
+			dirtyInventory = true;
+		}
+}
+
+[t:template,n:spell_transmogrification]
+{
+	category_name = "magic";
+	doc = "spell Transmogrification";
+	specializes = base_spell_good;
+	[aspect]
+		{
+			gold_value = 7710;
+		}
+	[common]
+		{
+			description = "Transforms health potions on the ground in a radius around the caster into mana potions, and mana potions into health potions.";
+			screen_name = "Transmogrification";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_259;
+			inventory_icon = b_gui_ig_i_ic_sp_259_inv;
+		}
+	[magic] //based on dsx transmute potions
+		{
+			area_effect = beneficial_aoe_volume;
+			cast_experience = (#magic*.01)+1;
+			cast_range = 10;
+			cast_reload_delay = 0;
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = ((#magic*0.5)+2);
+
+			max_level = 46;
+			required_level = 26;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_self;
+			usage_context_flags = uc_passive;
+
+			// new flag - used to draw area of effect around the caster
+			area_radius = 10.0;
+
+		}
+	[spell_transmogrification]
+		{
+			enchant_script	= "transmogrification";
+			radius			= 10.0;
+			effect_script	= "transmogrification_sound";
+		}
+}
+
+[t:template,n:spell_transmuteall]
+{
+	category_name = "magic";
+	doc = "spell Transmute All";
+	specializes = base_spell_good;
+	[aspect]
+		{
+			gold_value = 238;
+		}	
+	[common]
+		{
+			description = "Transforms all items on the ground near the caster into gold.";
+			screen_name = "Transmute All";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_260;
+			inventory_icon = b_gui_ig_i_ic_sp_260_inv;
+		}
+	[magic]
+		{
+			max_level = 131;
+			required_level = 9;
+
+			cast_experience = (#magic*.01)+1;
+			cast_range = 8;
+			cast_reload_delay = 0;
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = 3 * ((#magic*0.5)+2); //triple transmute
+ 
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			// cast this on a transmutable thing or yourself - since it's in a radius around the caster
+			target_type_flags = tt_transmutable| tt_self;
+			usage_context_flags = uc_passive;
+		
+			// new flag - used to draw area of effect around the caster
+			area_radius = 8.0;
+			area_effect = beneficial_aoe_volume;
+		}
+	[spell_transmuteall]
+		{
+			// For some reason, the enchant script isn't playing if I have an effect script - let's just do the one
+			//effect_script	= "transmuteall"
+			enchant_script	= "transmuteall_item";
+			radius			= 8.0;
+		}
+}
+
+[t:template,n:spell_transference]
+{
+	category_name = "magic";
+	doc = "spell transference";
+	specializes = base_spell_dark;
+	[aspect]
+		{
+			gold_value = 38923;
+		}
+	[common]
+		{
+			description = "Target takes all damage intended for the caster.";
+			screen_name = "Transference";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+		
+					[*]
+						{
+							action* = call_sfx_script("magenta_charmed_line");
+							condition* = receive_world_message("we_req_cast");
+						}
+				}
+
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_230;
+			inventory_icon = b_gui_ig_i_ic_sp_230_inv;
+		}
+	[magic]//based on charm
+		{
+			cast_experience = (#magic*0.25);
+			cast_range = 10;
+			caster_state_name = "Transfering";
+
+			effect_duration = 3 + 7 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+
+			mana_cost = 0;
+			mana_cost_modifier = (#maxlife*2.8);
+			mana_cost_ui = 2;
+			mana_cost_ui_modifier = (#SRC_MAXMANA)+1;
+
+			max_level = 68;
+			required_level = 41;
+
+			cast_reload_delay = 1;
+			is_one_shot = true;
+			requires_line_of_sight = true;
+			target_type_flags = tt_conscious_enemy;
+			target_type_flags_not = tt_human_party_member;
+			usage_context_flags = uc_aggressive;
+			state_name = transference;
+			caster_state_name = transference;
+		}
+	[spell_transference]
+		{
+			description = "Transference";
+			caster_description = "Transference";
+			effect_script = transference;
+			// rather than make a new immunity, I'm just using an existing one
+			//	so we don't need to touch bosses from the original game
+			immunity = "immune_control";
+		}
+}
+[t:template,n:spell_hold_crowd]
+{
+	category_name = "magic";
+	doc = "spell slow crowd";
+	specializes = base_spell_dark;
+	[aspect]
+		{
+			gold_value = 9011;
+		}
+	[attack]
+		{
+			area_damage_radius = 5;
+		}
+	[common]
+		{
+			description = "Group of monsters is slowed.";
+			screen_name = "Slow Crowd";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_205;
+			inventory_icon = b_gui_ig_i_ic_sp_205_inv;
+		}
+	[magic]
+		{ //BASED ON DS1 HOLD-CREATURE
+			hide_damage_in_tooltip = true;
+
+			max_level = 62;
+			required_level = 27;
+
+			cast_experience = (#magic*1.3);
+			cast_range = 10;
+			cast_reload_delay = 1;
+			effect_duration = ((#magic*1.1)-5) / 8;	 //New duration 11/19/01
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = ((#maxlife)*2) / 8;	//New cost modifier 11/19/01
+			mana_cost_ui = 2;
+			mana_cost_ui_modifier = (#SRC_MAXMANA)+1;
+
+			speed_bias = 1.0;
+
+			requires_line_of_sight = true;
+			target_type_flags = tt_conscious_enemy;
+			usage_context_flags = uc_aggressive;
+			state_name = slowed;
+		}
+	[spell_speed_affector]
+		{
+			description = "Slowed";
+			effect_script = hold_crowd;
+			immunity = "immune_hold_crowd";
+			walkModifier = 0.5;
+			attackModifier = 2.0;
+			groupEffect = true;
+			radius	= 5.0;
+		}
+}
+
+[t:template,n:spell_sleepy_gas]
+{
+	category_name = "magic";
+	doc = "spell sleepy gas";
+	specializes = base_spell_good;
+	[aspect]
+		{
+			gold_value = 25;
+		}
+	[common]
+		{
+			description = "Surrounds the creature with a sleep inducing gas which slows down their movement.";
+			screen_name = "Sleepy Gas";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script("sleepy_line");
+							condition* = receive_world_message("we_req_cast");
+						}
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_240;
+			inventory_icon = b_gui_ig_i_ic_sp_240_inv;
+		}
+	[magic]
+		{//FROM STUMBLE
+			//Duration between first number and first + second number:
+			effect_duration = 10 + 20 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+
+			cast_experience = #MAGIC;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			is_one_shot = true;
+			cast_experience = (#MAGIC*.35)+1;
+
+			mana_cost = 0;
+			mana_cost_modifier = (#MAXLIFE*1.5) / ( 1.5  * 6 );
+			mana_cost_ui = 2;
+			mana_cost_ui_modifier = (#SRC_MAXMANA + 1);
+	
+			max_level = 18;
+			required_level = 3;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_conscious_enemy;
+			usage_context_flags = uc_defensive;
+			state_name = slowed;
+		}
+	[spell_speed_affector]
+		{
+			description = "Slowed";
+			effect_script = sleepy_gas;
+			walkModifier = 0.5;
+			attackModifier = 2.0;
+			immunity = "immune_sleepy_gas";
+			groupEffect = false;
+		}
+}
+[t:template,n:spell_haste]
+{
+	category_name = "magic";
+	doc = "spell haste";
+	specializes = base_spell_dark;
+	[aspect]
+		{
+			gold_value = 998;
+		}
+	[common]
+		{
+			description = "The caster's attack and movement speed are increased by 25%.";
+			screen_name = "Haste";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_224;
+			inventory_icon = b_gui_ig_i_ic_sp_224_inv;
+		}
+	[magic] //BASED ON ACCURACY
+		{
+			updates_on_transformed = false;	// we don't want this spell to play its effects on transformed creatures
+
+			max_level = 34;
+			required_level = 14;
+
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*7.7-.7;
+
+			cast_range = 1;
+
+			effect_duration = 30 + 70 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+
+			cast_experience = (#magic*.35)+1;
+
+			cast_reload_delay = 1;
+			is_one_shot = true;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_self;
+			usage_context_flags = uc_defensive;
+			state_name = haste;
+			require_state_check = false;
+		}
+	[spell_speed_affector]
+		{
+			canStackDuration = true;
+			description = "Haste";
+			effect_script = haste;
+			walkModifier = 1.25;
+			attackModifier = 0.8; // ( 1 / 0.8 = 1.25 )
+			groupEffect = false;
+			effectPartyMembers = true;
+		}
+}
+[t:template,n:spell_group_haste]
+{
+	category_name = "magic";
+	doc = "spell group haste";
+	specializes = base_spell_dark;
+	[aspect]
+		{
+			gold_value = 7891;
+		}
+	[common]
+		{
+			description = "The party member's attack and movement speed are increased by 25%, if within range of the caster.";
+			screen_name = "Group Haste";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_227;
+			inventory_icon = b_gui_ig_i_ic_sp_227_inv;
+		}
+	[magic]//BASED ON MERIK'S WINDFALL
+		{
+			cast_experience = (#magic*.12);
+			cast_range = 10;
+
+
+			effect_duration = 20 + 100 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+
+			mana_cost = 0;
+			mana_cost_modifier = ((#magic+1)*17.4-0.7);
+
+			max_level = 52;
+			required_level = 25;
+
+
+			cast_reload_delay = 1;
+			is_one_shot = true;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_conscious_friend | tt_self;
+			usage_context_flags = uc_defensive;
+			state_name = haste;
+			require_state_check = false;
+			updates_on_transformed = false;	// we don't want this spell to play its effects on transformed creatures
+		}
+	[spell_speed_affector]
+		{
+			canStackDuration = true;
+			description = "Haste";
+			effect_script = group_haste;
+			walkModifier = 1.25;
+			attackModifier = 0.8;
+			groupEffect = true;
+			radius	= 10.0;
+			effectPartyMembers = true;
+		}
+}
+
+
+[t:template,n:spell_zorkons_exploder]
+{
+	category_name = "magic";
+	doc = "spell_zorkons_exploder";
+	specializes = base_spell_dark;
+	[aspect]
+		{
+			gold_value = 329348;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+		}
+	[common]
+		{
+			description = "Makes an enemy explode, damaging nearby enemies.  Mana cost dependent on the power of the target.";
+			screen_name = "Zorkon's Exploder";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_213;
+			inventory_icon = b_gui_ig_i_ic_sp_213_inv;
+		}
+	[magic]
+		{
+			//Damage is done completely by the skrit.
+			attack_damage_modifier_max = 0;
+			attack_damage_modifier_min = 0;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			hide_damage_in_tooltip = true;
+			mana_cost = 0;
+			mana_cost_modifier = #LIFE + #LIFE * ( 1.0 - ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL))); //between one or two times the current life of the target, dependent on player level
+			mana_cost_ui = 2;
+			mana_cost_ui_modifier = (#SRC_MAXMANA)+1;
+			cast_experience = (#magic*.35)+1;
+
+			max_level = 150;
+			required_level = 75;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_conscious_enemy | tt_unconscious_enemy;
+			target_type_flags_not = tt_human_party_member;
+			usage_context_flags = uc_offensive;
+		}
+	[spell_zorkons] 
+		{
+			splashDamage=true;
+			effect=zorkons_exploder;
+			immunity="immune_explode";
+			sdMinPercent=0.5;
+			sdMaxPercent=0.5;
+		}
+}
+
+[t:template,n:spell_zorkons_disintegrator]
+{
+	category_name = "magic";
+	doc = "spell_zorkons_disintegrator";
+	specializes = base_spell_dark;
+	[aspect]
+		{
+			gold_value = 7911;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+		}
+	[common]
+		{
+			description = "Instantly kills an enemy.  Mana cost dependent on the power of the target.";
+			screen_name = "Zorkon's Disintegrator";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_212;
+			inventory_icon = b_gui_ig_i_ic_sp_212_inv;
+		}
+	[magic]
+		{
+			//Damage is done completely by the skrit.
+			attack_damage_modifier_max = 0;
+			attack_damage_modifier_min = 0;
+			cast_range = 5;
+			cast_reload_delay = 1;
+			hide_damage_in_tooltip = true;
+			mana_cost = 0;
+			mana_cost_modifier = #LIFE + #LIFE * (1.0 - ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL))); //between one or two times the current life of the target, cost lower as player increases in levels
+			mana_cost_ui = 2;
+			mana_cost_ui_modifier = (#SRC_MAXMANA)+1;
+			cast_experience = (#magic*.35)+1;
+
+			max_level = 65;
+			required_level = 25;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_conscious_enemy | tt_unconscious_enemy;
+			target_type_flags_not = tt_human_party_member;
+			usage_context_flags = uc_offensive;
+		}
+	[spell_zorkons] 
+		{
+			effect=zorkons_disintegrator;
+			sdMinPercent=0.0;
+			sdMaxPercent=0.0;
+			immunity="immune_explode";
+		}
+}
+[t:template,n:spell_zorkons_bonecrusher]
+{
+	category_name = "magic";
+	doc = "spell_zorkons_bonecrusher";
+	specializes = base_spell_dark;
+	[aspect]
+		{
+			gold_value = 1792;
+		}
+	[attack]
+		{
+			damage_max = 0;		// random value grabbed from between min->max for skeletal enemies
+			damage_min = 0;		// random value grabbed from between 0->min for non-skeletal enemies
+		}
+	[common]
+		{
+			description = "Bone damage spell, highly effective against skeletons. Mana cost dependent on the power of the target.";
+			screen_name = "Zorkon's Bonecrusher";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_211;
+			inventory_icon = b_gui_ig_i_ic_sp_211_inv;
+		}
+	[magic]
+		{
+			//This is the damage done to non-undead.  Undead take much more.
+			//this is Fireskull / 2 -- weak against non-undead
+
+			/* testing:
+			attack_damage_modifier_max = 10;
+			attack_damage_modifier_min = 10;
+			*/
+
+			attack_damage_modifier_max = 0.5 * ((#magic+1)**1.29+6)*(1+((1/(#magic+10))+.01));
+			attack_damage_modifier_min = 0.5 * ((#magic+1)**1.29+6)*(1-((1/(#magic+9))+.005));
+
+			cast_range = 11;
+			cast_reload_delay = 1;
+			mana_cost = 1;
+			mana_cost_modifier = (#magic*.7)+.7;
+			mana_cost_ui = 2;
+			mana_cost_ui_modifier = (#SRC_MAXMANA)+1;
+
+			cast_experience = (#magic*.35)+1;
+			required_level = 17;
+			max_level = 37;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_conscious_enemy | tt_unconscious_enemy;
+			usage_context_flags = uc_offensive;
+			hide_damage_in_tooltip = false;
+		}
+	[spell_zorkons] 
+		{
+			effect=zorkons_bonecrusher;
+			targetType = undead;
+
+			groupDamage = 18; 
+			//multiply damage by this amount against undead -- effectively 9x
+			//Fireskull damage;; in reality, this seems to do about five times
+			//as much after pipelining the damage -- massive, massive damage
+			//against undead
+
+
+			//When this did instant kills, immune_explode made sense, but this
+			//just does lots of damage now.
+
+			//immunity="immune_explode";
+		}
+}
+
+[t:template,n:spell_animalrage]
+{
+	category_name = "magic";
+	doc = "spell animal_rage";
+	specializes = base_spell_good;
+	[aspect]
+		{
+			gold_value = 1488;
+		}
+	[common]
+		{
+			description = "Increases a pack animal's chance to hit by <alter_chance_to_hit>, damage by <alter_melee_damage_min>, and armor by <alter_armor>.";
+			screen_name = "Animal Rage";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_255;
+			inventory_icon = b_gui_ig_i_ic_sp_255_inv;
+		}
+	[magic]
+		{
+			max_level = 36;
+			required_level = 16;
+
+			effect_duration = 20 + 100 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+
+			apply_enchantments = false;
+			cast_experience = (#magic*.3)+1;
+			cast_range = 3;
+			cast_reload_delay = 1;
+
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = ((#magic+1)*4.2-.7);
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_actor_pack_only | tt_and | tt_conscious_friend;
+			usage_context_flags = uc_defensive;
+			state_name = animal_enraged;
+			require_state_check = false;
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							description = "Increase minimum melee damage";
+							duration = 20 + 100 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+							frequency = 0;
+							initial_delay = 0.25;
+							value = (#SPELL_REQ_LEVEL * -1) + ( 4.25 * #magic ) ; //fighters gain about 4.25 damage per level; we don't want to award quite that much.	Using #SPELL_REQ_LEVEL should allow the level to change without really breaking things.
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							description = "Increase maximum melee damage";
+							duration = 20 + 100 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+							frequency = 0;
+							initial_delay = 0.25;
+							value = (#SPELL_REQ_LEVEL * -1) + ( 4.25 * #magic ) ; //fighters gain about 4.25 damage per level; we don't want to award quite that much.	Using #SPELL_REQ_LEVEL should allow the level to change without really breaking things.
+						}
+					[*]
+						{
+							alteration = alter_chance_to_hit;
+							description = "Increase chance to hit";
+							duration = 20 + 100 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+							frequency = 0;
+							initial_delay = 0.25; 
+							value = 100 * ( 0.33 + 0.33 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL)));
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							description = "Increase armor";
+							duration = 20 + 100 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+							frequency = 0;
+							initial_delay = 0.25;
+							value = (#SPELL_REQ_LEVEL * -2) + ( 9 * #magic ); //see damage increase; armor is about 9 per skill level for a fighter
+						}
+				}
+		}
+	[spell_status_effect]
+		{
+			description = "Animal Rage";
+			effect_script = animal_rage;
+		}
+}
+
+[t:template,n:spell_rangeboost]
+{
+	category_name = "magic";
+	doc = "spell range_boost";
+	specializes = base_spell_good;
+	[aspect]
+		{
+			gold_value = 5305;
+		}
+	[common]
+		{
+			description = "Increases the range of ranged weapons for the party by <alter_ranged_range>.";
+			screen_name = "Range Boost";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_257;
+			inventory_icon = b_gui_ig_i_ic_sp_257_inv;
+		}
+	[magic]//based on focused mind
+		{
+			//for the transformed monster/buff spell bug
+			updates_on_transformed = false;
+
+			cast_experience = (#magic*.18);
+			cast_range = 8;
+			cast_reload_delay = 1;
+			effect_duration = (#magic*45)-700;
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = 3 * (#magic+1)*4.8-0.7; //party spell, triple cost of focused mind
+ 
+			required_level = 23;
+			max_level = 43;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_human_party_member | tt_and | tt_conscious_friend;
+			target_type_flags_not = tt_actor_pack_only | tt_summoned;
+			usage_context_flags = uc_defensive;
+			apply_enchantments = false;
+			state_name		= rangeboost;
+			require_state_check = false;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_ranged_range;
+							description = "Range Boost";
+							duration = (#magic*45)-700;
+							value = 1 + 4 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+						}
+				}
+		}
+	[spell_mass_enchant]
+		{
+			enchant_script	= "rangeboost";
+			radius			= 20.0;
+			description		= "Range Boost";
+		}
+}
+
+[t:template,n:spell_lightofchadek]
+{
+	category_name = "magic";
+	doc = "spell light_of_chadek";
+	specializes = base_spell_good;
+	[aspect]
+		{
+			gold_value = 155;
+		}
+	[common]
+		{
+			description = "Temporarily blinds the target, decreasing chance to hit with melee or ranged weapons. Mana cost dependent on the power of the Target.";
+			screen_name = "Light of Chadek";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_243;
+			inventory_icon = b_gui_ig_i_ic_sp_243_inv;
+		}
+	[magic]//based on ds1 freak
+		{			
+			max_level = 25;
+			required_level = 8;
+
+			effect_duration = 10 + 10 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+			//		effect_duration = ((#magic*1.44)+33);
+
+			apply_enchantments = false;
+			cast_experience = (#magic*.35)+1;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			is_one_shot = true;
+			mana_cost = 10;
+			mana_cost_modifier = (#maxlife * 2.0);
+			mana_cost_ui = 2;
+			mana_cost_ui_modifier = (#SRC_MAXMANA + 1);
+			//			mana_cost_ui_modifier = (#maxmana*2.5);
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_conscious_enemy | tt_unconscious_enemy;
+			target_type_flags_not = tt_good;
+			usage_context_flags = uc_defensive;
+			state_name = blinded;
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_chance_to_hit_melee;
+							description = "Decrease chance to hit melee";
+							duration = 10 + 10 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+							frequency = 0;
+							initial_delay = 0.25;
+							value = -((#magic*1.0)+44);
+							is_enhancement = false;
+						}
+					[*]
+						{
+							alteration = alter_chance_to_hit_ranged;
+							description = "Decrease chance to hit ranged";
+							duration = 10 + 10 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+							frequency = 0;
+							initial_delay = 0.25;
+							value = -((#magic*2.0)+57);
+							is_enhancement = false;
+						}
+				}
+		}
+	[spell_status_effect]
+		{
+			description = "Blinded";
+			effect_script = lightofchadek;
+		}
+}
+
+
+
+[t:template,n:spell_purity]
+{
+	category_name = "magic";
+	doc = "spell purity";
+	specializes = base_spell_good;
+	[aspect]
+		{
+			gold_value = 36;
+		}
+	[common]
+		{
+			description = "Undead will run away from the caster, gives party members <alter_life> life per second.";
+			screen_name = "Purity";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_263;
+			inventory_icon = b_gui_ig_i_ic_sp_263_inv;
+		}
+	[magic] //based largely on healing wind, and freak
+		{
+
+			area_radius = 7.0;
+			area_effect = harmful_aoe_volume;
+			cast_experience = (#magic*.2)+1;
+			cast_range = 10;
+			cast_reload_delay = 3;
+			effect_duration = 3;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*5.15;
+
+			is_one_shot = true;
+
+			required_level = 4;
+			max_level = 24;
+
+			requires_line_of_sight = true;
+			apply_enchantments = false;
+			speed_bias = 1;
+			// can target an enemy, yourself, or a friend
+			target_type_flags = tt_self | tt_human_party_member;
+			//		but not a dead friend
+			target_type_flags_not =	 tt_conscious_enemy | tt_dead_friend;
+			usage_context_flags = uc_defensive;
+			state_name = heal;
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_life;
+							description = "purity healing";
+							duration = 3.0;
+							frequency = 0.3;
+							initial_delay = 1.0;
+							value = 0.75 * (((#magic*0.9)+2)*1.3); //healing wind amount * 0.75
+						}
+				}
+		}
+	[spell_purity]
+		{
+			radius = 7; //how far around caster to send undead away from
+			effect_script = purity;
+			description = "Purity";
+			state_description = "Cowering";
+		}
+}
+
+[t:template,n:base_spell_orb_dark]
+{
+	category_name = "magic";
+	doc = "spell_orb_base_dark";
+	specializes = base_spell_dark;
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[spell_orb]{}
+}
+
+
+[t:template,n:base_spell_orb_good]
+{
+	category_name = "magic";
+	doc = "spell_orb_base_good";
+	specializes = base_spell_good;
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[spell_orb]{}
+}
+
+
+
+[t:template,n:spell_orb_fire]
+{
+	category_name = "magic";
+	doc = "spell_orb_fire";
+	specializes = base_spell_orb_dark;
+	[aspect]
+		{
+			gold_value = 20;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+		}
+	[common]
+		{
+			description = "A glowing orb orbits the caster's body, shooting fireballs at nearby enemies.";
+			screen_name = "Orb of Fire";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_208;
+			inventory_icon = b_gui_ig_i_ic_sp_208_inv;
+		}
+	[magic] //BASED ON FIRESHOT; mana cost should almost definitely go UP
+		{
+			cast_experience = (#magic*.35)+1;
+
+			// Linear increase in damage.	 Similar to 0.4 * fireshot
+			attack_damage_modifier_max = (1.0 * #MAGIC) + 5;
+			attack_damage_modifier_min = (0.80 * #MAGIC) + 3;
+
+			//just like fireshot
+			cast_range = 10;
+			cast_reload_delay = 1;
+			mana_cost = 1;
+
+			//
+			max_level = 25;
+			required_level = 2;
+		
+			//
+			mana_cost_modifier = (1.5 + #MAGIC)*5;
+
+			//from 60-150 seconds, for the appropriate levels
+			effect_duration = ((((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL)) * 600) + 600); //BALANCE HERE
+
+			target_type_flags = tt_self;
+			usage_context_flags = uc_offensive;
+			is_one_shot = true;
+			caster_state_name = "Orb_spell_orbiting";
+			require_state_check = false;
+		}
+	[spell_orb]
+		{
+			orbEffect = orb_fire_orbiter;
+			orbSoundEffect = orb_fire_sound;
+			shotEffect = orb_fire_projectile;
+			casterDescription = "Orb of Fire";
+		}
+}
+
+//copied from orb of fire.
+[t:template,n:spell_orb_poultry]
+{
+	category_name = "magic";
+	doc = "spell_orb_poultry";
+	specializes = base_spell_orb_good;
+	[aspect]
+		{
+			gold_value = 1;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+			ammo_template = chicken_grenade;
+		}
+	[common]
+		{
+			is_pcontent_allowed = false;
+			pcontent_special_type = unique;
+			description = "A mystical chicken orbits the caster, shooting deadly eggs at nearby enemies.";
+			screen_name = "Bubberjack's Orb of Poultry";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_orb_poultry;
+			inventory_icon = b_gui_ig_i_ic_sp_orb_poultry_inv;
+		}
+	[magic] //based on fireshot; mana cost should almost definitely go up
+		{
+			cast_experience = (#magic*.35)+1;
+
+			// Linear increase in damage.	 Similar to 0.4 * fireshot
+			attack_damage_modifier_max = (10.90 * #MAGIC) + 35.0;
+			attack_damage_modifier_min = (5.72 * #MAGIC) + 25.0;
+
+			cast_range = 15;
+			cast_reload_delay = 0.1;
+			mana_cost = 1;
+
+			//
+			max_level = 155;
+			required_level = 0;
+		
+			//
+			mana_cost_modifier = 0;
+
+			effect_duration = 3600;
+
+			target_type_flags = tt_self;
+			usage_context_flags = uc_offensive;
+			is_one_shot = true;
+			caster_state_name = "Orb_spell_orbiting";
+			require_state_check = false;
+		}
+	[spell_orb]
+		{
+			orbEffect = orb_poultry_orbiter;
+			orbSoundEffect = orb_poultry_sound;
+			shotEffect = orb_poultry_projectile;
+			casterDescription = "Bubberjack's Orb of Poultry";
+		}
+}
+
+[t:template,n:spell_orb_lightning]
+{
+	category_name = "magic";
+	doc = "spell_orb_lightning";
+	specializes = base_spell_orb_good;
+	[aspect]
+		{
+			gold_value = 655;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+		}
+	[common]
+		{
+			description = "A glowing orb orbits the caster's body, shooting lightning at nearby enemies.";
+			screen_name = "Orb of Lightning";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_245;
+			inventory_icon = b_gui_ig_i_ic_sp_245_inv;
+		}
+	[magic]
+		{
+			//based on ice shards
+			attack_damage_modifier_max = (0.80 * #MAGIC) + 7;
+			attack_damage_modifier_min = (0.64 * #MAGIC) + 5;
+			
+			cast_range = 11;
+			cast_reload_delay = 0.5;
+			mana_cost = 1;
+			mana_cost_modifier = (1.5 + #MAGIC)*5.1;
+			
+			cast_experience = (#magic*.35)+1;
+
+			max_level = 33;
+			required_level = 13;
+			
+			//from 60-120 seconds, for the appropriate levels
+			effect_duration = ((((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL)) * 600) + 600); //BALANCE HERE
+			
+			target_type_flags = tt_self;
+			usage_context_flags = uc_offensive;
+			is_one_shot = true;
+			caster_state_name = "Orb_spell_orbiting";
+			require_state_check = false;
+		}
+	[spell_orb]
+		{
+			orbEffect = orb_lightning_orbiter;
+			orbSoundEffect = orb_lightning_sound;
+			shotEffect = orb_lightning_projectile;
+			isLightning = true;
+			casterDescription = "Orb of Lightning";
+		}
+}
+
+[t:template,n:spell_orb_acid]
+{
+	category_name = "magic";
+	doc = "spell_orb_acid";
+	specializes = base_spell_orb_dark;
+	[aspect]
+		{
+			gold_value = 405;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+		}
+	[common]
+		{
+			description = "A gaseous orb orbits the caster's body, shooting acid at nearby enemies.";
+			screen_name = "Orb of Acid";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_206;
+			inventory_icon = b_gui_ig_i_ic_sp_206_inv;
+		}
+	[magic] //based on fireskull
+		{
+			max_level = 33;
+			required_level = 12;
+
+			// Linear increase in damage.
+			attack_damage_modifier_max = (1.00 * #MAGIC) + 8;
+			attack_damage_modifier_min = (0.80 * #MAGIC) + 6;
+
+			cast_range = 12;
+			cast_reload_delay = 1;
+			cast_experience = (#magic*.35)+1;
+
+			//
+			mana_cost_modifier = (1.5 + #MAGIC)*5.3;
+
+			//from 60-120 seconds, for the appropriate levels
+			effect_duration = ((((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL)) * 600) + 600); //BALANCE HERE
+
+			target_type_flags = tt_self;
+			usage_context_flags = uc_offensive;
+			is_one_shot = true;
+			caster_state_name = "Orb_spell_orbiting";
+			require_state_check = false;
+		}
+
+	[spell_orb]
+		{
+			orbEffect = orb_acid_orbiter;
+			orbSoundEffect = orb_acid_sound;
+			shotEffect = orb_acid_projectile;
+			isLightning = true;
+			casterDescription = "Orb of Acid";
+		}
+}
+
+[t:template,n:spell_orb_ice]
+{
+	category_name = "magic";
+	doc = "spell_orb_ice";
+	specializes = base_spell_orb_good;
+	[aspect]
+		{
+			gold_value = 37;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+		}
+	[common]
+		{
+			description = "A glowing orb orbits the caster's body, shooting powerful blasts of frost at nearby enemies.";
+			screen_name = "Orb of Frost";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_244;
+			inventory_icon = b_gui_ig_i_ic_sp_244_inv;
+		}
+	[magic]
+		{
+			attack_damage_modifier_max = (0.90 * #MAGIC) + 3.5;
+			attack_damage_modifier_min = (0.72 * #MAGIC) + 2.5;
+			cast_range = 8;
+			cast_reload_delay = 0.5;
+			mana_cost = 1;
+			mana_cost_modifier = (1.5 + #MAGIC)*5;
+			cast_experience = (#magic*.35)+1;
+
+			max_level = 21;
+			required_level = 4;
+
+			//from 60-120 seconds, for the appropriate levels
+			effect_duration = ((((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL)) * 600) + 600); //BALANCE HERE
+
+			target_type_flags = tt_self;
+			usage_context_flags = uc_offensive;
+			is_one_shot = true;
+			caster_state_name = "Orb_spell_orbiting";
+			require_state_check = false;
+		}
+	[spell_orb]
+		{
+			orbEffect = orb_ice_orbiter;
+			orbSoundEffect = orb_ice_sound;
+			shotEffect = orb_ice_projectile;
+			isLightning = true;
+			casterDescription = "Orb of Frost";
+		}
+}
+
+[t:template,n:spell_orb_energy]
+{
+	category_name = "magic";
+	doc = "spell_orb_energy";
+	specializes = base_spell_orb_dark;
+	[aspect]
+		{
+			gold_value = 26823;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+		}
+	[common]
+		{
+			description = "A glowing orb of energy spins about the caster's body, shooting bursts of energy at nearby enemies.";
+			screen_name = "Orb of Energy";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_207;
+			inventory_icon = b_gui_ig_i_ic_sp_207_inv;
+		}
+	[magic]
+		{
+			// Linear increase in damage. 
+			attack_damage_modifier_max = (1.25 * #MAGIC) + 15;
+			attack_damage_modifier_min = (1.00 * #MAGIC) + 10;
+
+			cast_range = 10;
+			cast_reload_delay = 1;
+			mana_cost = 1;
+			mana_cost_modifier = (1.5 + #MAGIC)*11;
+			cast_experience = (#magic*.35)+1;
+
+			max_level = 72;
+			required_level = 37;
+
+			//from 60-120 seconds, for the appropriate levels
+			effect_duration = ((((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL)) * 600) + 600); //BALANCE HERE
+
+			target_type_flags = tt_self;
+			usage_context_flags = uc_offensive;
+
+			is_one_shot = true;
+			caster_state_name = "Orb_spell_orbiting";
+			require_state_check = false;
+		}
+	[spell_orb]
+		{
+			orbEffect = orb_stone_orbiter;
+			orbSoundEffect = orb_stone_sound;
+			shotEffect = orb_stone_projectile;
+			isLightning = true;
+			casterDescription = "Orb of Energy";
+		}
+}
+
+[t:template,n:spell_orb_healing]
+{
+	category_name = "magic";
+	doc = "spell_orb_healing";
+	specializes = base_spell_orb_good;
+	[aspect]
+		{
+			gold_value = 340;
+		}
+	[common]
+		{
+			description = "A glowing orb orbits the caster's body, healing nearby party members.";
+			screen_name = "Orb of Healing";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_264;
+			inventory_icon = b_gui_ig_i_ic_sp_264_inv;
+		}
+	[magic] //BASED ON DS1 REGENERATION
+		{
+			effect_duration = ((((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL)) * 600) + 600); //BALANCE HERE
+			cast_experience = (#magic*.2);
+			mana_cost = 0;
+			mana_cost_modifier = (#MAGIC - 0.1) * 4.9;
+ 
+			max_level = 35;
+			required_level = 10;
+
+			cast_range = 1;
+			cast_reload_delay = 1;
+			is_one_shot = true;
+			caster_state_name = "Orb_spell_orbiting";
+			require_state_check = false;
+
+
+			target_type_flags = tt_self;
+			usage_context_flags = uc_offensive;
+		}
+	[spell_orb]
+		{
+			isHealing = true;
+
+			//SET IN THE .SKRIT
+			//				healAmount = (#magic*0.0475);
+
+			shotDelay = 1; //seconds between heals
+
+			casterDescription = "Orb of Healing";
+			orbEffect = orb_healing_orbiter;
+			orbSoundEffect = orb_healing_sound;
+			shotEffect = orb_healing_projectile;
+		}
+}
+
+[t:template,n:spell_summon_clone]
+{
+	category_name = "magic";
+	doc = "spell Summon Clone";
+	specializes = base_summon_dark;
+	[aspect]
+		{
+			gold_value = 1724;
+		}
+	[common]
+		{
+			screen_name = "Summon Clone";
+		}
+	[common]
+		{
+			description = "Summons a clone of the caster to guard the Caster.";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_214;
+			inventory_icon = b_gui_ig_i_ic_sp_214_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 120;
+			is_one_shot = true;
+
+			mana_cost = 1.1;
+			mana_cost_modifier = #MAGIC * 15.1;
+
+			/*
+				mana_cost = 50;
+				mana_cost_modifier = 1; //(#magic+1)*14-.7;
+			*/
+			max_level = 65;
+			required_level = 15;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = #SRC_STRENGTH;
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = #SRC_DEXTERITY;
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = #SRC_INTELLIGENCE;
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = #SRC_BASE_DEFENSE;
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = #SRC_MAXLIFE;
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = #SRC_MAXLIFE; //fully healed
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = #SRC_MAXMANA;
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = #SRC_MAXMANA;
+						}
+					[*]
+						{
+							alteration = alter_combat_magic;
+							duration = #infinite;
+							value = #SRC_MELEE;
+						}
+					[*]
+						{
+							alteration = alter_combat_magic;
+							duration = #infinite;
+							value = #SRC_RANGED;
+						}
+					[*]
+						{
+							alteration = alter_combat_magic;
+							duration = #infinite;
+							value = #SRC_COMBAT_MAGIC_LEVEL;
+						}
+					[*]
+						{
+							alteration = alter_combat_magic;
+							duration = #infinite;
+							value = #SRC_NATURE_MAGIC_LEVEL;
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = #SRC_MELEE_DAMAGE_MIN;
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = #SRC_MELEE_DAMAGE_MAX;
+						}
+					[*]
+						{
+							alteration = alter_ranged_damage_min;
+							duration = #infinite;
+							value = #SRC_RANGED_DAMAGE_MIN;
+						}
+					[*]
+						{
+							alteration = alter_ranged_damage_max;
+							duration = #infinite;
+							value = #SRC_RANGED_DAMAGE_MAX;
+						}
+					[*]
+						{
+							alteration = alter_cmagic_damage_min;
+							duration = #infinite;
+							value = #SRC_CMAGIC_DAMAGE_MIN;
+						}
+					[*]
+						{
+							alteration = alter_cmagic_damage_max;
+							duration = #infinite;
+							value = #SRC_CMAGIC_DAMAGE_MAX;
+						}
+					[*]
+						{
+							alteration = alter_nmagic_damage_min;
+							duration = #infinite;
+							value = #SRC_NMAGIC_DAMAGE_MIN;
+						}
+					[*]
+						{
+							alteration = alter_nmagic_damage_max;
+							duration = #infinite;
+							value = #SRC_NMAGIC_DAMAGE_MAX;
+						}
+				}
+		}
+
+	/* -- original, may need to be restored back to something like this
+		 [enchantments]
+		 {
+		 [*]
+		 {
+		 alteration = alter_strength;
+		 duration = #infinite;
+		 value = ((((#magic*0.64)+10)*.63)-#str);
+		 }
+		 [*]
+		 {
+		 alteration = alter_dexterity;
+		 duration = #infinite;
+		 value = ((((#magic*0.27)+10)*1.2)-#dex);
+		 }
+		 [*]
+		 {
+		 alteration = alter_intelligence;
+		 duration = #infinite;
+		 value = ((((#magic*0.09)+10)*.5)-#int);
+		 }
+		 [*]
+		 {
+		 alteration = alter_combat_magic;
+		 duration = #infinite;
+		 value = ((#magic-1)-#combat_magic_level);
+		 }
+		 [*]
+		 {
+		 alteration = alter_armor;
+		 duration = #infinite;
+		 value = (((#magic*9)*.4)-#base_defense);
+		 }
+		 [*]
+		 {
+		 alteration = alter_max_life;
+		 duration = #infinite;
+		 value = (((#magic*24)*0.93)-#maxlife);
+		 }
+		 [*]
+		 {
+		 alteration = alter_life;
+		 duration = 1.0;
+		 value = (((#magic*24)*0.93));
+		 }
+		 [*]
+		 {
+		 alteration = alter_max_mana;
+		 duration = #infinite;
+		 value = (((#magic*19)*0.25)-#maxmana);
+		 }
+		 [*]
+		 {
+		 alteration = alter_mana;
+		 duration = 1.0;
+		 value = (((#magic*19)*0.25)-#mana);
+		 }
+		 [*]
+		 {
+		 alteration = alter_cmagic_damage_min;
+		 duration = #infinite;
+		 value = ((((#magic*4.2)*.7)-9)*0.9);
+		 }
+		 [*]
+		 {
+		 alteration = alter_cmagic_damage_max;
+		 duration = #infinite;
+		 value = ((((#magic*4.2)*.7)-9)*1.1);
+		 }
+		 }
+		 }
+	*/
+
+	[spell_summon_clone] 
+	{
+		effect_script = "summon";
+		end_script = "un_summon";
+		script_params = "[scale(1)]";
+		description = "Summoned Clone";
+		caster_description = "Controlling Summoned";
+		
+		// for this to be localized, it needs to be here, not in skrit
+		other_description = "Clone";
+	}
+}
+
+
+[t:template,n:spell_block_stone]
+{
+	category_name = "magic";
+	doc = "spell_block_stone";
+	specializes = base_spell_dark;
+	[aspect]
+		{
+			gold_value = 4558;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+		}
+	[common]
+		{
+			description = "Surrounds the Enemy with a block of stone, imobilizing them. Mana cost dependent on power of the Target.";
+			screen_name = "Block of Stone";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_200;
+			inventory_icon = b_gui_ig_i_ic_sp_200_inv;
+		}
+	[magic]
+		{ //FROM DS1 HOLD-CREATURE
+			hide_damage_in_tooltip = true;
+
+			max_level = 47;
+			required_level = 22;
+
+			cast_experience = (#magic*1.3);
+			cast_range = 10;
+			cast_reload_delay = 1;
+
+			effect_duration = ((#magic*1.1)-5) / 8;
+
+			mana_cost_modifier = ((#maxlife)*2) / 8;
+			mana_cost_ui_modifier = (#SRC_MAXMANA)+1;
+			mana_cost = 0;
+			mana_cost_ui = 2;
+
+			is_one_shot = true;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_conscious_enemy | tt_unconscious_enemy;
+			target_type_flags_not = tt_human_party_member;
+			usage_context_flags = uc_offensive;
+			state_name = "Frozen";
+		}
+	[DSX_spell_freeze]
+		{
+			description = "Petrified";
+			effect_script = "block_of_stone_shot";
+			effect_script2 = "block_of_stone_hit";
+			explode_script = "block_of_stone_explosion";
+			immunity = "immune_freeze";
+			return_script = "block_of_stone_return";
+			freeze_texture = "b_i_glb_block_of_stone";	
+			use_pedestal = true;
+			pedestal_template = rock_grs_01;
+		}
+}
+
+[t:template,n:spell_dimension_gate]
+{
+	category_name = "magic";
+	doc = "spell_dimension_gate";
+	specializes = base_spell_dark;
+
+	[magic]//SEE DS1 HOLD_CREATURE (difference: creature can't fight back OR be hurt)
+		{
+			max_level = 35;
+			required_level = 12;
+
+			cast_experience = (#magic*1.3);
+			cast_range = 10;
+			cast_reload_delay = 1;  
+
+			//This can have a relatively long duration, since you can't
+			//actually attack the enemy.
+			effect_duration = ( (#magic*1.1)-5 ); // / ( 2 * 4 ); 
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = ((#maxlife)*2); // / ( 2 * 3.5 ) ;	
+			mana_cost_ui = 2;
+			mana_cost_ui_modifier = (#SRC_MAXMANA)+1;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_conscious_enemy | tt_unconscious_enemy;
+			target_type_flags_not = tt_human_party_member;
+			usage_context_flags = uc_offensive;
+			state_name = "Frozen";
+		}
+	[aspect]
+		{
+			gold_value = 444;
+		}
+	[common]
+		{
+			description = "Transports the enemy to a mysterious dimension. Mana cost dependent on power of the Target.";
+			screen_name = "Dimension Gate";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_201;
+			inventory_icon = b_gui_ig_i_ic_sp_201_inv;
+		}
+	[DSX_spell_freeze]
+		{
+			description = "Transported";
+			effect_script = "dimension_gate_shot";
+			explode_script = "dimension_gate_death";
+			immunity = "immune_freeze";
+			return_script = "dimension_gate_return";
+			freeze_texture = "b_i_glb_dimension_gate";
+			goesAway = true;	
+			use_pedestal = true;
+			pedestal_scale = .5;
+			pedestal_template = dimension_gate_object;
+		}
+}
+
+[t:template,n:spell_turncoat]
+{
+	category_name = "magic";
+	doc = "spell Turncoat";
+	specializes = base_spell_dark;
+
+	[aspect]
+	{
+		gold_value = 21;
+	}
+	[common]
+	{
+		screen_name = "Turncoat";
+	}
+	[common]
+	{
+		description = "Causes nearby melee enemies to attack the selected target";
+		[template_triggers]
+		{
+			[*]
+			{
+				action* = call_sfx_script( "combat_spell_sparkle" );
+				condition* = receive_world_message("we_dropped");
+			}
+		}
+	}
+	[gui]
+	{
+		active_icon = b_gui_ig_i_ic_sp_210;
+		inventory_icon = b_gui_ig_i_ic_sp_210_inv;
+	}
+	[magic]
+	{//SEE DS1 HOLD-CREATURE
+		required_level = 3;
+		max_level = 24;
+
+		cast_experience = (#magic*1.3);
+		cast_range = 10;
+		cast_reload_delay = 1;
+		effect_duration = 2 + 3 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));	
+		is_one_shot = true;
+		mana_cost = 0;
+		mana_cost_modifier = (#maxlife) * 2.0;	
+		mana_cost_ui = 2;
+		mana_cost_ui_modifier = (#SRC_MAXMANA + 1);
+
+		apply_enchantments = false;
+
+		requires_line_of_sight = true;
+		speed_bias = 1;
+		// target conscious enemies
+		target_type_flags = tt_conscious_enemy;
+		// cannot target yourself or a member of you party
+		target_type_flags_not =	 tt_self | tt_human_party_member;
+		usage_context_flags = uc_defensive;
+		state_name = "Turncoat";
+	}
+
+	[spell_turncoat] 
+	{
+		caster_script = "turncoat_cast";
+		effect_script = "turncoat_effect";
+		state_description = "Turned";
+		immunity = "immune_control";
+	}
+}
+
+[t:template,n:spell_summon_dsx_twisted_mucosa]
+{
+	category_name = "magic";
+	doc = "dsx_summon_twisted_mucosa";
+	specializes = base_summon_dark;
+	[aspect]
+		{
+			gold_value = 133;
+		}
+	[common]
+		{
+			description = "Summons a Twisted Mucosa to guard the Caster.";
+			screen_name = "Summon Twisted Mucosa";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_221;
+			inventory_icon = b_gui_ig_i_ic_sp_221_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 360;
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*14-.7;
+
+			max_level = 30;
+			required_level = 8;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*.63)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*1.2)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.5)-#int);
+						}
+					[*]
+						{
+							alteration = alter_combat_magic;
+							duration = #infinite;
+							value = ((#magic-1)-#combat_magic_level);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*.4)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*0.93)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*0.93)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.25)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.25)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_cmagic_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.7)-9)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_cmagic_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.7)-9)*1.1);
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = ((#magic-2)-#melee);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.95)-17)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.95)-17)*1.1);
+						}
+				}
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(2.0)]";
+			template_name = dsx_twisted_mucosa_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_vile_twisted_mucosa]
+{
+	category_name = "magic";
+	doc = "dsx_summon_vile_twisted_mucosa";
+	specializes = base_summon_dark;
+	[aspect]
+		{
+			gold_value = 288;
+		}
+	[common]
+		{
+			description = "Summons a Vile Twisted Mucosa to guard the Caster.";
+			screen_name = "Summon Vile Twisted Mucosa";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_222;
+			inventory_icon = b_gui_ig_i_ic_sp_222_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 240;
+			is_one_shot = true;
+			max_level = 35;
+			required_level = 10;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*15-.7;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*1)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*.5)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.1)-#int);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*1.25)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*0.9)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*0.9)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.02)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.02)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = ((#magic-2)-#melee);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.95)-17)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.95)-17)*1.1);
+						}
+					[*]
+						{
+							alteration = alter_combat_magic;
+							duration = #infinite;
+							value = ((#magic)-#combat_magic_level);
+						}
+					[*]
+						{
+							alteration = alter_cmagic_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.9)-22)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_cmagic_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.9)-22)*1.1);
+						}
+				}
+
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(2.0)]";
+			template_name = dsx_vile_twisted_mucosa_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_giant_rat]
+{
+	category_name = "magic";
+	doc = "dsx_summon_giant_rat";
+	specializes = base_summon_good;
+	[aspect]
+		{
+			gold_value = 51;
+		}
+	[common]
+		{
+			description = "Summons a Giant Rat to guard the Caster.";
+			screen_name = "Summon Giant Rat";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_250;
+			inventory_icon = b_gui_ig_i_ic_sp_250_inv;
+		}
+	[magic]
+		{
+			max_level = 25;
+			required_level = 4;
+
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 360;
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*14 - .7;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*.46)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*1)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.2)-#int);
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = ((#magic-1)-#melee);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*.3)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.2)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.2)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.2)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.09)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.83)-10)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.83)-10)*1.1);
+						}
+				}
+
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(1.75)]";
+			template_name = dsx_giant_rat_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_deadly_armor]
+{
+	category_name = "magic";
+	doc = "dsx_deadly_armor_summon";
+	specializes = base_summon_dark;
+	[aspect]
+		{
+			gold_value = 23219;
+		}
+	[common]
+		{
+			description = "Summons Deadly Armor to guard the Caster.";
+			screen_name = "Summon Deadly Armor";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_215;
+			inventory_icon = b_gui_ig_i_ic_sp_215_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 240;
+			is_one_shot = true;
+			max_level = 56;
+			required_level = 36;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*15-.7;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*.65)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*1)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.91)-#int);
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = ((#magic-5)-#melee);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*.57)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.6)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.6)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.6)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.09)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*1)-62)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*1)-62)*1.1);
+						}
+				}
+
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(1.0)]";
+			template_name = dsx_deadly_armor_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_ursae_demonic]
+{
+	category_name = "magic";
+	doc = "dsx_ursae_summon";
+	specializes = base_summon_dark;
+	[aspect]
+		{
+			gold_value = 7292;
+		}
+	[common]
+		{
+			description = "Summons an Ursae to guard the Caster.";
+			screen_name = "Summon Ursae";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_217;
+			inventory_icon = b_gui_ig_i_ic_sp_217_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 300;
+			is_one_shot = true;
+			max_level = 50;
+			required_level = 25;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*14-.7;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*.44)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*.6)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.33)-#int);
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = ((#magic-18)-#melee);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*.46)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.3)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.3)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.01)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.01)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.7)-79)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.7)-79)*1.1);
+						}
+				}
+
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(3.0)]";
+			template_name = dsx_ursae_demonic_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_rune_guardian]
+{
+	category_name = "magic";
+	doc = "dsx_summon_rune_guardian";
+	specializes = base_summon_dark;
+	[aspect]
+		{
+			gold_value = 190238;
+		}
+	[common]
+		{
+			description = "Summons a Rune Guardian to guard the Caster.";
+			screen_name = "Summon Rune Guardian";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_219;
+			inventory_icon = b_gui_ig_i_ic_sp_219_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 240;
+			is_one_shot = true;
+			max_level = 95;
+			required_level = 65;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*13-.7;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*.5)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*.7)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.3)-#int);
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = ((#magic-21)-#melee);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*.75)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*0.63)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*0.63)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.01)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.01)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.83)-132)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.83)-132)*1.1);
+						}
+				}
+
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(2.0)]";
+			template_name = dsx_rune_guardian_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_barkrunner]
+{
+	category_name = "magic";
+	doc = "dsx_summon_barkrunner";
+	specializes = base_summon_good;
+	[aspect]
+		{
+			gold_value = 2392;
+		}
+	[common]
+		{
+			description = "Summons a Barkrunner to guard the Caster.";
+			screen_name = "Summon Barkrunner";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_247;
+			inventory_icon = b_gui_ig_i_ic_sp_247_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 240;
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*15-.7;
+			max_level = 40;
+			required_level = 19;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*.94)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*.83)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.8)-#int);
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = ((#magic-2)-#melee);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*.78)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*2)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*2)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.02)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.02)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*1.2)-64)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*1.2)-64)*1.1);
+						}
+				}
+
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(2.25)]";
+			template_name = dsx_barkrunner_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_scrub_howler]
+{
+	category_name = "magic";
+	doc = "dsx_summon_scrub_howler";
+	specializes = base_summon_good;
+	[aspect]
+		{
+			gold_value = 23874;
+		}
+	[common]
+		{
+			description = "Summons a Scrub Howler to guard the Caster.";
+			screen_name = "Summon Scrub Howler";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_251;
+			inventory_icon = b_gui_ig_i_ic_sp_251_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 120;
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*16-.7;
+			max_level = 62;
+			required_level = 37;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*.91)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*1)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.82)-#int);
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = ((#magic-5)-#melee);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*.78)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.5)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.5)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.08)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.08)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*1.03)-88)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*1.03)-88)*1.1);
+						}
+				}
+
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(2.25)]";
+			template_name = dsx_scrub_howler_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_bear]
+{
+	category_name = "magic";
+	doc = "dsx_summon_bear";
+	specializes = base_summon_good;
+	[aspect]
+		{
+			gold_value = 301;
+		}
+	[common]
+		{
+			description = "Summons a Cave Bear to guard the Caster.";
+			screen_name = "Summon Cave Bear";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_248;
+			inventory_icon = b_gui_ig_i_ic_sp_248_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 240;
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*14-.7;
+			max_level = 23;
+			required_level = 11;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*.46)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*1)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.2)-#int);
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = ((#magic-1)-#melee);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*.3)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.2)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.2)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.09)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.09)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.83)-22)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.83)-22)*1.1);
+						}
+				}
+
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(3.0)]";
+			template_name = dsx_bear_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_zepheryl_dark]
+{
+	category_name = "magic";
+	doc = "dsx_summon_skiked_dweller";
+	specializes = base_summon_good;
+	[aspect]
+		{
+			gold_value = 7592;
+		}
+	[common]
+		{
+			description = "Summons a Dark Zepheryl to guard the Caster.";
+			screen_name = "Summon Dark Zepheryl";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_252;
+			inventory_icon = b_gui_ig_i_ic_sp_252_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 240;
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*17-.7;
+			max_level = 55;
+			required_level = 26;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*.93)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*1.08)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.8)-#int);
+						}
+					[*]
+						{
+							alteration = alter_combat_magic;
+							duration = #infinite;
+							value = ((#magic)-#combat_magic_level);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*.47)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*2.2)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*2.2)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.3)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.3)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_cmagic_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.9)-22)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_cmagic_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.9)-22)*1.1);
+						}
+				}
+
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(3)]";
+			template_name = dsx_zepheryl_dark_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_fleshrender]
+{
+	category_name = "magic";
+	doc = "dsx_summon_fleshrender";
+	specializes = base_summon_dark;
+	[aspect]
+		{
+			gold_value = 60838;
+		}
+	[common]
+		{
+			description = "Summons a Fleshrender to guard the Caster.";
+			screen_name = "Summon Fleshrender";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_218;
+			inventory_icon = b_gui_ig_i_ic_sp_218_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 120;
+			is_one_shot = true;
+			max_level = 81;
+			required_level = 51;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*15-.7;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*.41)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*.85)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.54)-#int);
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = ((#magic-16)-#melee);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*.89)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.15)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.15)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.03)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.03)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.93)-122)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.93)-122)*1.1);
+						}
+				}
+
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(1.25)]";
+			template_name = dsx_fleshrender_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_knight_death]
+{
+	category_name = "magic";
+	doc = "dsx_summon_knight_death";
+	specializes = base_summon_dark;
+	[aspect]
+		{
+			gold_value = 2842;
+		}
+	[common]
+		{
+			description = "Summons a Death Knight to guard the Caster.";
+			screen_name = "Summon Death Knight";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_216;
+			inventory_icon = b_gui_ig_i_ic_sp_216_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 360;
+			is_one_shot = true;
+
+			max_level = 45;
+			required_level = 20;
+
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*16-.7;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.77)+10)*1)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*1)+10)*.3)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.5)+10)*.1)-#int);
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = ((#magic-1)-#melee);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*.57)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*3)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*3)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.06)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.06)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*1.1)-20)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*1.1)-20)*1.1);
+						}
+				}
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(1.25)]";
+			template_name = dsx_knight_death_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_slithermage]
+{
+	category_name = "magic";
+	doc = "dsx_summon_slithermage";
+	specializes = base_summon_dark;
+	[aspect]
+		{
+			gold_value = 519721;
+		}
+	[common]
+		{
+			description = "Summons a Slithermage to guard the Caster.";
+			screen_name = "Summon Slithermage";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_220;
+			inventory_icon = b_gui_ig_i_ic_sp_220_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 120;
+			is_one_shot = true;
+
+			max_level = 111;
+			required_level = 83;
+
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*17-.7;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*.83)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*.9)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.93)-#int);
+						}
+					[*]
+						{
+							alteration = alter_combat_magic;
+							duration = #infinite;
+							value = ((#magic-26)-#combat_magic_level);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*1.12)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.35)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.35)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.09)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.09)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_cmagic_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*1.08)-200)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_cmagic_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*1.08)-200)*1.1);
+						}
+				}
+
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(2.4)]";
+			template_name = dsx_slithermage_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_chomper]
+{
+	category_name = "magic";
+	doc = "dsx_summon_chomper";
+	specializes = base_summon_good;
+	[aspect]
+		{
+			gold_value = 837;
+		}
+	[common]
+		{
+			description = "Summons a Chomper to guard the Caster.";
+			screen_name = "Summon Chomper";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_249;
+			inventory_icon = b_gui_ig_i_ic_sp_249_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 120;
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*15-.7;
+
+			max_level = 34;
+			required_level = 14;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*.87)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*.75)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.3)-#int);
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = ((#magic-4)-#melee);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*1.25)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.54)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.54)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.04)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.04)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.98)-41)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.98)-41)*1.1);
+						}
+				}
+
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(1.5)]";
+			template_name = dsx_chomper_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_troll_masher]
+{
+	category_name = "magic";
+	doc = "dsx_summon_troll_masher";
+	specializes = base_summon_good;
+	[aspect]
+		{
+			gold_value = 378257;
+		}
+	[common]
+		{
+			description = "Summons a Troll Masher to guard the Caster.";
+			screen_name = "Summon Troll Masher";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_253;
+			inventory_icon = b_gui_ig_i_ic_sp_253_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 120;
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*17-.7;
+
+			max_level = 93;
+			required_level = 73;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*1.06)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*.9)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.45)-#int);
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = ((#magic-7)-#melee);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*.78)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.5)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*1.5)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.1)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.1)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.9)-53)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.9)-53)*1.1);
+						}
+				}
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(1.5)]";
+			template_name = dsx_troll_masher_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:spell_summon_dsx_zepheryl]
+{
+	category_name = "magic";
+	doc = "dsx_summon_zepheryl";
+	specializes = base_summon_good;
+	[aspect]
+		{
+			gold_value = 5198;
+		}
+	[common]
+		{
+			description = "Summons a Zepheryl to guard the Caster.";
+			screen_name = "Summon Zepheryl";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_271;
+			inventory_icon = b_gui_ig_i_ic_sp_271_inv;
+		}
+	[magic]
+		{
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 1;
+			caster_state_name = "Controlling";
+			effect_duration = 360;
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*17-.7;
+			max_level = 50;
+			required_level = 23;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = ((((#magic*0.64)+10)*.93)-#str);
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = ((((#magic*0.27)+10)*1.08)-#dex);
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = ((((#magic*0.09)+10)*.8)-#int);
+						}
+					[*]
+						{
+							alteration = alter_combat_magic;
+							duration = #infinite;
+							value = ((#magic)-#combat_magic_level);
+						}
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (((#magic*9)*.47)-#base_defense);
+						}
+					[*]
+						{
+							alteration = alter_max_life;
+							duration = #infinite;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*2.2)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_life;
+							duration = 1.0;
+							value = ((((#MAGIC*12) + (#SPELL_REQ_LEVEL*12))*2.2)-#MAXLIFE);
+						}
+					[*]
+						{
+							alteration = alter_max_mana;
+							duration = #infinite;
+							value = (((#magic*19)*0.3)-#maxmana);
+						}
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 1.0;
+							value = (((#magic*19)*0.3)-#mana);
+						}
+					[*]
+						{
+							alteration = alter_cmagic_damage_min;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.9)-22)*0.9);
+						}
+					[*]
+						{
+							alteration = alter_cmagic_damage_max;
+							duration = #infinite;
+							value = ((((#magic*4.2)*.9)-22)*1.1);
+						}
+				}
+
+		}
+	[spell_summon]
+		{
+			effect_script = "summon";
+			end_script = "un_summon";
+			script_params = "[scale(1.5)]";
+			template_name = dsx_zepheryl_summon;
+			description = "Summoned Creature";
+			caster_description = "Controlling Summoned";
+		}
+}
+
+[t:template,n:base_spell_invisibility]
+{
+//ALL OF THE INVISIBILITY SPELLS ARE BALANCE BASED ON INVINCIBILITY
+	category_name = "magic";
+	doc = "spell base Invisibility";
+	specializes = base_spell_dark;
+
+	[common]
+	{
+		screen_name = "Invisibility";
+	}
+	[common]
+	{
+		[template_triggers]
+		{
+			[*]
+			{
+				action* = call_sfx_script( "combat_spell_sparkle" );
+				condition* = receive_world_message("we_dropped");
+			}
+		}
+	}
+	[gui]
+	{
+		active_icon = b_gui_ig_i_ic_sp_225;
+		inventory_icon = b_gui_ig_i_ic_sp_225_inv;
+	}
+}
+
+[t:template,n:spell_invisibility_self]
+{
+	category_name = "magic";
+	doc = "spell base Invisibility";
+	specializes = base_spell_invisibility;
+
+	[aspect]
+		{
+			gold_value = 299;
+		}
+	[common]
+		{
+			description = "Causes the caster to become invisible.";
+		}
+
+	[magic]
+		{
+			//for the transformed monster/buff spell bug
+			updates_on_transformed = false;
+
+			cast_experience = (#magic*.12);
+			cast_range = 8;
+			effect_duration = 15 + 45 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+			mana_cost = 0;
+			mana_cost_modifier = 0.5 * ((#magic+1)*17-0.7); //half the relative cost of invincibility
+
+			required_level = 10;
+			max_level = 30;
+
+			apply_enchantments = false;
+			cast_reload_delay = 1;
+			is_one_shot = true;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			// can only target yourself
+			target_type_flags = tt_self;
+			// cannot target enemies
+			target_type_flags_not =	 tt_evil;
+			usage_context_flags = uc_defensive;
+		}
+
+	[spell_invisibility]
+	{
+		target_script = "invisibility_effect";
+		invisibility_script = "invisibility_hide_effect";
+		end_script = "invisibility_end";
+		state_name = "invisibility";
+		
+		// need this here for loc - skrit isn't localized
+		state_description = "Invisible";
+	}
+}
+
+[t:template,n:spell_invisibility_targeted]
+{
+	category_name = "magic";
+	doc = "spell Invisibility Targeted";
+	specializes = base_spell_invisibility;
+
+	[aspect]
+		{
+			gold_value = 3963;
+		}
+	[common]
+		{
+			screen_name = "Targeted Invisibility";
+			description = "Causes the target to become invisible.";
+		}
+	[magic]
+		{
+			//for the transformed monster/buff spell bug
+			updates_on_transformed = false;
+
+			cast_experience = (#magic*.12);
+			cast_range = 8;
+			effect_duration = 5 + 10 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+			mana_cost = 0;
+			mana_cost_modifier = 0.5 * ((#magic+1)*17-0.7); //half the relative cost of invincibility
+
+			apply_enchantments = false;
+			cast_reload_delay = 1;
+			is_one_shot = true;
+
+			required_level = 21;
+			max_level = 46;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			// can only target yourself
+			target_type_flags = tt_human_party_member | tt_and | tt_conscious_friend;
+			// cannot target self or enemies
+			target_type_flags_not =	 tt_self | tt_evil;
+			usage_context_flags = uc_defensive;
+		}
+
+	[spell_invisibility]
+	{
+		target_script = "invisibility_effect";
+		invisibility_script = "invisibility_hide_effect";
+		end_script = "invisibility_end";
+		state_name = "invisibility";
+		
+		// need this here for loc - skrit isn't localized
+		state_description = "Invisible";		
+	}
+	[gui]
+	{
+		active_icon = b_gui_ig_i_ic_sp_229;
+		inventory_icon = b_gui_ig_i_ic_sp_229_inv;
+	}
+}
+
+[t:template,n:spell_respite]
+{
+	category_name = "magic";
+	doc = "spell Respite";
+	specializes = base_spell_good;
+
+	[aspect]
+		{
+			gold_value = 112;
+		}
+	[common]
+		{
+			screen_name = "Respite";
+		}
+	[common]
+		{
+			description = "Causes enemies to be unable to attack the caster.";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_258;
+			inventory_icon = b_gui_ig_i_ic_sp_258_inv;
+		}
+	[magic]
+		{
+			//for the transformed monster/buff spell bug
+			updates_on_transformed = false;
+
+			cast_experience = (#magic*.12);
+			cast_range = 8;
+			effect_duration = 15 + 45 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+			mana_cost = 0;
+			mana_cost_modifier = 0.5 * ((#magic+1)*17-0.7); //half the relative cost of invincibility
+
+			apply_enchantments = false;
+			cast_reload_delay = 1;
+			is_one_shot = true;
+
+			required_level = 7;
+			max_level = 27;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			// can only target yourself
+			target_type_flags = tt_self;
+			// cannot target self or enemies
+			target_type_flags_not =	 tt_evil;
+			usage_context_flags = uc_defensive;
+			
+			caster_state_name = "Respite";
+		}
+
+	[spell_respite]
+	{
+		state_name = "Respite";
+		target_script = "respite_effect";
+		state_description = "Resting";
+	}
+}
+
+[t:template,n:spell_lifeforce]
+{
+	category_name = "magic";
+	doc = "spell lifeforce";
+	specializes = base_spell_good;
+	[aspect]
+		{
+			gold_value = 31;
+		}
+	[common]
+		{
+			description = "Increases casters melee damage versus Undead by <alter_damage_bonus_to_undead>.";
+			screen_name = "Lifeforce";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_242;
+			inventory_icon = b_gui_ig_i_ic_sp_242_inv;
+		}
+	[magic]//charged fist based
+		{
+			updates_on_transformed = false;	// we don't want this spell to play its effects on transformed creatures
+
+			max_level = 17;
+			required_level = 3;
+
+			effect_duration = 100+(#magic*5);
+			apply_enchantments = false;
+			cast_experience = (#magic*.3)+1;
+			cast_range = 3;
+			cast_reload_delay = 1;
+
+
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = ((#magic+1)*4.2-.7);
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_self;
+			usage_context_flags = uc_defensive;
+			state_name = Lifeforce;
+			require_state_check = false;
+			[enchantments]
+				{
+					[*]
+						{
+							alteration = ALTER_DAMAGE_BONUS_TO_UNDEAD;
+							description = "Raise Melee Damage Versus Undead";
+							duration = 100+(#magic*5);
+							frequency = 0;
+							initial_delay = 0.25;
+							value = 1.1+(#magic*.6) * 5; //five times stronger than charged fist
+						}
+				}
+		}
+	[spell_status_effect]
+		{
+			description = "Lifeforce";
+			effect_script = lifeforce;
+		}
+}
+
+[t:template,n:spell_monster_magnet]
+{
+	category_name = "magic";
+	doc = "spell_monster_magnet";
+	specializes = base_spell_dark;
+	[aspect]
+		{
+			gold_value = 98623;
+		}
+	[common]
+		{
+			description = "Creates a magical object that captures the attention of nearby monsters.";
+			screen_name = "Monster Magnet";
+
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "monster_magnet_charge" );
+							condition* = receive_world_message("we_req_cast_charge");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_226;
+			inventory_icon = b_gui_ig_i_ic_sp_226_inv;
+		}
+	[magic]//based on freeze
+	{
+		/*
+			attack_damage_modifier_min = (#magic*0.78);
+			attack_damage_modifier_max = (#magic*0.845)+1;
+
+			this spell doesn't do damage, unlike freeze
+		*/
+
+		cast_range = 5;
+		cast_reload_delay = 2;
+
+		effect_duration = 2 + 3 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+
+		mana_cost = 1;
+		mana_cost_modifier = 10 * #magic;
+		mana_cost_ui = 1;
+		mana_cost_ui_modifier = 10 * #magic;
+
+		max_level = 75;
+		required_level = 55;
+
+		cast_experience = (#magic*0.45)+1;
+
+		caster_state_name = "DSX_mezmerizing";
+		is_one_shot = true;
+		mana_cost = 1;
+		mana_cost_modifier = ( (#magic*0.95)+0.9 ) * 9; //about 1/4 of mana
+		target_type_flags = tt_terrain;
+		usage_context_flags = uc_passive;
+	}
+	[spell_magnet]
+	{
+		radius = 3; //how far away monsters will come to reach the magnet
+		magnetEffect = monster_magnet;
+		attractChasers = true;
+		other_description = "Attracting the attention of nearby monsters";
+		objectName = monster_magnet_object;
+		
+		// for these to be localized, it needs to be in the gas file, not just in skrit
+		state_description="Mesmerized";
+		caster_description="Mezmerizing enemies";		
+	}
+}
+
+[t:template,n:spell_spectral_summoning]
+{
+	category_name = "magic";
+	doc = "spell_spectral_summoning";
+	specializes = base_spell_good;
+	[aspect]
+		{
+			gold_value = 99710;
+		}
+	[common]
+		{
+			description = "An ethereal figure attracts the attacks of nearby enemies.";
+			screen_name = "Spectral Image";
+
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "fireshot_charge" );
+							condition* = receive_world_message("we_req_cast_charge");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_246;
+			inventory_icon = b_gui_ig_i_ic_sp_246_inv;
+		}
+	[magic]
+		{//ds1 freeze
+			max_level = 80;
+			required_level = 55;
+
+			effect_duration = 5 + 10 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+
+			cast_range = 10;
+
+			cast_experience = (#magic*.35)+1;
+
+			mana_cost = 1;
+			mana_cost_modifier = #MAGIC * 4.12;
+			mana_cost_ui = 1;
+			mana_cost_ui_modifier = #MAGIC * 4.12;
+
+			//			mana_cost_modifier = #magic * .975;
+
+			caster_state_name = "DSX_mezmerizing";
+			is_one_shot = true;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_passive;
+		}
+	[spell_magnet]
+	{
+		magnetEffect = spectral_summoning;
+		summonEffect = summon;
+		unsummonEffect = un_summon;
+		attractAttackers = true;
+		substantialObject=true;
+		chargeDelay = 2;
+		other_description = "Attracting attacks of nearby monsters";
+		objectName = spectral_image_object;
+		
+		// for these to be localized, it needs to be in the gas file, not just in skrit
+		state_description="Mesmerized";
+		caster_description="Mezmerizing enemies";
+	}
+}
+[t:template,n:base_spell_glyph_good]
+{
+	category_name = "magic";
+	doc = "spell Glyph Good";
+	specializes = base_spell_good;
+
+	[common]
+		{
+			screen_name = "Base Good Glyph Spell";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[magic]
+	{
+		caster_state_name = "dsx_glyphs";
+	}
+	
+	[spell_glyph]
+	{
+		// to be localized, these needs to be here, not just in skrit
+		state_description = "Time remaining";
+		other_description = "Detonating";
+	}	
+}
+
+[t:template,n:base_spell_glyph_evil]
+{
+	category_name = "magic";
+	doc = "spell Glyph Evil";
+	specializes = base_spell_dark;
+
+	[common]
+		{
+			screen_name = "Base Evil Glyph Spell";
+		}
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[magic]
+	{
+		caster_state_name = "dsx_glyphs";
+	}
+	
+	[spell_glyph]
+	{
+		// to be localized, these needs to be here, not just in skrit
+		state_description = "Time remaining";
+		other_description = "Detonating";
+	}	
+}
+
+[t:template,n:spell_glyph_detonating]
+{
+	category_name = "magic";
+	doc = "spell Glyph Detonating";
+	specializes = base_spell_glyph_evil;
+	[aspect]
+		{
+			gold_value = 3350;
+		}
+	[common]
+		{
+			screen_name = "Detonating Glyph";
+			description = "Creates a rune that will detonate and damage enemies when they get too close.";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_202;
+			inventory_icon = b_gui_ig_i_ic_sp_202_inv;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+		}
+	[magic] //BASED ON DS1 DEATH BLAST
+		{
+			required_level = 21;
+			max_level = 46;
+
+			cast_range = 10;
+
+			attack_damage_modifier_max = ((#magic+1)**1.126*1.91)*(1+((1/(#magic+10))+0.129));
+			attack_damage_modifier_min = ((#magic+1)**1.126*1.91)*(1-((1/(#magic+6))+0.13));
+
+			mana_cost = 1;
+			mana_cost_modifier = (#magic*4.87)+.9;
+
+			//cast_experience = (#magic * 0.5)+1; 
+			apply_enchantments = false;
+			cast_reload_delay = 1;
+			is_one_shot = true;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			// can only target the ground
+			target_type_flags = tt_terrain | tt_evil;
+			usage_context_flags = uc_defensive;
+		}
+
+	[spell_glyph]
+	{
+		effect_script = "glyph_detonate_effect";
+		rune_template = "dsx_rune_detonating";
+		radius = 10;
+		damage_falloff = .1;
+		wait_for_enemies = 1;
+		explosion_length = 1.5;
+		max_glyph_count = 10;
+		caster_description = "Glyph count:";
+		timeout = 30;
+	}
+}
+
+[t:template,n:spell_glyph_flaming]
+{
+	category_name = "magic";
+	doc = "spell Glyph Flaming";
+	specializes = base_spell_glyph_evil;
+
+	[aspect]
+		{
+			gold_value = 150;
+		}
+	[common]
+		{
+			screen_name = "Flaming Glyph";
+			description = "Creates a rune that will create a flaming explosion and damage enemies when they get too close.";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_203;
+			inventory_icon = b_gui_ig_i_ic_sp_203_inv;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+		}
+	[magic]
+		{//DS1 ACID CLOUD BASED
+
+			attack_damage_modifier_max = ((#magic+1)**1-2.07)*(1+((1/(#magic+10))+.07));
+			attack_damage_modifier_min = ((#magic+1)**1-2.07)*(1-((1/(#magic+10))+.07));
+			cast_range = 12;
+			cast_reload_delay = 1;
+			effect_duration = (5+(#magic)*0.3);
+			does_damage_per_second = true;
+			mana_cost = 1;
+			mana_cost_modifier = (#magic*2)+.8;
+			cast_experience = (#magic*.01);
+
+			is_one_shot = true;
+			apply_enchantments = false;
+			required_level = 9;
+			max_level = 31;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			// can only target the ground
+			target_type_flags = tt_terrain | tt_evil;
+			usage_context_flags = uc_defensive;
+		}
+
+	[spell_glyph]
+	{
+		effect_script = "glyph_flame_effect";
+		rune_template = "dsx_rune_flame";
+		radius = 10;
+		damage_falloff = .1;
+		wait_for_enemies = 1;
+		max_glyph_count = 10;
+		caster_description = "Glyph count:";
+		timeout = 30;
+	}
+}
+
+[t:template,n:spell_glyph_zapper]
+{
+	category_name = "magic";
+	doc = "spell Glyph Zapper";
+	specializes = base_spell_glyph_good;
+
+	[aspect]
+		{
+			gold_value = 110;
+		}
+	[common]
+		{
+			description = "Creates a rune that will create a lightning explosion and damage enemies when they get too close.";
+			screen_name = "Zapper Glyph";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_237;
+			inventory_icon = b_gui_ig_i_ic_sp_237_inv;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+		}
+	[magic] //BASED ON DS1 SHOCK
+		{
+			required_level = 7;
+			max_level = 27;
+
+			cast_range = 10;
+
+			attack_damage_modifier_max = ((#magic+1)**1.1559+8)*(1+((1/(#magic+18))+.07));
+			attack_damage_modifier_min = ((#magic+1)**1.1559+8)*(1-((1/(#magic+16))+.07));
+
+			effect_duration = 1 + 2 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+
+			mana_cost = 1;
+			mana_cost_modifier = (#magic*2.7)-1;
+
+			apply_enchantments = false;
+			//cast_experience = (#magic*.45)+1;
+			cast_reload_delay = 1;
+			is_one_shot = true;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			// can only target the ground
+			target_type_flags = tt_terrain | tt_evil;
+			usage_context_flags = uc_defensive;
+		}
+
+	[spell_glyph]
+		{
+			effect_script = "glyph_zap_effect";
+			rune_template = "dsx_rune_zap";
+			radius = 10;
+			damage_falloff = .1;
+			wait_for_enemies = 1;
+			explosion_length = 2;
+			max_glyph_count = 10;
+			caster_description = "Glyph count:";
+			timeout = 30;
+		}
+}
+
+[t:template,n:spell_glyph_shockwave]
+{
+	category_name = "magic";
+	doc = "spell Glyph Shockwave";
+	specializes = base_spell_glyph_good;
+
+	[aspect]
+		{
+			gold_value = 4357;
+		}
+	[common]
+		{
+			screen_name = "Shockwave Glyph";
+			description = "Creates a rune that releases a shockwave that will damage enemies when they get too close.";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_238;
+			inventory_icon = b_gui_ig_i_ic_sp_238_inv;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+		}
+	[magic]
+		{
+			required_level = 22;
+			max_level = 42;
+
+			cast_range = 10;
+			attack_damage_modifier_max = ((#magic+1)**1.126*1.91)*(1+((1/(#magic+10))+0.129));
+			attack_damage_modifier_min = ((#magic+1)**1.126*1.91)*(1-((1/(#magic+6))+0.13));
+
+			mana_cost = 1;
+			mana_cost_modifier = (#magic*4.87)+.9;
+
+			//cast_experience = (#magic*.45)+1;
+
+			apply_enchantments = false;
+			cast_reload_delay = 1;
+			is_one_shot = true;
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			// can only target the ground
+			target_type_flags = tt_terrain | tt_evil;
+			usage_context_flags = uc_defensive;
+		}
+
+	[spell_glyph]
+		{
+			radius = 10;
+			effect_script = "glyph_shockwave_effect";
+			rune_template = "dsx_rune_shockwave";
+			damage_falloff = .1;
+			wait_for_enemies = 1;
+			explosion_length = 1.5;
+			max_glyph_count = 10;
+			caster_description = "Glyph count:";
+			timeout = 30;
+		}
+}
+
+[t:template,n:spell_glyph_acid]
+{
+	category_name = "magic";
+	doc = "spell Glyph Acid";
+	specializes = base_spell_glyph_evil;
+
+	[aspect]
+		{
+			gold_value = 21;
+		}
+	[common]
+		{
+			screen_name = "Acid Glyph";
+		}
+	[common]
+		{
+			description = "Creates a rune that will detonate into a damaging ball of acidic gas.";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_204;
+			inventory_icon = b_gui_ig_i_ic_sp_204_inv;
+		}
+	[attack]
+		{
+			damage_max = 0;
+			damage_min = 0;
+		}
+	[magic]
+		{
+			// be careful when balancing.	 the experience tends to increase
+			// quickly since damage is done over the duration of the effect
+
+   		attack_damage_modifier_max = ((#magic*1.55)*1.2)+2.99*(1.2+((#magic+1)/50));
+			attack_damage_modifier_min = ((#magic*1.55)*1.2)+0.9*(0.8-((#magic+1)/50));
+			//			attack_damage_modifier_max = ((#magic+1)**1-2.07)*(1+((1/(#magic+10))+.07));
+			//			attack_damage_modifier_min = ((#magic+1)**1-2.07)*(1-((1/(#magic+10))+.07));
+
+			cast_range = 12;
+			cast_reload_delay = 1;
+			effect_duration = (5+(#magic)*0.3);
+			mana_cost = 1;
+			mana_cost_modifier = (#magic*2)+.8;
+			cast_experience = (#magic*.01);
+
+			does_damage_per_second = true;
+			is_one_shot = true;
+			apply_enchantments = false;
+			required_level = 2;
+			max_level = 22;
+
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			// can only target the ground
+			target_type_flags = tt_terrain | tt_evil;
+			usage_context_flags = uc_defensive;
+		}
+
+	[spell_glyph]
+		{
+			effect_script = "glyph_acid_effect";
+			rune_template = "dsx_rune_acid";
+			radius = 10;
+			wait_for_enemies = 1;
+			explosion_length = 1.7;
+			ex_duration = true;
+			max_glyph_count = 10;
+			caster_description = "Glyph count:";
+			timeout = 30;
+		}
+}
+[t:template,n:spell_share_damage]
+{
+	category_name = "magic";
+	doc = "spell share damage";
+	specializes = base_spell_dark;
+	[aspect]
+		{
+			gold_value = 1283;
+		}
+	[common]
+		{
+			description = "Party members within range will share their damage.";
+			screen_name = "Share Damage";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_228;
+			inventory_icon = b_gui_ig_i_ic_sp_228_inv;
+		}
+	[magic]//based on life balance
+		{
+			//for the transformed monster/buff spell bug
+			updates_on_transformed = false;
+
+			cast_experience = (#magic*.27);
+
+			//much shorter than life balance
+			effect_duration = 150 + 150 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = ( ( #magic + 1 ) *10.5 - 0.7 );
+
+			max_level = 35;
+			required_level = 15;
+
+			cast_range = 1;
+			cast_reload_delay = 1;
+			apply_enchantments = false;
+			is_one_shot = true;
+			requires_line_of_sight = false;
+			speed_bias = 1;
+			state_name = share_damage;
+			target_type_flags = tt_self;
+			target_type_flags_not = tt_dead_friend;
+		}
+	[spell_share_damage]
+		{
+			effect_script	= share_damage;
+			radius		= 10.0;
+			description		= "Share Damage";
+		}
+}
+
+[t:template,n:spell_taduzas_tantrum]
+{
+	category_name = "magic";
+	doc = "spell taduzas tantrum";
+	specializes = base_spell_dark;
+	[aspect]
+		{
+			gold_value = 262374;
+		}
+	[common]
+		{
+			description = "Enemies around caster may be frozen.";
+			screen_name = "Tadzu's Trance";
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_209;
+			inventory_icon = b_gui_ig_i_ic_sp_209_inv;
+		}
+	[magic] //BASED ON DS1 HOLD CREATURE
+		{
+			max_level = 105;
+			required_level = 75;
+
+			cast_experience = (#magic*1.3);
+			cast_range = 2; // TRJ 8/15/03 - this should always match the radius in the skrit component
+			cast_reload_delay = 1;
+			effect_duration = 3 + 7 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+			is_one_shot = true;
+			mana_cost = 0;
+			mana_cost_modifier = (#MAGIC) * 7.38;	
+
+			/*
+			mana_cost_ui = 2;
+			mana_cost_ui_modifier = #SRC_MAXMANA + 1;
+			*/
+
+			requires_line_of_sight = false;
+			speed_bias = 1;
+			state_name = "Frozen";
+			target_type_flags = tt_self;
+
+			area_radius = 2;
+			area_effect = harmful_aoe_volume;
+
+		}
+	[spell_taduzas_tantrum]
+		{
+			radius = 2.0;
+			freeze_chance = 1.0;
+			freeze_threshold = 1.0;
+			description = "Frozen";
+			effect_script = "freeze";
+			explode_script = "ice_explosion_large";
+			immunity = "immune_freeze";
+		}
+}
+
+
+[t:template,n:spell_mindflare]
+{
+	category_name = "magic";
+	doc = "spell_mindflare";
+	specializes = base_spell_good;
+	[aspect]
+		{
+			gold_value = 279323;
+		}
+	[attack]
+		{
+			attack_class = ac_combat_magic;
+			aiming_error_range_x = 2.5;
+			aiming_error_range_y = 2.5;
+			ammo_attach_bone = weapon_grip;
+			ammo_template = dsx_mindflare_grenade;
+			area_damage_radius = 2;
+			damage_max = 0;
+			damage_min = 0;
+			use_aiming_error = true;
+		}
+	[common]
+		{
+			description = "A magical object captures the attention of nearby monsters and explodes after a time.";
+			screen_name = "Mindflare";
+
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+					[*]
+						{
+							action* = call_sfx_script( "explosive_powder_cast" );
+							condition* = receive_world_message("we_req_cast");
+						}
+				}
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_241;
+			inventory_icon = b_gui_ig_i_ic_sp_241_inv;
+		}
+	[magic] //based on ice storm
+		{
+			attack_damage_modifier_max = ((#magic+1)*2.1+53.5)*(1+((1/(#magic+8))+.09));
+			attack_damage_modifier_min = ((#magic+1)*2.1+53.5)*(1-((1/(#magic+8))+.09));
+
+			max_level = 95;
+			required_level = 75;
+
+			cast_experience = (#magic*.35)+1;
+			mana_cost = 1;
+			mana_cost_modifier = (#magic*7)+1.28;
+
+			cast_range = 8;
+
+			cast_reload_delay = 1;
+			caster_state_name = "Mezmerizing";
+			requires_line_of_sight = true;
+			speed_bias = 1;
+			target_type_flags = tt_terrain;
+			usage_context_flags = uc_offensive;
+		}
+	[physics]
+		{
+			velocity = 11;
+		}
+	[spell_magnet]
+	{
+		chargeDelay = 0;
+		attractChasers = true;
+		projectile = true;
+
+		initialChance = 0.5; //50% chance to affect any monster
+		incrementChance = 0;
+		radius = 8;
+
+		// MRC 6/3/2003 Don't make this too small.
+		innerRadius = 2;
+		useChance = true;
+		
+		// for these to be localized, it needs to be in the gas file, not just in skrit
+		state_description="Mesmerized";
+		caster_description="Mezmerizing enemies";		
+	}
+}
+[t:template,n:base_spell_transform_good]
+{
+	category_name = "magic";
+	specializes = base_spell_good;
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "nature_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[magic]
+		{
+			//This is now a "normal" spell -- pay a reasonable amount of mana,
+			//turn into an animal for a specific duration, turn back.
+
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*6-.7;
+
+			effect_duration = 30 + 30 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+
+			//		cast_experience = 3*(#magic+1);
+			//		effect_duration = ((#magic+4)*4);
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 0;
+			is_one_shot = true;
+			requires_line_of_sight = false;
+			speed_bias = 1;
+			state_name = Transformed;	// make sure to use this state name for ALL transformation spells.	it is used in inhibiting actions
+			target_type_flags = tt_self;
+			//		usage_context_flags = uc_offensive;
+			require_state_check = false;
+
+			[enchantments] //THESE VALUES BASED ON A #MAGIC LEVEL FIGHTER CHARACTER
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = (10 + #magic * 0.64) * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL))) - #str;  //adjust value from 1.0 to 0.75
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = (10 + #magic * 0.25) * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL))) - #dex;
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = (10 + #magic * 0.09 * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL)))) - #int;
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = (#magic) * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL))) - #melee;
+						}
+
+					[*] //ZERO THESE
+						{
+							alteration = alter_ranged;
+							duration = #infinite;
+							value = #ranged * -1;
+						}
+					[*]
+						{
+							alteration = alter_combat_magic;
+							duration = #infinite;
+							value = #combat_magic * -1;
+						}
+					[*]
+						{
+							alteration = alter_nature_magic;
+							duration = #infinite;
+							value = #nature_magic * -1;
+						}
+
+					//DEFENSE & ATTACK
+
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = (( 6 + ((#MAGIC -1) * 9.3534)) * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL)))) - #base_defense;
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ( 0.9 * ( (4.1 * #MAGIC) + ((1 - ( #MAGIC / 114 )) * 6.3)) ) * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL))) - #MELEE_DAMAGE_MIN;
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ( 1.1 * ( (4.1 * #MAGIC) + ((1 - ( #MAGIC / 114 )) * 6.3)) ) * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL))) - #MELEE_DAMAGE_MAX;
+						}
+
+					//BRIEFLY SET TO MAX HEALTH, MANA, SO YOU START OFF HEALED
+					[*]
+						{
+							alteration = alter_life;
+							duration = 0.1;
+							value = #maxlife;
+						}
+					/*
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 0.1;
+							value = #maxmana;
+						}
+					*/
+				}
+		}
+}
+[t:template,n:base_spell_transform_dark]
+{
+	category_name = "magic";
+	specializes = base_spell_dark;
+	[common]
+		{
+			[template_triggers]
+				{
+					[*]
+						{
+							action* = call_sfx_script( "combat_spell_sparkle" );
+							condition* = receive_world_message("we_dropped");
+						}
+				}
+		}
+	[magic] //some from summon spells
+		{
+			mana_cost = 0;
+			mana_cost_modifier = (#magic+1)*6-.7;
+
+			effect_duration = 30 + 30 * ((#MAGIC - #SPELL_REQ_LEVEL) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL));
+
+			//		effect_duration = ((#magic+4)*4);
+			apply_enchantments = false;
+			cast_range = 10;
+			cast_reload_delay = 0;
+			is_one_shot = true;
+			requires_line_of_sight = false;
+			speed_bias = 1;
+			state_name = Transformed;	// make sure to use this state name for ALL transformation spells.	it is used in inhibiting actions
+			target_type_flags = tt_self;
+			require_state_check = false;
+
+			[enchantments] //THESE VALUES BASED ON A #MAGIC LEVEL FIGHTER CHARACTER
+				{
+					[*]
+						{
+							alteration = alter_strength;
+							duration = #infinite;
+							value = (10 + #magic * 0.64) * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL))) - #str;  //adjust value from 1.0 to 0.75
+						}
+					[*]
+						{
+							alteration = alter_dexterity;
+							duration = #infinite;
+							value = (10 + #magic * 0.25) * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL))) - #dex;
+						}
+					[*]
+						{
+							alteration = alter_intelligence;
+							duration = #infinite;
+							value = (10 + #magic * 0.09 * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL)))) - #int;
+						}
+					[*]
+						{
+							alteration = alter_melee;
+							duration = #infinite;
+							value = (#magic) * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL))) - #melee;
+						}
+
+					[*] //ZERO THESE
+						{
+							alteration = alter_ranged;
+							duration = #infinite;
+							value = #ranged * -1;
+						}
+					[*]
+						{
+							alteration = alter_combat_magic;
+							duration = #infinite;
+							value = #combat_magic * -1;
+						}
+					[*]
+						{
+							alteration = alter_nature_magic;
+							duration = #infinite;
+							value = #nature_magic * -1;
+						}
+
+					[*]
+						{
+							alteration = alter_armor;
+							duration = #infinite;
+							value = ( 6 + ((#MAGIC -1) * 9.3534)) * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL))) - #base_defense;
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_min;
+							duration = #infinite;
+							value = ( 0.9 * ( (4.1 * #MAGIC) + ((1 - ( #MAGIC / 114 )) * 6.3)) ) * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL))) - #MELEE_DAMAGE_MIN;
+						}
+					[*]
+						{
+							alteration = alter_melee_damage_max;
+							duration = #infinite;
+							value = ( 1.1 * ( (4.1 * #MAGIC) + ((1 - ( #MAGIC / 114 )) * 6.3)) ) * (1.0 - 0.25 * (( #MAGIC - #SPELL_REQ_LEVEL ) / (#SPELL_MAX_LEVEL - #SPELL_REQ_LEVEL))) - #MELEE_DAMAGE_MAX;
+						}
+
+					//BRIEFLY SET TO MAX HEALTH, MANA, SO YOU START OFF HEALED
+					[*]
+						{
+							alteration = alter_life;
+							duration = 0.1;
+							value = #maxlife;
+						}
+					/*
+					[*]
+						{
+							alteration = alter_mana;
+							duration = 0.1;
+							value = #maxmana;
+						}
+					*/
+				}
+		}
+}
+[t:template,n:spell_transform_bear]
+{
+	doc = "spell Transform Into Bear";
+	specializes = base_spell_transform_good;
+	[aspect]
+		{
+			gold_value = 459;
+		}
+	[common]
+		{
+			description = "Caster transforms into a bear, with life proportional to the caster's current mana.";
+			screen_name = "Transform Into Bear";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_266;
+			inventory_icon = b_gui_ig_i_ic_sp_266_inv;
+		}
+	[magic]
+		{
+			max_level = 31;
+			required_level = 11;
+		}
+	[spell_transformation]
+		{
+			Description = "Transformed";
+			effect_script = "transform_bear";
+			templateName = "dsx_bear";	// template name of creature we are transforming into
+			effect_params = "[scale(19.0)]";
+		}
+}
+[t:template,n:spell_transform_barkrunner]
+{
+	doc = "spell Transform Into Barkrunner";
+	specializes = base_spell_transform_good;
+	[aspect]
+		{
+			gold_value = 1184;
+		}
+	[common]
+		{
+			description = "Caster transforms into a barkrunner, with life proportional to the caster's current mana.";
+			screen_name = "Transform Into Barkrunner";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_265;
+			inventory_icon = b_gui_ig_i_ic_sp_265_inv;
+		}
+	[magic]
+		{
+			max_level = 35;
+			required_level = 15;
+		}
+
+	[spell_transformation]
+		{
+			Description = "Transformed";
+			effect_script = "transform_barkrunner";
+			templateName = "dsx_barkrunner";	// template name of creature we are transforming into
+			effect_params = "[scale(19.0)]";
+		}
+}
+[t:template,n:spell_transform_scorpion]
+{
+	doc = "spell Transform Into Giant Scorpion";
+	specializes = base_spell_transform_good;
+	[aspect]
+		{
+			gold_value = 6340;
+		}
+	[common]
+		{
+			description = "Caster transforms into a giant scorpion, with life proportional to the caster's current mana.";
+			screen_name = "Transform Into Giant Scorpion";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_267;
+			inventory_icon = b_gui_ig_i_ic_sp_267_inv;
+		}
+	[magic]
+		{
+			max_level = 45;
+			required_level = 25;
+		}
+	[spell_transformation]
+		{
+			Description = "Transformed";
+			effect_script = "transform_scorpion";
+			templateName = "dsx_scorpion_boss";	// template name of creature we are transforming into
+			effect_params = "[scale(19.0)]";
+		}
+}
+[t:template,n:spell_transform_rock_beast]
+{
+	doc = "spell Transform Into Rock Beast";
+	specializes = base_spell_transform_good;
+	[aspect]
+		{
+			gold_value = 177924;
+		}
+	[common]
+		{
+			description = "Caster transforms into a Rock Beast, with life proportional to the caster's current mana.";
+			screen_name = "Transform Into Rock Beast";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_269;
+			inventory_icon = b_gui_ig_i_ic_sp_269_inv;
+		}
+	[magic]
+		{
+			max_level = 80;
+			required_level = 55;
+		}
+	[spell_transformation]
+		{
+			Description = "Transformed";
+			effect_script = "transform_rock_beast";
+			templateName = "dsx_rock_beast";	// template name of creature we are transforming into
+			effect_params = "[scale(19.0)]";
+		}
+}
+
+[t:template,n:spell_transform_wolf]
+{
+	doc = "spell Transform Into Wolf";
+	specializes = base_spell_transform_good;
+	[aspect]
+		{
+			gold_value = 184;
+		}
+	[common]
+		{
+			description = "Caster transforms into a wolf, with life proportional to the caster's current mana.";
+			screen_name = "Transform Into Wolf";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_270;
+			inventory_icon = b_gui_ig_i_ic_sp_270_inv;
+		}
+	[magic]
+		{
+			max_level = 28;
+			required_level = 8;
+		}
+	[spell_transformation]
+		{
+			Description = "Transformed";
+			effect_script = "transform_wolf";
+			templateName = "dsx_wolf_white";	// template name of creature we are transforming into
+			effect_params = "[scale(19.0)]";
+		}
+}
+
+[t:template,n:spell_transform_ursae]
+{
+	doc = "spell Transform Into Ursae";
+	specializes = base_spell_transform_dark;
+	[aspect]
+		{
+			gold_value = 3783;
+		}
+	[common]
+		{
+			description = "Caster transforms into an Ursae, with life proportional to the caster's current mana.";
+			screen_name = "Transform Into Ursae";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_231;
+			inventory_icon = b_gui_ig_i_ic_sp_231_inv;
+		}
+	[magic]
+		{
+			max_level = 39;
+			required_level = 19;
+		}
+	[spell_transformation]
+		{
+			Description = "Transformed";
+			effect_script = "transform_bear";
+			templateName = "dsx_ursae_demonic";	// template name of creature we are transforming into
+		}
+}
+[t:template,n:spell_transform_rune_fiend]
+{
+	doc = "spell Transform Into Rune Fiend";
+	specializes = base_spell_transform_dark;
+	[aspect]
+		{
+			gold_value = 7934;
+		}
+	[common]
+		{
+			description = "Caster transforms into a rune fiend, with life proportional to the caster's current mana.";
+			screen_name = "Transform Into Rune Fiend";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_232;
+			inventory_icon = b_gui_ig_i_ic_sp_232_inv;
+		}
+	[magic]
+		{
+			max_level = 46;
+			required_level = 26;
+		}
+	[spell_transformation]
+		{
+			Description = "Transformed";
+			effect_script = "transform_rune_fiend";
+			templateName = "dsx_rune_guardian_r";	// template name of creature we are transforming into
+		}
+}
+[t:template,n:spell_transform_troll_masher]
+{
+	doc = "spell Transform Into Troll Masher";
+	specializes = base_spell_transform_dark;
+	[aspect]
+		{
+			gold_value = 62832;
+		}
+	[common]
+		{
+			description = "Caster transforms into a troll masher, with life proportional to the caster's current mana.";
+			screen_name = "Transform Into Troll Masher";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_234;
+			inventory_icon = b_gui_ig_i_ic_sp_234_inv;
+		}
+	[magic]
+		{
+			max_level = 70;
+			required_level = 50;
+		}
+	[spell_transformation]
+		{
+			Description = "Transformed";
+			effect_script = "transform_troll_masher";
+			templateName = "dsx_troll_masher";	// template name of creature we are transforming into
+		}
+}
+
+[t:template,n:spell_transform_mucosa]
+{
+	doc = "spell Transform Into Vile Twisted Mucosa";
+	specializes = base_spell_transform_dark;
+	[aspect]
+		{
+			gold_value = 332;
+		}
+	[common]
+		{
+			description = "Caster transforms into a vile twisted mucosa, with life proportional to the caster's current mana.";
+			screen_name = "Transform Into Vile Twisted Mucosa";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_235;
+			inventory_icon = b_gui_ig_i_ic_sp_235_inv;
+		}
+	[magic]
+		{
+			max_level = 30;
+			required_level = 10;
+		}
+	[spell_transformation]
+		{
+			Description = "Transformed";
+			effect_script = "transform_mucosa";
+			templateName = "dsx_vile_twisted_mucosa";	// template name of creature we are transforming into
+		}
+}
+
+[t:template,n:spell_transform_ztrool]
+{
+	doc = "spell Transform Into Ztrool";
+	specializes = base_spell_transform_dark;
+	[aspect]
+		{
+			gold_value = 13742;
+		}
+	[common]
+		{
+			description = "Caster transforms into a ztrool, with life proportional to the caster's current mana.";
+			screen_name = "Transform Into Ztrool";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_236;
+			inventory_icon = b_gui_ig_i_ic_sp_236_inv;
+		}
+	[magic]
+		{
+			max_level = 50;
+			required_level = 30;
+		}
+	[spell_transformation]
+		{
+			Description = "Transformed";
+			effect_script = "transform_ztrool";
+			templateName = "dsx_ztrool";	// template name of creature we are transforming into
+		}
+}
+[t:template,n:spell_transform_golem]
+{
+	doc = "spell Transform Into Molten Golem";
+	specializes = base_spell_transform_good;
+	[aspect]
+		{
+			gold_value = 702374;
+		}
+	[common]
+		{
+			description = "Caster transforms into a molten golem, with life proportional to the caster's current mana.";
+			screen_name = "Transform Into Molten Golem";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_268;
+			inventory_icon = b_gui_ig_i_ic_sp_268_inv;
+		}
+	[magic]
+		{
+			max_level = 110;
+			required_level = 90;
+		}
+	[spell_transformation]
+		{
+			Description = "Transformed";
+			effect_script = "transform_golem";
+			templateName = "molten_golem";	// template name of creature we are transforming into
+		}
+}
+[t:template,n:spell_transform_troll]
+{
+	doc = "spell Transform Into Troll";
+	specializes = base_spell_transform_dark;
+	[aspect]
+		{
+			gold_value = 5092;
+		}
+	[common]
+		{
+			description = "Caster transforms into a troll, with life proportional to the caster's current mana.";
+			screen_name = "Transform Into Troll";
+		}
+	[gui]
+		{
+			active_icon = b_gui_ig_i_ic_sp_troll;
+			inventory_icon = b_gui_ig_i_ic_sp_troll_inv;
+		}
+	[magic]
+		{
+			max_level = 43;
+			required_level = 23;
+		}
+	[spell_transformation]
+		{
+			Description = "Transformed";
+			effect_script = "transform_troll";
+			templateName = "dsx_troll_forest";	// template name of creature we are transforming into
+		}
+}
