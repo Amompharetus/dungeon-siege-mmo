@@ -8730,9 +8730,9 @@
     "icon": "b_gui_ig_i_a_pos_a7_071"
   },
   {
-    "id": "bd_ra{\r\n\tdoc = \"Robe\";\r\n\tspecializes = base_body_armor_cloth;\r\n\t[common",
+    "id": "bd_ra_ro_m_g_c_065",
     "name": "Dream Robe",
-    "doc": "",
+    "doc": "Robe",
     "desc": "",
     "category": "armor",
     "sub_category": "Body Armor",
@@ -40007,10 +40007,11 @@
     "doc": "meat bone",
     "desc": "",
     "category": "melee",
-    "sub_category": "Melee Weapon",
+    "sub_category": "Club",
     "source": "Vanilla",
     "rarity": "normal",
     "tags": [
+      "Club",
       "Fast",
       "Melee",
       "One-Handed"
@@ -51215,7 +51216,8 @@
     "source": "Vanilla",
     "rarity": "normal",
     "tags": [
-      "Quest"
+      "Quest",
+      "Quest Item"
     ],
     "stat_bonus": null,
     "set_name": null,
