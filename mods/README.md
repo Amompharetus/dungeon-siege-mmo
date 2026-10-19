@@ -1,29 +1,28 @@
-# Client Mods
+# Mods
 
-Third-party client mods distributed to players through the launcher manifest.
+Game modifications, quality-of-life enhancements, and balance adjustments distributed to players through the launcher manifest.
 
-The mod binaries themselves are not kept in this repository: they are not our code, and the launcher
-fetches them from the central `updates/` folder along with everything else it syncs. What lives here
-is the configuration we ship as the default, so the settings players start with are version
-controlled and reviewable.
+The compiled mod binaries are not tracked in this repository; they are hosted in the portal's `updates/` directory and synchronized automatically to game clients by the launcher. This directory maintains mod configuration files, source scripts, and operational documentation.
 
-A mod is distributed by placing its files in the portal's `updates/` folder. The portal rebuilds the
-manifest from that folder's contents, and the launcher downloads anything whose hash does not match
-on the next run. No launcher or portal code change is required to add one.
+## Mod Execution Scopes
+
+In Dungeon Siege multiplayer, mods operate in two distinct scopes:
+- **Client-Side Only:** Interface hooks (DLLs), UI layouts, and art assets that affect local presentation. The headless dedicated server does not require or execute these.
+- **Server & Client (Synchronized):** Content database modifications (`world/contentdb/`), spell scripts (`.skrit`), and drop tables that alter game simulation. These **must be present on both the server host and player clients** to maintain deterministic simulation, spell durations, and loot generation.
 
 ## Active Mods
 
 The following mods are currently delivered to players via the update manifest:
 
-| Mod | Distributed File | Target Location | Description |
-|---|---|---|---|
-| **Ground Tooltip** | `groundtooltip_loa.dsdll`, `groundtooltip.ini` | Root (`DSLOA.exe` folder) | Shows item tooltips when hovering over ground item labels. |
-| **BuffedBuffs** | `BuffedBuffsMod.dsres` | `DSLOA/` | Extends buff durations to 30 minutes and improves orb spell replacement. |
-| **Unlocked Loot** | `Unlocked Loot.dsres` | `DSLOA/` | Restores 80+ cut and bugged weapons and armor pieces to monster drop tables. |
-| **Difficulty Patch** | `DS1_Difficulty_Patch.dsres` | `DSLOA/` | Adjusts multiplayer encounter scaling and difficulty progression. |
-| **UberUI** | `UberUI_LoA_v0.02.dsres` | `DSLOA/` | Quality-of-life interface tweaks and layout improvements for Legends of Aranna. |
-| **Fairy Companion Fix** | `fairyfix.dsres` | `Resources/` | Fixes pathing and state issues for fairy companion summons. |
-| **SeeFar ResolutionFix** | `sf_ResolutionFix.dsres` | `Resources/` | Corrects paperdoll positions and interface scaling at high modern resolutions. |
+| Mod | Distributed File | Target Location | Scope | Description |
+|---|---|---|---|---|
+| **Ground Tooltip** | `groundtooltip_loa.dsdll`, `groundtooltip.ini` | Root (`DSLOA.exe` folder) | Client-Only | Shows item tooltips when hovering over ground item labels. |
+| **BuffedBuffs** | `BuffedBuffsMod.dsres` | `DSLOA/` | Server & Client | Extends buff durations to 30 minutes and improves orb spell replacement. |
+| **Unlocked Loot** | `Unlocked Loot.dsres` | `DSLOA/` | Server & Client | Restores 80+ cut and bugged weapons and armor pieces to monster drop tables. |
+| **Difficulty Patch** | `DS1_Difficulty_Patch.dsres` | `DSLOA/` | Server & Client | Adjusts multiplayer encounter scaling and difficulty progression. |
+| **UberUI** | `UberUI_LoA_v0.02.dsres` | `DSLOA/` | Client-Only | Quality-of-life interface tweaks and layout improvements for Legends of Aranna. |
+| **Fairy Companion Fix** | `fairyfix.dsres` | `Resources/` | Server & Client | Fixes pathing and state issues for fairy companion summons. |
+| **SeeFar ResolutionFix** | `sf_ResolutionFix.dsres` | `Resources/` | Client-Only | Corrects paperdoll positions and interface scaling at high modern resolutions. |
 
 ## Ground Tooltip 1.1.2
 
@@ -122,7 +121,7 @@ Resolves pathing and animation state freezes for summoned fairy companions.
 | Files | `fairyfix.dsres` |
 | Installed to | `Resources/` |
 | Requires | Legends of Aranna 1.50 |
-| Scope | Fairy actor templates and companion AI state logic |
+| Scope | Fairy actor templates and companion behavior state logic |
 
 In retail Dungeon Siege, Nature Magic fairy summons could freeze permanently in mid-air, enter an unrecoverable animation loop, or crash the game client when transitioning between world cells or teleporting.
 
