@@ -102,6 +102,11 @@ static void LoadConfig() {
     Log("Config file: %s", ini.c_str());
     const char* s = "SiegeHost";
     g_cfg.enabled = GetPrivateProfileIntA(s, "Enabled", 1, ini.c_str());
+    g_cfg.snapshots = GetPrivateProfileIntA(s, "Snapshots", 0, ini.c_str());
+    char envSnap[16];
+    if (GetEnvironmentVariableA("SIEGEHOST_SNAPSHOTS", envSnap, sizeof(envSnap)) > 0) {
+        g_cfg.snapshots = atoi(envSnap);
+    }
     std::string role = IniString(s, "Role", "none", ini);
     g_cfg.role = _stricmp(role.c_str(), "server") == 0 ? Role::Server : _stricmp(role.c_str(), "client") == 0 ? Role::Client : Role::None;
     int defMax = g_cfg.role == Role::None ? 0 : 30;  // server/client default to the maximum
@@ -661,9 +666,9 @@ static void Startup() {
     Log("Loaded as version.dll proxy");
 #endif
     LoadConfig();
-    Log("Config: Enabled=%d Role=%s MaxPlayers=%d MaxSlots=%d DPMaxPlayers=%d PatchTeams=%d LogDirectPlay=%d",
+    Log("Config: Enabled=%d Role=%s MaxPlayers=%d MaxSlots=%d DPMaxPlayers=%d PatchTeams=%d LogDirectPlay=%d Snapshots=%d",
         g_cfg.enabled, g_cfg.role == Role::Server ? "server" : g_cfg.role == Role::Client ? "client" : "none", g_cfg.maxPlayers,
-        g_cfg.maxSlots, g_cfg.dpMaxPlayers, g_cfg.patchTeams, g_cfg.logDirectPlay);
+        g_cfg.maxSlots, g_cfg.dpMaxPlayers, g_cfg.patchTeams, g_cfg.logDirectPlay, g_cfg.snapshots);
     SetUnhandledExceptionFilter(CrashFilter);
     JG_Init();
 

@@ -45,7 +45,7 @@ void BuildAddresses(const std::string& primary) {
     Log("AutoJoin: addresses to try: %s", all.c_str());
 }
 
-// Diagnostics: dump the game's NetPipe session list (what the "Looking for game" loop reads, 0x71E4D6).
+// Session diagnostics: dump the game's NetPipe session list (what the "Looking for game" loop reads, 0x71E4D6).
 void DumpSessions(const char* why) {
     void* np = *(void**)0x007ACF64;
     if (!np) { Log("AutoJoin[diag] %s: NetPipe=null", why); return; }
@@ -70,7 +70,7 @@ void Act(const char* what, bool ok) {
 
 
 // Lab-only (SIEGEHOST_LABPLAY env): after joining, create/select a character and click Ready like a player would,
-// then log where the hero spawned. Used to verify StartLocation (T-31). Never set on players' PCs.
+// then log where the hero spawned. Used to verify StartLocation. Never set on players' PCs.
 static void LabPlayTick() {
     static DWORD last = 0, ingameAt = 0;
     static int created = 0, selectTries = 0;
@@ -252,12 +252,12 @@ void AutoJoinTick() {
     for (const char* n : kWatch)
         if (eng::InterfaceVisible(n)) { if (!vis.empty()) vis += ","; vis += n; }
     std::string obs = std::string(ws) + " | " + vis;
-    if (obs != g_lastObs) { Log("AutoJoin: observe worldstate=%s visible=%s", ws, vis.c_str()); g_lastObs = obs; g_snap = now + 700; }
+    if (obs != g_lastObs) { Log("AutoJoin: observe worldstate=%s visible=%s", ws, vis.c_str()); g_lastObs = obs; if (Cfg().snapshots) g_snap = now + 700; }
     if (g_snap && now >= g_snap) { g_snap = 0; Snapshot(obs.c_str()); }
     if (now - g_lastAction < 1200) return;
 
     if (Has(vis, "mp_dialog")) {
-        // Right after Connect the game shows "Looking for game... (N)" in mp_dialog, whose only button is
+        // right after Connect the game shows "Looking for game... (N)" in mp_dialog, whose only button is
         // Cancel. Pressing it aborted every join. Leave the dialog alone for 45 s after Connect ("Connecting to game..." also uses it); only a dialog that is
         // still open after that (a real error) gets dismissed.
         if (g_lastConnect && now - g_lastConnect < 45000) {
@@ -276,7 +276,7 @@ void AutoJoinTick() {
             static const char* k = "4B000000062F0000006D313130020100320000003800D3070A0010000100000000001000000000000100215036C701000000029FF852CD5DE15A64522D7FF1E68EA7792800000001000000";
             BYTE blob[75];
             for (int i = 0; i < 75; ++i) { unsigned v; sscanf(k + i * 2, "%2x", &v); blob[i] = (BYTE)v; }
-            Log("AutoJoin: SELFTEST CompareSessionInfo with T-20 host blob");
+            Log("AutoJoin: SELFTEST CompareSessionInfo with host blob");
             CompareSessionInfo(blob);
         }
         if (now < g_nextConnect) return;

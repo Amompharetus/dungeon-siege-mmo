@@ -1,5 +1,6 @@
 // autohost.cpp — drives the DS1 front-end menus so a dedicated host starts a multiplayer game unattended.
 // Runs on the game's main thread (called from the PeekMessageA hook). See 03-analysis/RE-02-ui-automation.md.
+#include <cstdint>
 #include "siegehost.h"
 #include "engine.h"
 #include "pauseguard.h"
@@ -103,6 +104,127 @@ void Act(const char* what, bool ok) {
     g_lastAction = GetTickCount();
 }
 
+// The text of whichever of mp_dialog's three message windows the engine filled, and the name of that
+// window so a log line says where it came from. A missing window is skipped rather than dereferenced.
+const char* g_dialogFrom = "";
+
+bool ReadableAt(const void* p, size_t n) {
+    MEMORY_BASIC_INFORMATION mbi;
+    if (!p || !VirtualQuery(p, &mbi, sizeof mbi)) return false;
+    if (mbi.State != MEM_COMMIT) return false;
+    if (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD)) return false;
+    return (const BYTE*)p + n <= (const BYTE*)mbi.BaseAddress + mbi.RegionSize;
+}
+
+// A pointer to a plain readable ASCII string of at least minLen characters, or null.
+const char* AsText(const void* slot, int minLen) {
+    if (!ReadableAt(slot, 4)) return nullptr;
+    const char* s = *(const char* const*)slot;
+    if (!ReadableAt(s, 1)) return nullptr;
+    int i = 0;
+    for (; i < 256; ++i) {
+        if (!ReadableAt(s + i, 1)) return nullptr;
+        if (s[i] == 0) break;
+        if ((unsigned char)s[i] < 0x20 || (unsigned char)s[i] > 0x7E) return nullptr;
+    }
+    return i >= minLen ? s : nullptr;
+}
+
+// A pointer to a readable UTF-16 string of at least minLen characters, or null.
+const wchar_t* AsWide(const void* slot, int minLen) {
+    if (!ReadableAt(slot, 4)) return nullptr;
+    const wchar_t* s = *(const wchar_t* const*)slot;
+    if (!ReadableAt(s, 2)) return nullptr;
+    int i = 0;
+    for (; i < 256; ++i) {
+        if (!ReadableAt(s + i, 2)) return nullptr;
+        if (s[i] == 0) break;
+        if (s[i] < 0x20 || s[i] > 0x7E) return nullptr;
+    }
+    return i >= minLen ? s : nullptr;
+}
+
+// mp_dialog's message is not readable from the dialog's own windows. It is not at +0x1A0 on any of the
+// three, and a probe of the first 0x400 bytes of each found no pointer to the text in either ASCII or
+// UTF-16: the text box keeps it as laid-out lines, not as a string. So it is taken one step earlier,
+// where the engine is handed it whole.
+//
+// 0x00487EFE is the engine's "show an mp_dialog" call. It is thiscall with five dword arguments
+// (ret 0x14) and its epilogue destroys a gpstring at [ebp+8] with gpstring::~gpstring (0x00402FD9),
+// which is what identifies that argument as the message, already resolved from its $MSG$ key. The
+// refusal that cost a screenshot to read comes through here from 0x00483B2F.
+//
+// This is an entry hook, not a call-site one: the call has about thirty sites. The first six bytes are
+// the whole prologue (push ebp; mov ebp,esp; sub esp,0x54), so the stub performs them itself and jumps
+// back to 0x00487F04 rather than relocating anything awkward.
+extern "C" void* g_mpDialogTail = (void*)0x00487F04;
+extern "C" void __cdecl SiegeHost_MpDialogShown(const void* msgSlot);
+extern "C" void SiegeHost_MpDialogShow();
+
+__asm__(
+    ".text\n"
+    ".globl _SiegeHost_MpDialogShow\n"
+    "_SiegeHost_MpDialogShow:\n"
+    "  pushal\n"
+    "  leal 0x24(%esp), %eax\n"      // argument 1, the message gpstring, before the prologue moves esp
+    "  pushl %eax\n"
+    "  call _SiegeHost_MpDialogShown\n"
+    "  addl $4, %esp\n"
+    "  popal\n"
+    "  pushl %ebp\n"                 // the prologue the jump replaced
+    "  movl %esp, %ebp\n"
+    "  subl $0x54, %esp\n"
+    "  jmp *_g_mpDialogTail\n");
+
+std::string g_dialogMsg;
+
+extern "C" void __cdecl SiegeHost_MpDialogShown(const void* msgSlot) {
+    // The engine's display strings are UTF-16, which is why reading this one as bytes gave "T": the
+    // first letter of "This character is below the level required for the chosen World." followed by
+    // the high byte of the next character. Narrow strings are accepted too, because only the wide case
+    // has been seen here and a message that is already narrow should still be readable.
+    g_dialogMsg.clear();
+    if (!ReadableAt(msgSlot, 4)) return;
+    const void* p = *(const void* const*)msgSlot;
+    if (!ReadableAt(p, 2)) return;
+    const BYTE* b = (const BYTE*)p;
+    if (b[0] >= 0x20 && b[0] <= 0x7E && b[1] == 0) {
+        const wchar_t* w = (const wchar_t*)p;
+        int n = 0;
+        while (n < 512 && ReadableAt(w + n, 2) && w[n]) ++n;
+        if (!n) return;
+        char buf[1024];
+        int got = WideCharToMultiByte(CP_ACP, 0, w, n, buf, (int)sizeof buf - 1, nullptr, nullptr);
+        if (got > 0) { buf[got] = 0; g_dialogMsg = buf; }
+        return;
+    }
+    const char* s = AsText(msgSlot, 1);
+    if (s) g_dialogMsg = s;
+}
+
+void MpDialogTextInstall() {
+    static const BYTE kPrologue[] = {0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x54};
+    BYTE* p = (BYTE*)0x00487EFE;
+    if (memcmp(p, kPrologue, sizeof kPrologue) != 0) {
+        Log("AutoHost: VERIFY FAILED at 0x00487EFE - mp_dialog messages will not be logged.");
+        return;
+    }
+    DWORD o;
+    if (!VirtualProtect(p, 6, PAGE_EXECUTE_READWRITE, &o)) return;
+    p[0] = 0xE9;
+    *(int32_t*)(p + 1) = (int32_t)((DWORD)(void*)&SiegeHost_MpDialogShow - ((DWORD)p + 5));
+    p[5] = 0x90;
+    VirtualProtect(p, 6, o, &o);
+    FlushInstructionCache(GetCurrentProcess(), p, 6);
+    Log("AutoHost: mp_dialog messages are now read where the engine is handed them (hooked 0x00487EFE), "
+        "because the dialog's own windows do not keep the text in a form that can be read back.");
+}
+
+const char* DialogText() {
+    g_dialogFrom = g_dialogMsg.empty() ? "not seen" : "0x00487EFE";
+    return g_dialogMsg.c_str();
+}
+
 std::string VisibleInterfaces() {
     static const char* kWatch[] = {"main_menu", "multiplayer_provider", "lan_game_menu", "internet_game_menu", "host_game",
                                    "staging_area_players",
@@ -136,6 +258,8 @@ void WriteHeartbeat(const char* ws, const char* phase) {
         fputs(InvFixHeartbeatLines().c_str(), f);
         fputs(QuestModeHeartbeatLines().c_str(), f);
         fputs(JipQueueHeartbeatLines().c_str(), f);
+        fputs(WorldLevelHeartbeatLines().c_str(), f);
+        fputs(PvpZoneHeartbeatLines().c_str(), f);
         fclose(f);
     }
 }
@@ -195,12 +319,16 @@ void JipDiagTick() {
 // 0.7.2 replaced a blanket 30-second stand-down after a join with a 5-second one, because the
 // 30 seconds WAS the freeze players reported: the engine holds the pause from CREATE_PLAYER
 // until something resumes it, and the joining client is already sitting in staging ~0.2 s in.
-// (server trace) and (client log).
+// Server trace and client log.
 
 void AutoHostTick() {
     const Config& c = Cfg();
     DWORD now = GetTickCount();
-    if (!g_start) { g_start = now; Log("AutoHost: armed (GameName='%s', HostCharacter='%s', MaxPlayers=%d)", c.gameName.c_str(), c.hostCharacter.c_str(), c.maxPlayers); }
+    if (!g_start) {
+        g_start = now;
+        Log("AutoHost: armed (GameName='%s', HostCharacter='%s', MaxPlayers=%d)", c.gameName.c_str(), c.hostCharacter.c_str(), c.maxPlayers);
+        MpDialogTextInstall();
+    }
     if (now - g_lastTick < 250) return;
     g_lastTick = now;
 
@@ -250,8 +378,9 @@ void AutoHostTick() {
             if (void* srv = eng::Server_Singleton()) {
                 eng::Server_RCSetAllowJIP(srv, true);
                 eng::Server_RCSetAllowPausing(srv, c.allowPausing != 0);
-                Log("AutoHost: Server::RCSetAllowJIP(true), RCSetAllowPausing(%d) -> Server+0x28=%d", c.allowPausing,
-                    *((unsigned char*)srv + 0x28));
+                eng::Server_RCSetDropInvOption(srv, 4);
+                Log("AutoHost: Server::RCSetAllowJIP(true), RCSetAllowPausing(%d), RCSetDropInvOption(4) -> Server+0x28=%d Server+0x2C=%d",
+                    c.allowPausing, *((unsigned char*)srv + 0x28), *(int*)((char*)srv + 0x2C));
             }
         }
         return;
@@ -274,7 +403,7 @@ void AutoHostTick() {
     if (obs != g_lastObservation) {
         Log("AutoHost: observe worldstate=%s visible=%s", ws, vis.c_str());
         g_lastObservation = obs;
-        g_snapPending = now + 700;  // screenshot shortly after each screen change (UI has drawn)
+        if (Cfg().snapshots) g_snapPending = now + 700;  // screenshot shortly after each screen change (UI has drawn)
     }
 
     if (g_snapPending && now >= g_snapPending) { g_snapPending = 0; Snapshot(obs.c_str()); }
@@ -286,7 +415,28 @@ void AutoHostTick() {
     };
 
     if (vis_has("mp_dialog")) {
-        Act("dismiss mp_dialog (OK)", eng::Press("mp_dialog_button_ok", "mp_dialog"));
+        // mp_dialog comes in two shapes. ui/interfaces/multiplayer/mp_dialog.gas defines an OK button
+        // that is visible by default and a Yes/No pair that is "visible = false" until the engine asks a
+        // question. Pressing OK on a question therefore does nothing at all: the dialog stays up, the
+        // action behind it is never confirmed, and staging stalls. That is what happens on a map whose
+        // world level is above the host character's, where selecting the character raises "Some of the
+        // characters in the game are below the world level you've selected. Do you want to proceed?"
+        // The message is logged either way, because a dialog the server cannot read is a dialog we
+        // cannot diagnose from a log file.
+        // mp_dialog.gas defines three places a message can land, and which one the engine uses depends
+        // on how long the message is and which dialog shape was asked for: mp_dialog_text_box holds the
+        // wrapped multi-line messages, mp_dialog_text and mp_dialog_text2 the one and two line ones.
+        // 0x00487EFE fills whichever applies and leaves the others empty, and all three keep their text
+        // in the UIWindow member at +0x1A0 that UIText::GetText reads (0x0047B4F5). Reading only two of
+        // the three is why the level refusal logged as "" and had to be read off a screenshot instead.
+        const char* msg = DialogText();
+        if (eng::WindowVisible("mp_dialog_button_yes", "mp_dialog")) {
+            Log("AutoHost: mp_dialog asks: \"%s\" (from %s) - answering Yes", msg, g_dialogFrom);
+            Act("answer mp_dialog (Yes)", eng::Press("mp_dialog_button_yes", "mp_dialog"));
+        } else {
+            Log("AutoHost: mp_dialog says: \"%s\" (from %s)", msg, g_dialogFrom);
+            Act("dismiss mp_dialog (OK)", eng::Press("mp_dialog_button_ok", "mp_dialog"));
+        }
     } else if (vis_has("staging_area_create_character")) {
         bool a = eng::SetEditText("staging_char_name_edit_box", "staging_area_create_character", c.hostCharacter.c_str());
         Act("create host character: set name", a);
@@ -310,7 +460,7 @@ void AutoHostTick() {
         Act("host_game: set game name", eng::SetEditText("game_name_edit_box", "host_game", c.gameName.c_str()));
         Act("host_game: OK", eng::Press("button_ok", "host_game"));
     } else if (vis_has("internet_game_menu")) {
-        // Host through the Internet menu. The LAN menu (world state 0x21) turns DirectPlay compression off
+        // host through the Internet menu. The LAN menu (world state 0x21) turns DirectPlay compression off
         // (NetPipe+0x182), Internet (0x22) turns it on; clients compare that flag and refuse to join a mismatched host.
         Act("internet_game_menu: set player name",
             eng::SetEditText("internet_player_name_edit_box", "internet_game_menu", c.hostCharacter.c_str()));
@@ -321,7 +471,7 @@ void AutoHostTick() {
     } else if (vis_has("staging_area")) {
         ConfigureMap(c);
         EnforceStartLocation(c);
-        // Decide from the game's own Player data, not from which screens we saw.
+        // decide from the game's own Player data, not from which screens we saw.
         bool heroChosen = eng::LocalHeroChosen();
         if ((int)heroChosen != g_heroLogged) {
             g_heroLogged = heroChosen;
@@ -335,8 +485,10 @@ void AutoHostTick() {
             if (void* srv = eng::Server_Singleton()) {
                 eng::Server_RCSetAllowJIP(srv, true);
                 eng::Server_RCSetAllowPausing(srv, c.allowPausing != 0);
+                eng::Server_RCSetDropInvOption(srv, 4);
                 if (c.maxPlayers > 0) eng::Server_RCSetMaxPlayers(srv, (unsigned)c.maxPlayers);
-                Log("AutoHost: staging configured (AllowJIP=true, AllowPausing=%d, MaxPlayers=%d)", c.allowPausing, c.maxPlayers);
+                Log("AutoHost: staging configured (AllowJIP=true, AllowPausing=%d, DropInvOption=%d, MaxPlayers=%d)",
+                    c.allowPausing, *(int*)((char*)srv + 0x2C), c.maxPlayers);
             }
         }
         if (!heroChosen) {

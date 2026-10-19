@@ -1,6 +1,6 @@
 // jipguard.cpp — the staging-screen freeze fix (0.7.3). See jipguard.h for the decision it uses.
 //
-// THE FREEZE, EXACTLY (RE-10, measured /81)
+// THE FREEZE, EXACTLY (RE-10)
 // The world enters ws_mp_ingame_jip (0x29) the moment a connection is created, and stays there until
 // the joiner is fully in the world. Two independent things then stop the world on EVERY machine:
 //
@@ -20,11 +20,11 @@
 //     engine's own call, made later or not at all, never an extra or a missing one.
 //     (An earlier attempt used TattooGame+0x4C bit 3, which makes the frame update ignore the pause
 //     count. It works, but the pause also stops the application clock, so the world crawled at about
-//     an eighth speed instead of running - . Deferring the pause itself is the fix.)
+//     an eighth speed instead of running. Deferring the pause itself is the fix.)
 //  2. The sim-step test is patched so it consults the same decision instead of the bare state.
 //
 // The engine's join-in-progress panel is left exactly as it is: with the pause deferred it does not
-// cover the world , and an earlier attempt to hide it by hand hung the game server
+// cover the world, and an earlier attempt to hide it by hand hung the game server
 // outright.
 //
 // Nothing here changes the world state or the join protocol. The joiner's path through staging,
@@ -86,7 +86,7 @@ const BYTE kPauseLeaveExpect[] = {0xE8, 0x0C, 0xD0, 0xF4, 0xFF};
 //   004C751E  call 0x006E8C12        ; UIShell::ShowInterface                   (ret 4)
 //
 // These are patched on CLIENTS ONLY. The dedicated server has no one looking at its screen, and
-// AutoHost is already driving its shell — that combination can hang the server.
+// AutoHost is already driving its shell — that combination is what hung the server.
 const DWORD kShowPanelVa = 0x004C74D6;
 const DWORD kPausedUiVa = 0x004C74F0;
 const DWORD kClosePanelsVa = 0x004C74FB;
@@ -106,7 +106,7 @@ const BYTE kShowGlassExpect[] = {0xE8, 0xEF, 0x16, 0x22, 0x00};
 // update, which skips the game's whole input step while it is set (no hotkeys: inventory, map,
 // spells, ...), and 0x00535AFD, which stops world objects under the cursor from being clickable
 // (shops, NPCs). Stock, it is harmless because the world is frozen anyway. With the freeze deferred
-// it is the "no menus while someone is on the character screen" bug . The leave path
+// it is the "no menus while someone is on the character screen" bug. The leave path
 // clears it unconditionally (0x004C80B3 `and byte [eax+0x46],0`), which is left alone. The write is
 // NOPed on clients and performed by SiegeHost at the same moment as the rest of the join screen.
 const DWORD kInputLockVa = 0x004C7533;
@@ -119,7 +119,7 @@ const int kWorldOptionsInputLock = 0x46;
 // the world is in ws_mp_ingame_jip: opening the inventory/character panel returns early at
 // 0x0049BB81, move/fight/target orders at 0x004EE82A..0x004EEA3A, the potion hotkeys at
 // 0x004EEA82/0x004EEB21, attack/guard at 0x00512C4B.., spell rotation at 0x00503AAD, and the map key
-// asks for a state change the 0x29 transition table does not allow . Stock that is
+// asks for a state change the 0x29 transition table does not allow. Stock that is
 // all moot because everyone is frozen. So instead of patching every reader, a player's PC simply does
 // not ENTER 0x29 while the joiner is still choosing a character.
 // A client learns the state from WorldState::RCSetWorldStateIfInGame (0x00522B4E), broadcast by the
@@ -141,9 +141,11 @@ const auto WorldState_Request = (int(__thiscall*)(void*, int))0x00470E02;   // R
 const auto IsInGameFn = (bool(__cdecl*)(int))0x0052245E;
 
 const auto ShowJoinPanel = (void(__thiscall*)(void*))0x00490427;
+const auto HideJoinPanel = (void(__thiscall*)(void*))0x00490571;
 const auto PausedUi = (void(__thiscall*)(void*, int))0x00497C0E;
 const auto ClosePlayerPanels = (void(__thiscall*)(void*))0x004A11D7;
 const auto UIShell_ShowInterface = (void(__thiscall*)(void*, const eng::gpstring*))0x006E8C12;
+const auto UIShell_HideInterface = (void(__thiscall*)(void*, const eng::gpstring*))0x006E8C20;
 const DWORD kJoinPanelGlobal = 0x007ACF94;
 const DWORD kPausedUiGlobal = 0x007ACFA4;
 const DWORD kPlayerPanelsGlobal = 0x007ACF90;
@@ -248,6 +250,25 @@ void ShowJipScreen() {
         UIShell_ShowInterface(ui, &g.s);
     }
     SetInputLock();
+}
+
+// Clears the input lock (WorldOptions+0x46).
+void ClearInputLock() {
+    if (void* wo = *(void**)kWorldOptionsGlobal) *((unsigned char*)wo + kWorldOptionsInputLock) = 0;
+}
+
+// Dismiss the join-in-progress screen, glass overlay, paused UI, and clear input lock.
+void DismissJipScreen() {
+    g_uiOwed = false;
+    if (void* p = *(void**)kJoinPanelGlobal) HideJoinPanel(p);
+    if (void* p = *(void**)kPausedUiGlobal) PausedUi(p, 0);
+    if (void* ui = eng::UI()) {
+        eng::GpStr g("jip_glass");
+        UIShell_HideInterface(ui, &g.s);
+        eng::GpStr j("join_in_progress");
+        UIShell_HideInterface(ui, &j.s);
+    }
+    ClearInputLock();
 }
 
 }  // namespace
@@ -359,6 +380,9 @@ extern "C" void __stdcall SiegeHost_JipPauseLeave(int) {
     g_deferring = -1;
     if (g_paid) { g_paid = false; DoSystemPause(false); }
     else Log("JipGuard: the joiner left before starting to load - nothing to un-pause.");
+    if (Cfg().role == Role::Client) {
+        DismissJipScreen();
+    }
 }
 
 // Players' PCs: while holding, watch the replicated players. The first JIP player to leave the
@@ -394,6 +418,34 @@ void JG_JipTick() {
     void* wsObj = eng::WorldState_Singleton();
     if (!wsObj) return;
     int worldState = *(int*)((char*)wsObj + 0x20);
+
+    // Client safety check: in normal gameplay (ws_mp_ingame), dismiss any stuck JIP UI or input lock
+    if (Cfg().role == Role::Client && worldState == JG_WS_MP_INGAME) {
+        void* wo = *(void**)kWorldOptionsGlobal;
+        bool locked = wo && *((unsigned char*)wo + kWorldOptionsInputLock) != 0;
+        bool glassVis = eng::InterfaceVisible("jip_glass");
+        bool joinVis = eng::InterfaceVisible("join_in_progress");
+        if (locked || glassVis || joinVis) {
+            DismissJipScreen();
+            Log("JipGuard: cleaned up stuck JIP UI/input-lock while in ws_mp_ingame (locked=%d, glass=%d, join=%d).",
+                locked ? 1 : 0, glassVis ? 1 : 0, joinVis ? 1 : 0);
+        }
+    }
+
+    // Client check: if in ws_mp_ingame_jip but no JIP player exists (crashed/disconnected mid-join)
+    if (Cfg().role == Role::Client && worldState == JG_WS_MP_INGAME_JIP) {
+        int states[64];
+        int n = 0;
+        bool readable = ReadJipStates(states, 64, n);
+        if (readable && n == 0) {
+            DismissJipScreen();
+            if (g_paid) { g_paid = false; DoSystemPause(false); }
+            WorldState_Request(wsObj, JG_WS_MP_INGAME);
+            Log("JipGuard: joiner vanished/crashed mid-join - restored ws_mp_ingame, dismissed UI, cleared input lock.");
+            return;
+        }
+    }
+
     // 0.8.6. With ready-first joining (src/jipqueue.cpp) the world deliberately stays in
     // ws_mp_ingame_jip after the joiner who was loading has been let in, because somebody else is
     // still on the character screen. The pause belongs to that map load, not to the episode, so it
@@ -402,7 +454,10 @@ void JG_JipTick() {
     if (g_paid && worldState == JG_WS_MP_INGAME_JIP && !HoldNow(worldState)) {
         g_paid = false; g_owed = true; g_deferring = -1;
         DoSystemPause(false);
-        Log("JipGuard: the joiner who was loading is in - the world runs again while the others are "
+        if (Cfg().role == Role::Client) {
+            DismissJipScreen();
+        }
+        Log("JipGuard: the joiner who was loading is in or disconnected - the world runs again while the others are "
             "still choosing (pause count %d).", eng::GamePauseCount());
     }
     if (!g_owed && !g_uiOwed) return;

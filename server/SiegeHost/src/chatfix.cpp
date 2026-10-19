@@ -5,7 +5,7 @@
 //   * line_timeout is 5.0 s at runtime.
 //   * offset is set to 4.0 by the game's "console minimised" function (0x0050F79C) whenever a
 //     panel such as the inventory, a shop or the map is open, and back to 0 when it closes - so with a
-//     menu open a line lasted 5 - 4 = 1 s. Measured in the lab .
+//     menu open a line lasted 5 - 4 = 1 s. Measured in the lab.
 // Fix:
 //   1. In the chat box update (0x006E6150) the load of the offset
 //        006e619b  d9 86 24 02 00 00   fld dword [esi+0x224]
@@ -14,6 +14,7 @@
 //   2. Once a second, the console box's line_timeout is set to [Chat] LineSeconds (default 10).
 #include "siegehost.h"
 #include "engine.h"
+#include <cstdint>
 #include <cstring>
 
 namespace {
@@ -24,9 +25,84 @@ const int kLineTimeout = 0x1D8;
 bool g_on = false;
 DWORD g_last = 0;
 void* g_box = nullptr;
+
+// 1.5.5: 3-second cooldown on "$MSG$%S does not have enough mana." (0x0078C614) so spamming casts
+// does not flood the chat box. All 6 sites push 0x0078C614 and call ReportSys::MacroF (0x0042C62E).
+const DWORD kManaReportCallee = 0x0042C62E;
+const DWORD kManaSites[] = {0x005103FF, 0x0051082E, 0x00510B38, 0x00510E7F, 0x0051120A, 0x00513545};
+const DWORD kManaCooldownMs = 3000;
+
+// 1.5.5: "Player %S has left the game with all his worldly possessions." -> "their worldly possessions."
+// Slot at 0x007916D8 is 72 bytes (padded with NULs up to 0x00791720); the updated string is 70 bytes incl. NUL.
+const DWORD kLeaveHisVa = 0x007916D8;
+const char kLeaveHisExpect[] = "$MSG$Player %S has left the game with all his worldly possessions.\n";
+const char kLeaveTheirNew[]  = "$MSG$Player %S has left the game with all their worldly possessions.\n";
 }
 
+extern "C" char __cdecl SiegeHost_ManaMsgAllowed() {
+    static DWORD last = 0;
+    DWORD now = GetTickCount();
+    if (last && now - last < kManaCooldownMs) return 0;
+    last = now ? now : 1;
+    return 1;
+}
+
+extern "C" void SiegeHost_ManaCooldownStub();
+__asm__(
+    ".text\n"
+    ".globl _SiegeHost_ManaCooldownStub\n"
+    "_SiegeHost_ManaCooldownStub:\n"
+    "  call _SiegeHost_ManaMsgAllowed\n"
+    "  testb %al, %al\n"
+    "  jz 1f\n"
+    "  movl $0x0042C62E, %eax\n"
+    "  jmp *%eax\n"
+    "1:\n"
+    "  movl 0x007B2EA0, %eax\n"
+    "  movl %fs:0x2C, %ecx\n"
+    "  pushl %esi\n"
+    "  movl (%ecx,%eax,4), %esi\n"
+    "  movl $0x0042C680, %eax\n"
+    "  jmp *%eax\n");
+
 void ChatFixInstall() {
+    // 1.5.5: update "his worldly possessions" -> "their worldly possessions" at 0x007916D8
+    if (memcmp((void*)kLeaveHisVa, kLeaveHisExpect, sizeof kLeaveHisExpect) == 0) {
+        DWORD o;
+        if (VirtualProtect((void*)kLeaveHisVa, sizeof kLeaveTheirNew, PAGE_READWRITE, &o)) {
+            memcpy((void*)kLeaveHisVa, kLeaveTheirNew, sizeof kLeaveTheirNew);
+            VirtualProtect((void*)kLeaveHisVa, sizeof kLeaveTheirNew, o, &o);
+            Log("ChatFix: updated leave message at 0x%08lX ('his' -> 'their' worldly possessions).", kLeaveHisVa);
+        }
+    }
+
+    // 1.5.5: 3-second cooldown on out-of-mana chat messages (6 call sites)
+    {
+        bool manaOk = true;
+        const BYTE kPushMana[] = {0x68, 0x14, 0xC6, 0x78, 0x00};
+        for (DWORD s : kManaSites) {
+            BYTE* p = (BYTE*)s;
+            if (memcmp(p - 5, kPushMana, 5) != 0 || p[0] != 0xE8 || s + 5 + *(int32_t*)(p + 1) != kManaReportCallee) {
+                manaOk = false;
+                break;
+            }
+        }
+        if (manaOk) {
+            for (DWORD s : kManaSites) {
+                BYTE* p = (BYTE*)s;
+                DWORD o;
+                if (VirtualProtect(p, 5, PAGE_EXECUTE_READWRITE, &o)) {
+                    *(int32_t*)(p + 1) = (int32_t)((DWORD)(void*)&SiegeHost_ManaCooldownStub - (s + 5));
+                    VirtualProtect(p, 5, o, &o);
+                    FlushInstructionCache(GetCurrentProcess(), p, 5);
+                }
+            }
+            Log("ChatFix: armed %lu ms cooldown on 'does not have enough mana' chat messages (6 call sites).", kManaCooldownMs);
+        } else {
+            Log("ChatFix: VERIFY FAILED on out-of-mana call sites - cooldown not installed.");
+        }
+    }
+
     const Config& c = Cfg();
     if (c.chatLineSeconds <= 0) { Log("ChatFix: off ([Chat] LineSeconds=0) - chat box left as the game sets it."); return; }
     if (memcmp((void*)kOffsetLoadVa, kOffsetLoadExpect, sizeof kOffsetLoadExpect) != 0) {
