@@ -198,11 +198,40 @@ void ChatHistoryTick() {
 }
 
 // ----------------------------------------------------------------------------------------------
-// 1.5.10: In-game chat edit controls (Ctrl+Backspace: delete word; Ctrl+A: select all)
+// 1.5.10: Chat edit controls (Ctrl+Backspace: delete word; Ctrl+A: select all) in game & staging
 // ----------------------------------------------------------------------------------------------
 namespace {
 static bool g_eatNextChar = false;
 static WPARAM g_eatCharVal = 0;
+
+static void* GetActiveChatBox() {
+    // 1. In-game console chat edit box
+    if (eng::WindowVisible("console_edit", "game_console_mp")) {
+        return eng::FindWindow("console_edit", "game_console_mp");
+    }
+    // 2. Character creation name edit box (in staging modal)
+    if (eng::WindowVisible("staging_char_name_edit_box", "staging_area_create_character")) {
+        void* box = eng::FindWindow("staging_char_name_edit_box", "staging_area_create_character");
+        if (box && *(const unsigned char*)((const char*)box + 0x1A1) != 0) {
+            return box;
+        }
+    }
+    // 3. Staging area chat edit box
+    if (eng::WindowVisible("staging_area_chat_editbox", "staging_area")) {
+        void* box = eng::FindWindow("staging_area_chat_editbox", "staging_area");
+        if (box && *(const unsigned char*)((const char*)box + 0x1A1) != 0) {
+            return box;
+        }
+    }
+    // 4. End game summary chat edit box
+    if (eng::WindowVisible("end_game_chat_editbox", "end_game_summary")) {
+        void* box = eng::FindWindow("end_game_chat_editbox", "end_game_summary");
+        if (box && *(const unsigned char*)((const char*)box + 0x1A1) != 0) {
+            return box;
+        }
+    }
+    return nullptr;
+}
 
 static const wchar_t* GetEditBoxWide(void* box, int& outLen) {
     outLen = 0;
@@ -216,6 +245,7 @@ static const wchar_t* GetEditBoxWide(void* box, int& outLen) {
 }
 
 static void UpdateEditBoxText(void* box, const std::wstring& ws, int newCaret) {
+    if (!box) return;
     std::string s;
     if (!ws.empty()) {
         int n = WideCharToMultiByte(CP_ACP, 0, ws.c_str(), (int)ws.length(), nullptr, 0, nullptr, nullptr);
@@ -224,7 +254,8 @@ static void UpdateEditBoxText(void* box, const std::wstring& ws, int newCaret) {
             WideCharToMultiByte(CP_ACP, 0, ws.c_str(), (int)ws.length(), &s[0], n, nullptr, nullptr);
         }
     }
-    eng::SetEditText("console_edit", "game_console_mp", s.c_str());
+    eng::GpStr g(s.c_str());
+    eng::UIEditBox_SetText(box, &g.s);
     eng::UIEditBox_SetPromptIndex(box, newCaret);
     eng::UIEditBox_SetTextPosition(box, newCaret, newCaret);
 }
@@ -232,10 +263,27 @@ static void UpdateEditBoxText(void* box, const std::wstring& ws, int newCaret) {
 
 void ChatKeyFilter(LPMSG msg) {
     if (!msg) return;
-    if (!eng::WindowVisible("console_edit", "game_console_mp")) return;
-    void* box = eng::FindWindow("console_edit", "game_console_mp");
-    if (!box) return;
 
+    if (msg->message == WM_CHAR) {
+        if (g_eatNextChar && (msg->wParam == g_eatCharVal || msg->wParam == 0x7F || msg->wParam == 0x01 || msg->wParam == 0x08)) {
+            g_eatNextChar = false;
+            g_eatCharVal = 0;
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
+            return;
+        }
+        // Always block raw unprintable ASCII control codes that leak into the chat edit box
+        if (msg->wParam == 0x7F || msg->wParam == 0x01) {
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
+            return;
+        }
+    }
+
+    void* box = GetActiveChatBox();
+    if (!box) return;
     int selStart = *(int*)((char*)box + 0x21C);
     int selEnd = *(int*)((char*)box + 0x220);
 
@@ -351,21 +399,6 @@ void ChatKeyFilter(LPMSG msg) {
             return;
         }
     } else if (msg->message == WM_CHAR) {
-        if (g_eatNextChar && (msg->wParam == g_eatCharVal || msg->wParam == 0x7F || msg->wParam == 0x01 || msg->wParam == 0x08)) {
-            g_eatNextChar = false;
-            g_eatCharVal = 0;
-            msg->message = WM_NULL;
-            msg->wParam = 0;
-            msg->lParam = 0;
-            return;
-        }
-        // Always block raw unprintable ASCII control codes that leak into the chat edit box
-        if (msg->wParam == 0x7F || msg->wParam == 0x01) {
-            msg->message = WM_NULL;
-            msg->wParam = 0;
-            msg->lParam = 0;
-            return;
-        }
         // If typing a printable character while text is selected, replace selection
         if (selStart != selEnd && msg->wParam >= 32) {
             if (selStart > selEnd) std::swap(selStart, selEnd);
