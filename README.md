@@ -9,7 +9,7 @@ Dedicated server infrastructure and client launcher for Dungeon Siege: Legends o
 - `server/SiegePortal/`: Central authentication service (Go). Manages accounts, cloud saves, sessions, and status API.
 - `server/SiegeServer/`: Watchdog daemon (Go). Keeps `DSLOA.exe` and `SiegePortal` running, auto-restarts on crash/hang, and resets world when empty.
 - `server/wine-directplay/`: Linux Wine DirectPlay setup files and test tools.
-- `website/`: Status dashboard and web portal (Go).
+- `website/`: Web portal (Go). Features live server status monitoring, player leaderboards, searchable wiki database, and Game Master management tools.
 - `mods/`: Sources, configurations, and documentation for client and server mods distributed through the launcher manifest.
 
 ## Build Instructions
