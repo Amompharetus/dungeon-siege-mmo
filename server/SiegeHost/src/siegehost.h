@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <string>
 
-#define SIEGEHOST_VERSION "1.5.12"
+#define SIEGEHOST_VERSION "1.5.13"
 
 enum class Role { None, Server, Client };
 
@@ -61,6 +61,7 @@ struct Config {
     std::string jgServerId;     // server: this server's id ("na", "eu")
 };
 
+extern HWND g_gameHwnd;
 const Config& Cfg();
 void Log(const char* fmt, ...);
 std::string LogDir();          // "<game>\SiegeHostLogs\"

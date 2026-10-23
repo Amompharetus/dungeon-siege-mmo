@@ -205,6 +205,20 @@ namespace {
 static bool g_eatNextChar = false;
 static WPARAM g_eatCharVal = 0;
 
+static bool SafeOpenClipboard(HWND hwnd) {
+    for (int retry = 0; retry < 10; ++retry) {
+        if (OpenClipboard(hwnd)) return true;
+        Sleep(2);
+    }
+    if (hwnd != nullptr) {
+        for (int retry = 0; retry < 5; ++retry) {
+            if (OpenClipboard(nullptr)) return true;
+            Sleep(2);
+        }
+    }
+    return false;
+}
+
 static void* GetActiveChatBox() {
     // 1. In-game console chat edit box
     if (eng::WindowVisible("console_edit", "game_console_mp")) {
@@ -213,21 +227,21 @@ static void* GetActiveChatBox() {
     // 2. Character creation name edit box (in staging modal)
     if (eng::WindowVisible("staging_char_name_edit_box", "staging_area_create_character")) {
         void* box = eng::FindWindow("staging_char_name_edit_box", "staging_area_create_character");
-        if (box && *(const unsigned char*)((const char*)box + 0x1A1) != 0) {
+        if (box && (*(const unsigned char*)((const char*)box + 0x1A1) != 0 || *(const unsigned char*)((const char*)box + 0x1A0) != 0)) {
             return box;
         }
     }
     // 3. Staging area chat edit box
     if (eng::WindowVisible("staging_area_chat_editbox", "staging_area")) {
         void* box = eng::FindWindow("staging_area_chat_editbox", "staging_area");
-        if (box && *(const unsigned char*)((const char*)box + 0x1A1) != 0) {
+        if (box && (*(const unsigned char*)((const char*)box + 0x1A1) != 0 || *(const unsigned char*)((const char*)box + 0x1A0) != 0)) {
             return box;
         }
     }
     // 4. End game summary chat edit box
     if (eng::WindowVisible("end_game_chat_editbox", "end_game_summary")) {
         void* box = eng::FindWindow("end_game_chat_editbox", "end_game_summary");
-        if (box && *(const unsigned char*)((const char*)box + 0x1A1) != 0) {
+        if (box && (*(const unsigned char*)((const char*)box + 0x1A1) != 0 || *(const unsigned char*)((const char*)box + 0x1A0) != 0)) {
             return box;
         }
     }
@@ -291,7 +305,7 @@ void ChatKeyFilter(LPMSG msg) {
     int selEnd = *(int*)((char*)box + 0x220);
 
     if (msg->message == WM_KEYDOWN) {
-        bool ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+        bool ctrl = ((GetKeyState(VK_CONTROL) & 0x8000) != 0) || ((GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0);
 
         if (msg->wParam == VK_BACK) {
             if (ctrl) {
@@ -412,8 +426,13 @@ void ChatKeyFilter(LPMSG msg) {
                 if (selEnd > (int)ws.length()) selEnd = (int)ws.length();
                 toCopy = ws.substr(selStart, selEnd - selStart);
             }
+            if (selStart != selEnd) {
+                // Collapse selection to end of copy so user doesn't overwrite on next key or no-op on Ctrl+V
+                eng::UIEditBox_SetTextPosition(box, selEnd, selEnd);
+                eng::UIEditBox_SetPromptIndex(box, selEnd);
+            }
             if (!toCopy.empty()) {
-                if (OpenClipboard(nullptr)) {
+                if (SafeOpenClipboard(g_gameHwnd)) {
                     EmptyClipboard();
                     size_t bytes = (toCopy.length() + 1) * sizeof(wchar_t);
                     HGLOBAL hGlob = GlobalAlloc(GMEM_MOVEABLE, bytes);
@@ -439,7 +458,7 @@ void ChatKeyFilter(LPMSG msg) {
         } else if (ctrl && (msg->wParam == 'V' || msg->wParam == 'v')) {
             // Ctrl + V: paste from clipboard, replacing active selection or inserting at caret
             std::wstring clipText;
-            if (OpenClipboard(nullptr)) {
+            if (SafeOpenClipboard(g_gameHwnd)) {
                 HANDLE hData = GetClipboardData(CF_UNICODETEXT);
                 if (hData) {
                     const wchar_t* pClip = (const wchar_t*)GlobalLock(hData);
@@ -484,8 +503,17 @@ void ChatKeyFilter(LPMSG msg) {
                     if (selStart > selEnd) std::swap(selStart, selEnd);
                     if (selStart < 0) selStart = 0;
                     if (selEnd > (int)ws.length()) selEnd = (int)ws.length();
-                    ws.replace(selStart, selEnd - selStart, cleanText);
-                    newCaret = selStart + (int)cleanText.length();
+                    std::wstring selText = ws.substr(selStart, selEnd - selStart);
+                    if (selText == cleanText) {
+                        // User is pasting the exact text that was selected (e.g. after Ctrl+A, Ctrl+C).
+                        // Instead of a no-op replace (which makes it seem like the first Ctrl+V failed),
+                        // append the text at the end of the selection so it pastes immediately on 1st press!
+                        ws.insert(selEnd, cleanText);
+                        newCaret = selEnd + (int)cleanText.length();
+                    } else {
+                        ws.replace(selStart, selEnd - selStart, cleanText);
+                        newCaret = selStart + (int)cleanText.length();
+                    }
                 } else {
                     int caret = eng::UIEditBox_GetPromptIndex(box);
                     if (caret < 0) caret = 0;
