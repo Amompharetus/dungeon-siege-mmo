@@ -51,9 +51,5 @@ cd website && go build -o website .
 
 This project is licensed under the [MIT License](LICENSE).
 
-### Disclaimer
-This is an independent, non-commercial community preservation initiative.
-- "Dungeon Siege" and "Dungeon Siege: Legends of Aranna" are registered trademarks or trademarks of Microsoft Corporation, Gas Powered Games, and/or 2K Games.
-- This project is not affiliated with, endorsed by, sponsored by, or associated in any way with Microsoft Corporation, Gas Powered Games, or any of their affiliates or subsidiaries.
-- All original game content, assets, and engine binaries remain the exclusive property of their respective copyright and trademark holders.
+For detailed non-affiliation statements, trademark notices, and preservation scope, please consult [DISCLAIMER.md](DISCLAIMER.md).
 
