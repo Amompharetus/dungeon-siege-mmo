@@ -9,7 +9,7 @@
 //
 // Summons a duplicate of the character to guard and attack for them
 //
-// Community Fix:
+// Fix:
 // ADDED - This skrit now cleans after itself and deletes the inventory in the
 // case of an untimely demise of our clone
 //
@@ -347,8 +347,7 @@ void CopyInventory$( go from_go$, go to_go$ )
 
 			i$ = i$ + 1;
 		}
-		to_go$.Aspect.SSetGoldValue( 0, true ); //ADDED - DELETING GOLD
-		to_go$.Inventory.RSSetGold( 0 ); //ADDED - DELETING GOLD
+		to_go$.Inventory.RCSetGold( 0 ); //ADDED - DELETING GOLD
 	}
 }
 
@@ -547,9 +546,8 @@ state SummonGo$
 				summoned_goid$.Go.SsetPlayer( caster$.Go.PlayerID );
 			}
 
-			/////////////////////////////////////////
 			/////////////////////////////////////////////////////////
-			/////////////////////////////////////////////////////////
+			///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 			/////////////////////////////////////////////////////
 			// and skills (use a multiplier here instead of 1.  one anyway?)
