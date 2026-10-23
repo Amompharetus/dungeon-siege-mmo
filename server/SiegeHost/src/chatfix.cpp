@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <vector>
 #include <cwctype>
 #include <algorithm>
 
@@ -246,6 +247,8 @@ static const wchar_t* GetEditBoxWide(void* box, int& outLen) {
 
 static void UpdateEditBoxText(void* box, const std::wstring& ws, int newCaret) {
     if (!box) return;
+    if (newCaret < 0) newCaret = 0;
+    if (newCaret > (int)ws.length()) newCaret = (int)ws.length();
     std::string s;
     if (!ws.empty()) {
         int n = WideCharToMultiByte(CP_ACP, 0, ws.c_str(), (int)ws.length(), nullptr, 0, nullptr, nullptr);
@@ -265,7 +268,7 @@ void ChatKeyFilter(LPMSG msg) {
     if (!msg) return;
 
     if (msg->message == WM_CHAR) {
-        if (g_eatNextChar && (msg->wParam == g_eatCharVal || msg->wParam == 0x7F || msg->wParam == 0x01 || msg->wParam == 0x08 || msg->wParam == 0x03)) {
+        if (g_eatNextChar && (msg->wParam == g_eatCharVal || msg->wParam == 0x7F || msg->wParam == 0x01 || msg->wParam == 0x08 || msg->wParam == 0x03 || msg->wParam == 0x16 || msg->wParam == 0x18)) {
             g_eatNextChar = false;
             g_eatCharVal = 0;
             msg->message = WM_NULL;
@@ -274,7 +277,7 @@ void ChatKeyFilter(LPMSG msg) {
             return;
         }
         // Always block raw unprintable ASCII control codes that leak into the chat edit box
-        if (msg->wParam == 0x7F || msg->wParam == 0x01 || msg->wParam == 0x03) {
+        if (msg->wParam == 0x7F || msg->wParam == 0x01 || msg->wParam == 0x03 || msg->wParam == 0x16 || msg->wParam == 0x18) {
             msg->message = WM_NULL;
             msg->wParam = 0;
             msg->lParam = 0;
@@ -432,6 +435,109 @@ void ChatKeyFilter(LPMSG msg) {
             msg->lParam = 0;
             g_eatNextChar = true;
             g_eatCharVal = 0x03;  // Ctrl+C emits ETX (0x03) in Win32
+            return;
+        } else if (ctrl && (msg->wParam == 'V' || msg->wParam == 'v')) {
+            // Ctrl + V: paste from clipboard, replacing active selection or inserting at caret
+            std::wstring clipText;
+            if (OpenClipboard(nullptr)) {
+                HANDLE hData = GetClipboardData(CF_UNICODETEXT);
+                if (hData) {
+                    const wchar_t* pClip = (const wchar_t*)GlobalLock(hData);
+                    if (pClip) {
+                        clipText = pClip;
+                        GlobalUnlock(hData);
+                    }
+                } else {
+                    hData = GetClipboardData(CF_TEXT);
+                    if (hData) {
+                        const char* pClip = (const char*)GlobalLock(hData);
+                        if (pClip) {
+                            int wlen = MultiByteToWideChar(CP_ACP, 0, pClip, -1, nullptr, 0);
+                            if (wlen > 1) {
+                                std::vector<wchar_t> wbuf(wlen);
+                                MultiByteToWideChar(CP_ACP, 0, pClip, -1, &wbuf[0], wlen);
+                                clipText = wbuf.data();
+                            }
+                            GlobalUnlock(hData);
+                        }
+                    }
+                }
+                CloseClipboard();
+            }
+
+            std::wstring cleanText;
+            cleanText.reserve(clipText.length());
+            for (wchar_t ch : clipText) {
+                if (ch == L'\t') {
+                    cleanText.push_back(L' ');
+                } else if (ch >= 32) {
+                    cleanText.push_back(ch);
+                }
+            }
+
+            if (!cleanText.empty()) {
+                int len = 0;
+                const wchar_t* p = GetEditBoxWide(box, len);
+                std::wstring ws(p, len);
+                int newCaret = 0;
+                if (selStart != selEnd) {
+                    if (selStart > selEnd) std::swap(selStart, selEnd);
+                    if (selStart < 0) selStart = 0;
+                    if (selEnd > (int)ws.length()) selEnd = (int)ws.length();
+                    ws.replace(selStart, selEnd - selStart, cleanText);
+                    newCaret = selStart + (int)cleanText.length();
+                } else {
+                    int caret = eng::UIEditBox_GetPromptIndex(box);
+                    if (caret < 0) caret = 0;
+                    if (caret > (int)ws.length()) caret = (int)ws.length();
+                    ws.insert(caret, cleanText);
+                    newCaret = caret + (int)cleanText.length();
+                }
+                UpdateEditBoxText(box, ws, newCaret);
+            }
+
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
+            g_eatNextChar = true;
+            g_eatCharVal = 0x16;  // Ctrl+V emits SYN (0x16) in Win32
+            return;
+        } else if (ctrl && (msg->wParam == 'X' || msg->wParam == 'x')) {
+            // Ctrl + X: cut selection to clipboard
+            if (selStart != selEnd) {
+                if (selStart > selEnd) std::swap(selStart, selEnd);
+                int len = 0;
+                const wchar_t* p = GetEditBoxWide(box, len);
+                std::wstring ws(p, len);
+                if (selStart < 0) selStart = 0;
+                if (selEnd > (int)ws.length()) selEnd = (int)ws.length();
+                std::wstring toCopy = ws.substr(selStart, selEnd - selStart);
+                if (!toCopy.empty()) {
+                    if (OpenClipboard(nullptr)) {
+                        EmptyClipboard();
+                        size_t bytes = (toCopy.length() + 1) * sizeof(wchar_t);
+                        HGLOBAL hGlob = GlobalAlloc(GMEM_MOVEABLE, bytes);
+                        if (hGlob) {
+                            void* pMem = GlobalLock(hGlob);
+                            if (pMem) {
+                                memcpy(pMem, toCopy.c_str(), bytes);
+                                GlobalUnlock(hGlob);
+                                SetClipboardData(CF_UNICODETEXT, hGlob);
+                            } else {
+                                GlobalFree(hGlob);
+                            }
+                        }
+                        CloseClipboard();
+                    }
+                }
+                ws.erase(selStart, selEnd - selStart);
+                UpdateEditBoxText(box, ws, selStart);
+            }
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
+            g_eatNextChar = true;
+            g_eatCharVal = 0x18;  // Ctrl+X emits CAN (0x18) in Win32
             return;
         }
     } else if (msg->message == WM_CHAR) {
