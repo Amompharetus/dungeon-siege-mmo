@@ -20,6 +20,7 @@ The following mods are currently delivered to players via the update manifest:
 | **BuffedBuffs** | `BuffedBuffsMod.dsres` | `DSLOA/` | Server & Client | Extends buff durations to 30 minutes and improves orb spell replacement. |
 | **Unlocked Loot** | `Unlocked Loot.dsres` | `DSLOA/` | Server & Client | Restores 80+ cut and bugged weapons and armor pieces to monster drop tables. |
 | **Difficulty Patch** | `DS1_Difficulty_Patch.dsres` | `DSLOA/` | Server & Client | Adjusts multiplayer encounter scaling and difficulty progression. |
+| **Clone Duping Fix** | `Clone Item Duping Fix.dsres` | `DSLOA/` | Server & Client | Fixes multiplayer item and gold duplication exploit on Clone spell death. |
 | **UberUI** | `UberUI_LoA_v0.02.dsres` | `DSLOA/` | Client-Only | Quality-of-life interface tweaks and layout improvements for Legends of Aranna. |
 | **Fairy Companion Fix** | `fairyfix.dsres` | `Resources/` | Server & Client | Fixes pathing and state issues for fairy companion summons. |
 | **SeeFar ResolutionFix** | `sf_ResolutionFix.dsres` | `Resources/` | Client-Only | Corrects paperdoll positions and interface scaling at high modern resolutions. |
@@ -95,6 +96,25 @@ Rebalances multiplayer monster scaling and party difficulty curves.
 Vanilla Dungeon Siege multiplayer scaling increases monster health and damage aggressively as additional players join, frequently causing sharp difficulty spikes or turning encounters into tedious damage sponges.
 
 This patch smooths the scaling curves, ensuring multiplayer encounters remain challenging yet fair for varying group sizes and solo adventurers exploring multiplayer maps.
+
+## Clone Item Duping Fix
+
+Fixes the item and gold duplication exploit associated with the Combat Magic Clone spell in multiplayer.
+
+| | |
+|---|---|
+| Files | `Clone Item Duping Fix.dsres` (distributed binary), sources in `clonedupingfix/` |
+| Installed to | `DSLOA/` |
+| Requires | Legends of Aranna 1.50 |
+| Scope | Server & Client (`spell_summon_clone.skrit`) |
+
+In retail Legends of Aranna multiplayer, when a summoned character clone is killed by enemies, hazards, or PvP, the game engine treated the death like an actor demise and dropped all duplicated inventory items, equipped weapons, armor, and gold onto the ground as real, permanent loot.
+
+This fix modifies `spell_summon_clone.skrit`:
+- Zeroes clone gold upon summoning to prevent gold duplication.
+- Prevents redundant duplicate cloning of equipped hand and spellbook slots.
+- Actively tracks all temporary cloned items in the clone's inventory upon creation.
+- Intercepts clone death (`WE_KILLED`) and expiration events to immediately delete all temporary cloned items before the death-drop loot system can spawn them in the world.
 
 ## UberUI (Legends of Aranna)
 
