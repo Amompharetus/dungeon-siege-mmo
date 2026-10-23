@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-const version = "0.9.7"
+const version = "1.0.0"
 
 type Settings struct {
 	PortalURL   string `json:"portal_url"` // e.g. http://my-server.example.com:8440
