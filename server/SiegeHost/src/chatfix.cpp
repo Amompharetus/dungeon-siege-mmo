@@ -265,7 +265,7 @@ void ChatKeyFilter(LPMSG msg) {
     if (!msg) return;
 
     if (msg->message == WM_CHAR) {
-        if (g_eatNextChar && (msg->wParam == g_eatCharVal || msg->wParam == 0x7F || msg->wParam == 0x01 || msg->wParam == 0x08)) {
+        if (g_eatNextChar && (msg->wParam == g_eatCharVal || msg->wParam == 0x7F || msg->wParam == 0x01 || msg->wParam == 0x08 || msg->wParam == 0x03)) {
             g_eatNextChar = false;
             g_eatCharVal = 0;
             msg->message = WM_NULL;
@@ -274,7 +274,7 @@ void ChatKeyFilter(LPMSG msg) {
             return;
         }
         // Always block raw unprintable ASCII control codes that leak into the chat edit box
-        if (msg->wParam == 0x7F || msg->wParam == 0x01) {
+        if (msg->wParam == 0x7F || msg->wParam == 0x01 || msg->wParam == 0x03) {
             msg->message = WM_NULL;
             msg->wParam = 0;
             msg->lParam = 0;
@@ -396,6 +396,42 @@ void ChatKeyFilter(LPMSG msg) {
             msg->lParam = 0;
             g_eatNextChar = true;
             g_eatCharVal = 0x01;  // Ctrl+A emits SOH (0x01) in Win32
+            return;
+        } else if (ctrl && (msg->wParam == 'C' || msg->wParam == 'c')) {
+            // Ctrl + C: copy selection to clipboard
+            int len = 0;
+            const wchar_t* p = GetEditBoxWide(box, len);
+            std::wstring ws(p, len);
+            std::wstring toCopy;
+            if (selStart != selEnd) {
+                if (selStart > selEnd) std::swap(selStart, selEnd);
+                if (selStart < 0) selStart = 0;
+                if (selEnd > (int)ws.length()) selEnd = (int)ws.length();
+                toCopy = ws.substr(selStart, selEnd - selStart);
+            }
+            if (!toCopy.empty()) {
+                if (OpenClipboard(nullptr)) {
+                    EmptyClipboard();
+                    size_t bytes = (toCopy.length() + 1) * sizeof(wchar_t);
+                    HGLOBAL hGlob = GlobalAlloc(GMEM_MOVEABLE, bytes);
+                    if (hGlob) {
+                        void* pMem = GlobalLock(hGlob);
+                        if (pMem) {
+                            memcpy(pMem, toCopy.c_str(), bytes);
+                            GlobalUnlock(hGlob);
+                            SetClipboardData(CF_UNICODETEXT, hGlob);
+                        } else {
+                            GlobalFree(hGlob);
+                        }
+                    }
+                    CloseClipboard();
+                }
+            }
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
+            g_eatNextChar = true;
+            g_eatCharVal = 0x03;  // Ctrl+C emits ETX (0x03) in Win32
             return;
         }
     } else if (msg->message == WM_CHAR) {
