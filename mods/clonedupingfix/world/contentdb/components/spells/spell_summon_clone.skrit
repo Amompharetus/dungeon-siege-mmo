@@ -1,0 +1,903 @@
+//////////////////////////////////////////////////////////////////////////////
+//
+// File     :  spell_summon_self.skrit
+// Author(s):  Tim Jones (copied from the original spell_summon code)
+//
+//----------------------------------------------------------------------------
+//  $Revision:: $              $Date:$
+//----------------------------------------------------------------------------
+//
+// Summons a duplicate of the character to guard and attack for them
+//
+// Community Fix:
+// ADDED - This skrit now cleans after itself and deletes the inventory in the
+// case of an untimely demise of our clone
+//
+//////////////////////////////////////////////////////////////////////////////
+
+property string effect_script$		= ""	doc = "Name of the SiegeFx script that will be providing the visual.";
+property string end_script$			= ""	doc = "Name of the SiegeFx script that will be providing the visual when un_summoning.";
+property string script_params$		= ""   	doc = "Parameters to send to SiegeFx script";
+property string state_name$			= "summoned"			doc = "Name of effect to use as a generic state and as a screen name.";
+property string description$		= ""	doc = "Description of enchantment being applied";
+property string caster_description$	= ""	doc = "Description of enchantment being applied to the caster";
+property string other_description$	= "Clone"	doc = "Description appended to caster's screen name";
+property bool	guard_caster$		= true	doc = "Make the summoned creature follow the caster.";
+property bool	change_align$		= true	doc = "set summon alignment to be that of the caster.";
+property bool	delete_inv$		= true	doc = "delete summons inventory when removed.";
+
+
+
+owner = GoSkritComponent;
+#include "k_inc_spl_utils"
+
+int starting_pos$;
+
+Goid summoned_goid$;
+Goid target$;
+Goid caster$;
+float summon_duration$;
+
+Go secondary_spell$;
+
+//ADDED - for use of the inventory cleaning
+string cloned_items_list$ = "";
+bool inventory_cleaned$ = false;
+////////
+
+// copies the inventory item specified by il and es from the inventory of copy_from_goid$ to the inventory of copy_to_goid$
+// the only spell that is copied is the one that is NOT selected in the copy_from_goid$'s inventory
+void CopyInventoryItem$(eInventoryLocation il$, eEquipSlot es$, Goid copy_from_goid$, Goid copy_to_goid$)
+{
+	Go item_go$;
+	Goid item_goid$;
+	GoCloneReq cloneReq$;
+	Go temp$;
+
+	// see if we're copying the spell book or not
+	if(es$ != ES_SPELLBOOK)
+	{
+		// get the item
+		item_go$ = copy_from_goid$.Go.Inventory.GetItem(il$);
+
+		// make sure the weapon is valid
+		if(item_go$ != NULL)
+		{
+			// clone the weapon that the user has
+			cloneReq$ = MakeGoCloneReq(item_go$.GetTemplateName());
+			item_goid$ = GoDb.SCloneGo(cloneReq$);
+			
+			// remove the item that was there
+			temp$ = copy_to_goid$.Go.Inventory.GetItem( il$ );
+			if( temp$ != NULL )
+			{
+				copy_to_goid$.Go.Inventory.RSRemove( temp$, false );
+				PostWorldMessage( WE_REQ_DELETE, owner.Goid, temp$.Goid, 0 ); // not sure of a better way to do this...
+			}
+
+			// add the new item
+			copy_to_goid$.Go.Inventory.RSAdd(item_goid$.Go, il$, AO_REFLEX, false);
+		}
+	}
+	else
+	{
+		// get the location of the selected weapon
+		eInventoryLocation loc$ = copy_from_goid$.Go.Inventory.GetSelectedLocation;
+
+		// copy the spell book
+		#only(game)[[ 
+		Go spellbookGo$ = copy_from_goid$.Go.Inventory.GetActiveSpellBook();
+
+		// make sure the book is valid
+		if(spellbookGo$ != NULL)
+		{
+			// clone the book
+			cloneReq$ = MakeGoCloneReq(spellbookGo$.GetTemplateName());
+			item_goid$ = GoDb.SCloneGo(cloneReq$);
+			Goid cloned_spellbook_goid$ = item_goid$;
+			
+			// add it to their inventory
+			copy_to_goid$.Go.Inventory.RSAdd(item_goid$.Go, IL_MAIN, AO_REFLEX, false);
+			copy_to_goid$.Go.Inventory.RSEquip(ES_SPELLBOOK, item_goid$, AO_REFLEX);
+
+			// did we cache a valid secondary spell?
+			if (secondary_spell$ != NULL)
+			{
+				// clone the secondary spell that the user has
+				cloneReq$ = MakeGoCloneReq(secondary_spell$.TemplateName);
+				item_goid$ = GoDb.SCloneGo(cloneReq$);
+				
+				// always put it in slot one
+				cloned_spellbook_goid$.Go.Inventory.RSAdd(item_goid$.Go, IL_SPELL_1, AO_REFLEX, false);
+			}
+
+			// set the spell book
+			copy_to_goid$.Go.Inventory.SetActiveSpellBook(cloned_spellbook_goid$.Go);
+		}
+		]]
+	}
+}
+
+// JCD 9/3/03
+// delete all the items in the invetory of the target_go
+void DeleteInventory$( go target_go$ )
+{
+	// do we have an inventory
+	if(target_go$.HasInventory())
+	{
+		// clear a collection to use
+		target_go$.Mind.TempGopColl1.Clear();
+
+		// get everything in the inventory
+		target_go$.Inventory.ListItems(IL_ALL, target_go$.Mind.TempGopColl1);
+
+		// get set to loop
+		int i$ = 0;
+		int iend$ = target_go$.Mind.TempGopColl1.Size();
+		Go temp$;
+
+		// loop through and search for items that have inventories.  then delete the item
+		while( i$ < iend$ )
+		{
+			// get the go
+			temp$ = target_go$.Mind.TempGopColl1.Get( i$ );
+
+			// do we have an inventory?  if yes, go one level deeper.  i hope no one
+			// is planning on going farther than that...
+			if( temp$.HasInventory() )
+			{
+				// get all the items in this inventory
+				target_go$.Mind.TempGopColl2.Clear();
+				temp$.Inventory.ListItems(IL_ALL, target_go$.Mind.TempGopColl2);
+
+				// loop and delete
+				int j$ = 0;
+				int jend$ = target_go$.Mind.TempGopColl2.Size();
+				Go temp2$;
+
+				while(j$ < jend$)
+				{
+					temp2$ = target_go$.Mind.TempGopColl2.Get( j$ );
+
+					// remove it from the inventory
+					temp$.Inventory.RSRemove(temp2$, false);
+					// delete it
+					PostWorldMessage(WE_REQ_DELETE, owner.Goid, temp2$.Goid, 0);
+
+					j$ = j$ + 1;
+				}
+			}
+
+			// delete the item itself
+			target_go$.Inventory.RSRemove(temp$, false);
+			PostWorldMessage(WE_REQ_DELETE, owner.Goid, temp$.Goid, 0);
+
+			i$ = i$ + 1;
+		}
+	}
+}
+
+// ADDED - similar to DeleteInventory, but it just lists the items in a comma delimited string
+void RecordCloneInventory$( Go target_go$ )
+{
+	//reset the string just in case
+	cloned_items_list$ = "";
+
+	// do we have an inventory
+	if(target_go$.HasInventory())
+	{
+		// clear a collection to use
+		target_go$.Mind.TempGopColl1.Clear();
+
+		// get everything in the inventory
+		target_go$.Inventory.ListItems(IL_ALL, target_go$.Mind.TempGopColl1);
+
+		// get set to loop
+		int i$ = 0;
+		int iend$ = target_go$.Mind.TempGopColl1.Size();
+		Go temp$;
+
+		// loop through and search for items that have inventories. then record the item
+		while( i$ < iend$ )
+		{
+			if (i$ > 0)
+			{
+				//set up the comma seperator
+				StringTool.Append(cloned_items_list$, ",");
+			}
+			// get the go
+			temp$ = target_go$.Mind.TempGopColl1.Get( i$ );
+
+			// do we have an inventory?  if yes, go one level deeper.  i hope no one
+			// is planning on going farther than that...
+			if( temp$.HasInventory() )
+			{
+				// get all the items in this inventory
+				target_go$.Mind.TempGopColl2.Clear();
+				temp$.Inventory.ListItems(IL_ALL, target_go$.Mind.TempGopColl2);
+
+				// loop and record
+				int j$ = 0;
+				int jend$ = target_go$.Mind.TempGopColl2.Size();
+				Go temp2$;
+
+				while(j$ < jend$)
+				{
+					temp2$ = target_go$.Mind.TempGopColl2.Get( j$ );
+
+					// record the item goid in our string
+					StringTool.AppendF(cloned_items_list$, "0x%08x", temp2$.goid );
+					
+					//set up the comma seperator
+					StringTool.Append(cloned_items_list$, ",");
+
+					j$ = j$ + 1;
+				}
+			}
+
+			// record the item goid in our string
+			StringTool.AppendF(cloned_items_list$, "0x%08x", temp$.goid );
+
+			i$ = i$ + 1;
+		}
+	}
+}
+
+
+//ADDED - this function deletes the cloned items
+void DeleteCloneInventory$( )
+{
+	if (inventory_cleaned$) { return; } //We already cleaned the inventory, no need to do that again
+
+	int i$ = 0;
+	int iend$ = StringTool.GetNumDelimitedValues( cloned_items_list$ );
+	Goid temp$;
+	
+	// loop through and search for items that have inventories.  then delete the item
+	while( i$ < iend$ )
+	{
+		// get the go
+		temp$ = MakeGoid( StringTool.GetDelimitedInt( cloned_items_list$, i$ ) );
+		
+		if ( !temp$.IsValid)
+		{
+			i$ = i$ + 1;
+			continue;
+		}
+		
+		// delete the item itself
+		PostWorldMessage(WE_REQ_DELETE, owner.Goid, temp$, 0);
+
+		i$ = i$ + 1;
+	}
+	inventory_cleaned$ = true; //We don't want to do that again
+}
+
+// JCD 9/3/03
+// copy inventory of from_go to to_go.
+void CopyInventory$( go from_go$, go to_go$ )
+{	
+	// both actors must have an inventory.
+	if( from_go$.HasInventory() && to_go$.HasInventory() )
+	{
+		// clear a collection to use
+		from_go$.Mind.TempGopColl1.Clear();
+		
+		// get everything in the inventory
+		from_go$.Inventory.ListItems(IL_ALL, from_go$.Mind.TempGopColl1);
+
+		// get set to loop
+		int i$ = 0;
+		int iend$ = from_go$.Mind.TempGopColl1.Size();
+		Go temp$;
+		eInventoryLocation location$;
+		eEquipSlot slot$;
+		
+		// loop through and copy all items from one to another
+		while( i$ < iend$ )
+		{
+			// get the item
+			temp$ = from_go$.Mind.TempGopColl1.Get( i$ );
+			
+			// get its inventory location
+			location$ = from_go$.inventory.GetLocation(temp$);
+			
+			// get its equip slot
+			slot$ = from_go$.inventory.GetEquippedSlot(temp$);
+			
+			// if it is an item sitting in the targets inventory unused, we dont want it
+			if( location$ == IL_MAIN && slot$ == ES_NONE )
+			{
+				// we may need to query for shields later, so dont toss this out.
+				if( !temp$.IsShield() )
+				{
+				//	report.genericf("non useful item found and NOT copied\n");
+					i$ = i$ + 1;
+					continue;
+				}
+			}
+			else if ( slot$ == ES_SPELLBOOK || slot$ == es_weapon_hand || slot$ == es_shield_hand ) 
+			{
+				//ADDED - These are getting cloned directly, no need to clone them here
+				i$ = i$ + 1;
+				continue;
+			}
+			
+			// if the location is not the selected location, we don't want to put it there.
+			if( location$ != from_go$.inventory.GetSelectedLocation() )
+			{
+				location$ = IL_MAIN;
+			}
+			
+			// clone the item
+			GoCloneReq cloneReq$ = MakeGoCloneReq( temp$.GetTemplateName );
+			cloneReq$.StartingPos = owner.Go.Placement.Position;
+			Goid newItem$ = GoDb.SCloneGo( cloneReq$ );
+
+			// give the clone the new item in the same location
+			//CopyInventoryItem$(location$, slot$, from_go$.goid, to_go$.goid);
+			to_go$.Inventory.RSAdd(newItem$.go, location$, AO_REFLEX, false);
+			
+				
+			//only equip if the slot is specific.
+			if( slot$ != ES_NONE )
+			{
+				to_go$.Inventory.RSEquip(slot$, newItem$, AO_REFLEX);
+			}
+
+			i$ = i$ + 1;
+		}
+		to_go$.Aspect.SSetGoldValue( 0, true ); //ADDED - DELETING GOLD
+		to_go$.Inventory.RSSetGold( 0 ); //ADDED - DELETING GOLD
+	}
+}
+
+trigger OnTimer$( 2 )
+{
+	SetState CleanUp$;
+} 
+
+event OnGoHandleCcMessage$( eWorldEvent e$, WorldMessage msg$ )
+{
+	if( ( e$ == WE_KILLED ) && ( summoned_goid$ == msg$.GetSendTo() ) ) 
+	{
+		if( summoned_goid$.IsValidMp) 
+		{
+			// ADDED - we delete the cloned items
+			DeleteCloneInventory$();
+			if ( end_script$ != "" ) {
+				SiegeFx.SRunScript( end_script$, summoned_goid$, summoned_goid$, script_params$, owner.Goid, WE_KILLED );
+			}		
+		}
+		this.CreateTimer( 2, .1 );
+	}
+}
+
+trigger OnGoHandleMessage$( WE_WORLD_STATE_TRANSITION_DONE )
+{
+	if( summoned_goid$.IsValid )
+	{
+		if( WorldState.CurrentState == WS_SP_NIS )
+		{
+			Go Summon$ = summoned_goid$.Go;
+			Summon$.Mind.SetMayAttack( false );
+			Summon$.Mind.SetMayBeAttacked( false );
+			Summon$.Mind.SDoJob( MakeJobReq( JAT_STOP, JQ_ACTION, QP_CLEAR, AO_COMMAND ));
+			
+			Summon$.Mind.TempGopColl1.clear;
+			Summon$.Mind.GetEngagedMeEnemies( Summon$.Mind.TempGopColl1 );
+			
+			int j$ = 0;
+			int jend$ = Summon$.Mind.TempGopColl1.Size();
+			
+			Go Enemy$;
+			
+			while( j$ < jend$ )
+			{
+				Enemy$ = Summon$.Mind.TempGopColl1.Get( j$ );
+				if( Enemy$ != NULL )
+				{
+					Enemy$.Mind.SDoJob( MakeJobReq( JAT_STOP, JQ_ACTION, QP_CLEAR, AO_COMMAND ));
+					Enemy$.Mind.ResetSensors();
+			
+				}
+				j$ += 1;   
+			}	
+		}
+		else
+		{
+			summoned_goid$.Go.Mind.SetMayAttack( true );
+			summoned_goid$.Go.Mind.SetMayBeAttacked( true );
+		}
+	}
+}
+			
+startup state CastBegin$
+{
+ 	event OnGoHandleMessage$( eWorldEvent e$, WorldMessage msg$ )
+	{
+		if( e$ == WE_REQ_CAST ) 
+		{
+
+			////////////////////
+			// Normal Go
+			
+			caster$ = msg$.GetSendFrom();
+			target$ = MakeGoid( msg$.GetData1() );
+			
+			if( !target$.IsValidMp || !caster$.IsValidMp )
+			{
+				SetState Abort$;
+				return;
+			}
+			
+			if( caster$.Go.Actor.HasGenericState( owner.Go.Magic.CasterStateName ) )
+			{
+				SetState Abort$;
+				return;
+			}
+			
+			// TAT 9/17/2003 - Bug 3619
+			//	store the secondary spell, just in case the caster changes their spell
+			//	before the summon actually happens - find the one the caster does NOT have selected
+			if ( caster$.Go.Inventory.GetSelectedLocation == IL_ACTIVE_PRIMARY_SPELL )
+			{
+				secondary_spell$ = caster$.Go.Inventory.GetItem(IL_ACTIVE_SECONDARY_SPELL);
+			}
+			else
+			{
+				secondary_spell$ = caster$.Go.Inventory.GetItem(IL_ACTIVE_PRIMARY_SPELL);
+			}			
+				
+			//Report.Genericf("Caster has secondary spell %s\n", secondary_spell$.templatename);
+				
+			// Copy the reference to the starting position into SiegeFx persistant storage
+			starting_pos$ = SiegeFx.AddVariable( target$.go.placement.position, owner.goid );
+			
+			// Start the visual effect
+			SiegeFx.SRunScript( effect_script$, target$, caster$, script_params$, owner.Goid, WE_REQ_CAST );
+		
+			summon_duration$ = owner.Go.Magic.EvaluateEffectDuration(caster$.Go, caster$.Go);
+			caster$.Go.Actor.SAddGenericState( owner.Go.Magic.CasterStateName, caster_description$, summon_duration$ + 2.0, caster$, owner.goid, owner.go.magic.GetMagicLevel( caster$.go ) );
+		} 
+		else if ( e$ == WE_SPELL_SYNC_MID ) 
+		{
+			////////////////////
+			// Normal Go
+			
+			SetState SummonGo$;
+		}
+		else if ( e$ == WE_REQ_ACTIVATE ) 
+		{
+			////////////////////
+			// Omni Go
+			
+			caster$ = msg$.GetSendFrom();
+			summoned_goid$ = MakeGoid( msg$.GetData1() );
+			
+			if( !summoned_goid$.IsValid || !caster$.Isvalid )
+			{
+				SetState CleanUp$;
+				return;
+			}
+			
+			summon_duration$ = owner.Go.Magic.EvaluateEffectDuration(summoned_goid$.Go, caster$.Go);
+			if( summoned_goid$.go.hasactor )
+			{
+				// buff the summoned guy up.
+				//owner.go.magic.SApplyEnchantments( summoned_goid$, caster$ );
+				
+				summoned_goid$.Go.Aspect.SetIsInvincible(false);
+				
+				// Setup where experience will go from who this actor damages
+				summoned_goid$.Go.aspect.SetExperienceBenefactor( caster$ );
+				summoned_goid$.Go.aspect.SetExperienceBenefactorSkill( owner.go.magic.skillclass );
+
+				// setup the clone's mind to make him a little more offensive
+				summoned_goid$.Go.Mind.RSSetMovementOrders(MO_FREE);
+				summoned_goid$.Go.Mind.RSSetCombatOrders(CO_FREE);
+				summoned_goid$.Go.Mind.RSSetFocusOrders(FO_CLOSEST);
+				summoned_goid$.Go.Mind.RSSetDispositionOrders(AD_OFFENSIVE);
+				
+				// watch out pet, so if he dies we can control a new pet.
+				GoDb.StartWatching( owner.Goid, summoned_goid$);
+ 			}
+ 			else
+ 			{
+ 				SetState CleanUp$;
+ 			}
+			
+			this.CreateTimer( 1, 0 );
+		}
+	}
+	transition -> ControlSummoned$ : OnTimer( 1 );
+}
+
+state SummonGo$
+{
+	////////////////////
+	// Normal Go
+	
+	event OnEnterState$
+	{
+		if( Owner.go.Parent != NULL )
+		{
+			// First create the go
+			GoCloneReq cloneReq$ = MakeGoCloneReq(caster$);
+			cloneReq$.StartingPos = SiegeFx.GetVariable( starting_pos$, owner.goid );
+			cloneReq$.SnapToTerrain = true;
+			cloneReq$.Fadein = true;
+			// JCD 9/4/03
+			// we don't want to copy the inventory as that can result in double server entry.
+			#only(game)
+			[[
+			cloneReq$.SetCopyInventory(false);
+			]]
+			summoned_goid$ = GoDb.SCloneGo( cloneReq$ );
+			
+			if(!summoned_goid$.IsValid())
+			{
+				SetState CleanUp$;
+				return;
+			}
+
+			if( change_align$ && caster$.IsValid )
+			{
+				summoned_goid$.Go.actor.ssetalignment( caster$.Go.actor.alignment );
+				summoned_goid$.Go.SsetPlayer( caster$.Go.PlayerID );
+			}
+
+			/////////////////////////////////////////
+			/////////////////////////////////////////////////////////
+			/////////////////////////////////////////////////////////
+
+			/////////////////////////////////////////////////////
+			// and skills (use a multiplier here instead of 1.  one anyway?)
+			/////////////////////////////////////////////////////
+			summoned_goid$.Go.Actor.RSCopySkills( caster$.Go.Actor, 1 );
+
+			// set the screen name
+			string screenName$;
+			caster$.Go.Common.GetScreenName(screenName$);
+			summoned_goid$.Go.Common.SSetScreenName(screenName$ + " " + Report.Translate(other_description$));
+
+			// make sure it isn't invincible
+			summoned_goid$.Go.Aspect.SetIsInvincible( false );
+
+			// make sure they don't have any items yet
+			DeleteInventory$(summoned_goid$.go);
+			// give them everything that the player has
+			CopyInventory$(caster$.go, summoned_goid$.go);
+			
+
+			// unequip the clone's weapon hand
+			summoned_goid$.Go.Inventory.RSUnequip(ES_WEAPON_HAND, AO_REFLEX);
+
+			// copy the melee and ranged slots
+			CopyInventoryItem$(IL_ACTIVE_MELEE_WEAPON, ES_WEAPON_HAND, caster$, summoned_goid$);
+			CopyInventoryItem$(IL_ACTIVE_RANGED_WEAPON, ES_SHIELD_HAND, caster$, summoned_goid$);
+
+			// copy the spell book slot
+			CopyInventoryItem$(IL_MAIN, ES_SPELLBOOK, caster$, summoned_goid$);
+
+			// pick a weapon to use
+			bool equipped$ = false;
+			Go item$;
+
+			// and finally, pick the other spell - if it is offensive
+			if (secondary_spell$ != NULL)
+			{
+				//Report.Genericf("Secondary spell is not null\n");
+				if (secondary_spell$.Magic.GetUsageContextFlags() == UC_OFFENSIVE)
+				{
+					//Report.Genericf("Clone has offensive secondary spell\n");
+					summoned_goid$.Go.Inventory.RSSelect(IL_ACTIVE_PRIMARY_SPELL, AO_REFLEX);
+					equipped$ = true;
+				}
+			}
+
+			// try switching to the first primary spell
+			if(summoned_goid$.Go.Inventory.GetItem(IL_ACTIVE_PRIMARY_SPELL) != NULL && !equipped$)
+			{
+				item$ = summoned_goid$.Go.Inventory.GetItem(IL_ACTIVE_PRIMARY_SPELL);
+				if(item$.Magic.GetUsageContextFlags() == UC_OFFENSIVE)
+				{
+				//	report.genericf("SUMMON CLONE: first primary spell chosen\n");
+					summoned_goid$.Go.Inventory.RSSelect(IL_ACTIVE_PRIMARY_SPELL, AO_REFLEX);
+					equipped$ = true;
+				}
+			}
+
+			// try switching to the bow
+			item$ = summoned_goid$.Go.Inventory.GetItem(IL_ACTIVE_RANGED_WEAPON);
+			if( item$ != NULL && !equipped$ )
+			{
+			//	report.genericf("SUMMON CLONE: ranged chosen\n");
+				// equip ranged
+				summoned_goid$.Go.Inventory.RSEquip( item$.Gui.GetEquipSlot(), item$.Goid, AO_REFLEX );
+				summoned_goid$.Go.Inventory.RSSelect(IL_ACTIVE_RANGED_WEAPON, AO_REFLEX);
+				equipped$ = true;
+			}
+			
+			// try switching to melee
+			item$ = summoned_goid$.Go.Inventory.GetItem(IL_ACTIVE_MELEE_WEAPON);
+			if( item$ != NULL && !equipped$ )
+			{
+			//	report.genericf("SUMMON CLONE: melee chosen\n");
+				// equip melee
+				summoned_goid$.Go.Inventory.RSEquip( item$.Gui.GetEquipSlot(), item$.Goid, AO_REFLEX );
+				summoned_goid$.Go.Inventory.RSSelect(IL_ACTIVE_MELEE_WEAPON, AO_REFLEX);
+				// note: we didn't set equipped to true here.  it is so that a shield is still chosen
+				// even if we have or haven't chosen melee. of course, the shield won't be picked if 
+				// ranged or magic was chosen.
+			}
+			
+			// if nothing was equipped check if we at least have a shield.
+			// note:  i am only running through the clones inventory when searching for a shield
+			// because for some reason a shield is never returned when i ask for the one that is equipped.
+			// this isn't the case with bows, spells or melee weapons though, so no search is required.
+			if( !equipped$ )
+			{
+				// run through the summons inventory looking for a shield
+				// clear a collection to use
+				summoned_goid$.Go.Mind.TempGopColl1.Clear();
+				
+				// get everything in the inventory
+				summoned_goid$.Go.Inventory.ListItems(IL_ALL, summoned_goid$.Go.Mind.TempGopColl1);
+		
+				// get set to loop
+				int i$ = 0;
+				int iend$ = summoned_goid$.Go.Mind.TempGopColl1.Size();
+				Go temp$;
+				
+				// loop through and grab the first shield we come to.
+				while( i$ < iend$ )
+				{
+					// get the item
+					temp$ = summoned_goid$.Go.Mind.TempGopColl1.Get( i$ );
+					
+					// if this is a shield
+					if( temp$.IsShield() )
+					{
+						// equip it and break out.
+						summoned_goid$.Go.Inventory.RSEquip( temp$.Gui.GetEquipSlot(), temp$.Goid, AO_REFLEX );
+						summoned_goid$.Go.Inventory.RSSelect(IL_ACTIVE_MELEE_WEAPON, AO_REFLEX);
+						equipped$ = true;
+						break;
+					}
+					i$ = i$ + 1;
+				}
+			}
+
+			// JCD 9/4/03
+			// check if we have chosen a bow.  if so we may need to fix how it is being held
+			// get the ranged item
+			Go selected_go$ = summoned_goid$.Go.Inventory.GetItem(IL_ACTIVE_RANGED_WEAPON);
+
+			if(selected_go$ != NULL)
+			{
+				// see if the item is equipped in the melee slot
+				if(summoned_goid$.Go.Inventory.GetEquippedSlot(selected_go$) == ES_WEAPON_HAND)
+				{
+					// if so, unequip that slot and equip it to the shield hand(go figure?)
+					summoned_goid$.Go.Inventory.RSUnequip(ES_WEAPON_HAND, AO_REFLEX);
+					summoned_goid$.Go.Inventory.RSEquip(ES_SHIELD_HAND, selected_go$.Goid, AO_REFLEX);
+				}
+			}
+			///////////////////////////////////////////////////////////
+			///////////////////////////////////////////////////////////
+			///////////////////////////////////////////////////////////
+
+			// create Omni version of the spell.
+			cloneReq$ = MakeGoCloneReq( Owner.go.Parent.Goid, owner.goid );
+			cloneReq$.Omni = true;
+			Goid new_spell$ = GoDb.SCloneGo( cloneReq$ );
+			
+			// send Omni version an Activate to get it started.
+			// CHANGED - the delay timer is now 0.1 instead of 1. We need that omni asap to record the items
+			PostWorldMessage( WE_REQ_ACTIVATE, caster$, new_spell$, MakeInt( summoned_goid$ ), 0.1);
+		}
+		// delete normal version of the spell.
+		SetState Finished$;
+	}
+}							 
+
+
+state ControlSummoned$
+{
+	////////////////////
+	// Omni Go
+	
+	trigger OnGoHandleMessage$( WE_SPELL_EXPIRATION_TIMER_RESET )
+	{
+		if( summoned_goid$.IsValidMp) 
+		{
+			if ( end_script$ != "" ) {
+				SiegeFx.SRunScript( end_script$, summoned_goid$, summoned_goid$, script_params$, owner.Goid, WE_DAMAGED );
+			}		
+		}
+		this.CreateTimer( 2, .1 );
+	}
+	// JCD 8/4/03
+	// does the same as when WE_SPELL_EXPIRATION_TIMER_RESET is caught, but this allows us to
+	// kill the spell in MP when the client presses the unsummon button without errors occurring.
+	trigger OnGoHandleMessage$( WE_REQ_DEACTIVATE )
+	{
+		if( summoned_goid$.IsValidMp) 
+		{
+			if ( end_script$ != "" ) {
+				SiegeFx.SRunScript( end_script$, summoned_goid$, summoned_goid$, script_params$, owner.Goid, WE_DAMAGED );
+			}		
+		}
+		this.CreateTimer( 2, .1 );
+	}
+	
+	trigger OnTimer$ ( 1 )
+	{
+		if( summoned_goid$.IsValidMp) 
+		{
+			if ( end_script$ != "" ) {
+				SiegeFx.SRunScript( end_script$, summoned_goid$, summoned_goid$, script_params$, owner.Goid, WE_DAMAGED );
+			}		
+		}
+		this.CreateTimer( 2, .1 );
+	}
+	trigger OnTimer$ ( 3 )
+	{
+		// JCD 9/4/03
+		// if the summoned clone has an aspect...
+		if( summoned_goid$.Go.HasAspect() )
+		{
+			// check the current life
+			if(summoned_goid$.Go.Aspect.GetCurrentLife() < 0)
+			{
+				// kill it
+				summoned_goid$.Go.Aspect.SSetLifeState(LS_DEAD_NORMAL);
+				this.CreateTimer(1, .1);
+			}
+		}
+
+		this.CreateTimer( 3, 5 );
+		if( summoned_goid$.isvalid && caster$.IsValid() )
+		{
+			if( summoned_goid$.Go.Mind.UnderstandsJob( JAT_GUARD ) )
+			{
+				if( summoned_goid$.Go.Mind.CanOperateOn( owner.go.parent ) )
+				{
+					Job action$ = summoned_goid$.Go.Mind.GetFrontJob( JQ_ACTION );
+				
+					if( action$ != NULL )
+					{
+						if( action$.JobAbstractType != JAT_FIDGET )
+						{
+							return;
+						}
+					}
+
+					summoned_goid$.go.Mind.SDoJob( MakeJobReq( JAT_GUARD, JQ_ACTION, QP_FRONT, AO_COMMAND, owner.go.parent.Goid ) );
+				}
+			}
+		}
+	}
+
+	event OnEnterState$
+	{
+		if( !summoned_goid$.isvalid )
+		{
+			SetState CleanUp$;
+			return;
+		}
+		
+		if(guard_caster$)
+		{
+			JobReq req$;
+			if( summoned_goid$.Go.Mind.UnderstandsJob( JAT_GUARD ) )
+			{
+				if( summoned_goid$.Go.Mind.CanOperateOn( owner.go.parent ) )
+				{
+					req$ = MakeJobReq( JAT_GUARD, JQ_ACTION, QP_FRONT, AO_COMMAND, owner.go.parent.Goid );
+					summoned_goid$.go.Mind.SDoJob( req$ );
+				}
+			}
+		}
+		
+		if( caster$.IsValid() )
+		{
+			summoned_goid$.Go.Actor.SAddGenericState( state_name$, description$, summon_duration$, caster$, owner.goid, owner.go.magic.GetMagicLevel( caster$.go ) );
+			caster$.Go.Actor.SRemoveGenericState( owner.Go.Magic.CasterStateName );	
+			caster$.Go.Actor.SAddGenericState( owner.Go.Magic.CasterStateName, caster_description$, summon_duration$, caster$, owner.goid, owner.go.magic.GetMagicLevel( caster$.go ) );
+			
+			// we want to be able to see the dude's health
+			summoned_goid$.Go.Actor.SSetCanShowHealth( true );		
+
+			// Make him have the same membership as the caster
+			summoned_goid$.Go.Common.SCopyMembership( caster$ );
+			
+			// ADDED - we check the clone's inventory and record all the items
+			RecordCloneInventory$ ( summoned_goid$.Go );
+			
+		}
+
+		this.CreateTimer( 1, summon_duration$ );
+		if(guard_caster$)
+		{
+			this.CreateTimer( 3, 5 );
+		}
+	}
+}
+
+state CleanUp$
+{
+	////////////////////
+	// Omni Go
+	
+	transition -> FinishedOmni$: OnTimer( 1 );
+	
+	event OnEnterState$
+	{
+		if( caster$.IsValid )
+		{
+			caster$.Go.Actor.SRemoveGenericState( owner.Go.Magic.CasterStateName );	
+			
+			// ADDED - Claning inventory, this is a backup option
+			DeleteCloneInventory$( );
+		}
+				
+		if( summoned_goid$.isvalid) 
+		{			
+			GoDb.StopWatching( owner.Goid, summoned_goid$);
+			
+			if( delete_inv$ )
+			{
+				GoDb.SMarkGoAndChildrenForDeletion( summoned_goid$, true, true );
+			}
+			else
+			{
+				GoDb.SMarkForDeletion( summoned_goid$, true, true );
+			}
+		}
+		this.CreateTimer( 1, 0 );
+	}
+}
+	
+state Finished$
+{
+	////////////////////
+	// Normal Go
+	
+	event OnEnterState$
+	{
+		PostWorldMessage( WE_REQ_DELETE, owner.Goid, owner.Goid, 1 );
+	}
+}
+
+state FinishedOmni$
+{
+	////////////////////
+	// Omni Go
+	
+	event OnEnterState$
+	{
+		// Get rid of any temporary storage
+		SiegeFx.ClearVariables( owner.goid );
+	
+		PostWorldMessage( WE_REQ_DELETE, owner.Goid, owner.Goid, 1 );
+	}
+}
+
+state Abort$
+{
+	////////////////////
+	// Normal Go
+	
+	event OnEnterState$
+	{
+		// Refund the players mana
+		Rules.ChangeMana( caster$, owner.go.getmagic.manacost );
+
+		// Get rid of any temporary storage
+		SiegeFx.ClearVariables( owner.goid );
+
+		PostWorldMessage( WE_REQ_DELETE, owner.Goid, owner.Goid, 1 );
+	}
+}
