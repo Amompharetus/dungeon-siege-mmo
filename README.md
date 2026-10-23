@@ -41,3 +41,18 @@ cd website && go build -o website .
 - `UDP 2300-2400`: DirectPlay game data
 - `TCP 8440`: SiegePortal API
 - `TCP 8088`: Website
+
+## Contributing & Security
+
+- **Contributing:** Please see [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions, code guidelines, and pull request workflows.
+- **Security & Exploits:** Please consult [SECURITY.md](SECURITY.md) to report vulnerabilities or exploits privately.
+
+## License & Disclaimer
+
+This project is licensed under the [MIT License](LICENSE).
+
+### Disclaimer
+This is an independent, non-commercial community preservation initiative.
+- "Dungeon Siege" and "Dungeon Siege: Legends of Aranna" are registered trademarks or trademarks of Microsoft Corporation, Gas Powered Games, and/or 2K Games.
+- This project is not affiliated with, endorsed by, sponsored by, or associated in any way with Microsoft Corporation, Gas Powered Games, or any of their affiliates or subsidiaries.
+
