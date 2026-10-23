@@ -585,6 +585,32 @@ typedef BOOL(WINAPI* PeekMessageFn)(LPMSG, HWND, UINT, UINT, UINT);
 static PeekMessageFn g_origPeek = nullptr;
 static DWORD g_mainThread = 0;
 
+#ifndef GWLP_WNDPROC
+#define GWLP_WNDPROC (-4)
+#endif
+#ifndef SetWindowLongPtrA
+#define SetWindowLongPtrA SetWindowLongA
+#endif
+
+static WNDPROC g_origWndProc = nullptr;
+static HWND g_gameHwnd = nullptr;
+
+static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    if (msg == WM_INPUTLANGCHANGEREQUEST || msg == WM_INPUTLANGCHANGE) {
+        // Prevent Windows from changing keyboard input locale or sending language change events to DSLOA.
+        // Returning 0 on WM_INPUTLANGCHANGEREQUEST instructs DefWindowProc/Windows to reject the change.
+        return 0;
+    }
+    if (msg == WM_DESTROY && hwnd == g_gameHwnd) {
+        WNDPROC orig = g_origWndProc;
+        g_origWndProc = nullptr;
+        g_gameHwnd = nullptr;
+        return CallWindowProcA(orig, hwnd, msg, wParam, lParam);
+    }
+    return g_origWndProc ? CallWindowProcA(g_origWndProc, hwnd, msg, wParam, lParam)
+                         : DefWindowProcA(hwnd, msg, wParam, lParam);
+}
+
 static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, UINT remove) {
     if (!g_mainThread) {
         g_mainThread = GetCurrentThreadId();
@@ -597,9 +623,29 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         else if (g_cfg.role == Role::Client) { AutoJoinTick(); InvFixTick(); QuestModeTick(); ShopStockClientTick(); ChatFixTick(); ChatHistoryTick(); PartyPanelTick(); PanelFilterTick(); ChatDiagTick(); PartyPanelDiagTick(); }
     }
     BOOL res = g_origPeek(msg, wnd, fmin, fmax, remove);
-    if (res && msg && (remove & PM_REMOVE)) {
-        if (g_cfg.role == Role::Client) {
-            ChatKeyFilter(msg);
+    if (res && msg) {
+        // Shield against Alt+Shift / language change crash: neutralize layout switch messages in queue
+        if (msg->message == WM_INPUTLANGCHANGEREQUEST || msg->message == WM_INPUTLANGCHANGE) {
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
+        }
+
+        // Subclass the top-level game window procedure to also intercept direct/sent messages
+        if (!g_origWndProc && msg->hwnd) {
+            HWND root = GetAncestor(msg->hwnd, GA_ROOT);
+            if (!root) root = msg->hwnd;
+            g_gameHwnd = root;
+            g_origWndProc = (WNDPROC)SetWindowLongPtrA(root, GWLP_WNDPROC, (LONG_PTR)HookedWndProc);
+            if (g_origWndProc) {
+                Log("Subclassed game HWND %p: Alt+Shift language-switch crash shield active.", root);
+            }
+        }
+
+        if (remove & PM_REMOVE) {
+            if (g_cfg.role == Role::Client) {
+                ChatKeyFilter(msg);
+            }
         }
     }
     return res;
