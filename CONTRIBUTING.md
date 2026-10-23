@@ -58,7 +58,6 @@ Thank you for your interest in contributing to the Dungeon Siege MMO project. Wh
 
 * Community mods should be added under the `mods/` directory with clear source scripts (`.skrit`, `.gas`), configurations, and documentation.
 * Do not submit compiled `.dsres` or `.tank` binaries directly into git; provide the uncompressed source assets and documentation in `mods/README.md`.
-* Ensure that any community mods you contribute are properly credited to their original authors.
 
 ---
 
