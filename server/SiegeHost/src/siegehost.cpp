@@ -593,7 +593,7 @@ static DWORD g_mainThread = 0;
 #endif
 
 static WNDPROC g_origWndProc = nullptr;
-static HWND g_gameHwnd = nullptr;
+HWND g_gameHwnd = nullptr;
 
 static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if (msg == WM_INPUTLANGCHANGEREQUEST || msg == WM_INPUTLANGCHANGE) {
