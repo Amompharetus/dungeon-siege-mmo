@@ -47,7 +47,8 @@ var (
 	gameDir   string
 	logFile   *os.File
 	settings  Settings
-	client    = &http.Client{Timeout: 60 * time.Second}
+	client         = &http.Client{Timeout: 60 * time.Second}
+	downloadClient = &http.Client{Timeout: 15 * time.Minute}
 	serverArg string
 	stdin     = bufio.NewReader(os.Stdin) // one shared reader: separate readers swallow each other's buffered input
 )
@@ -927,7 +928,11 @@ func doReq(method, path, token string, body io.Reader, ctype string) (*http.Resp
 	if ctype != "" {
 		req.Header.Set("Content-Type", ctype)
 	}
-	resp, err := client.Do(req)
+	c := client
+	if strings.HasPrefix(path, "/files/") || strings.HasPrefix(path, "/api/save") {
+		c = downloadClient
+	}
+	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -1396,6 +1401,17 @@ func autoUpdate() error {
 	}
 	selfUpdated := false
 	updated := 0
+	// Prioritize self-update so any launcher improvements apply before downloading large content.
+	sort.SliceStable(man.Files, func(i, j int) bool {
+		iClean := filepath.Clean(filepath.FromSlash(man.Files[i].Path))
+		jClean := filepath.Clean(filepath.FromSlash(man.Files[j].Path))
+		iSelf := strings.EqualFold(filepath.Base(iClean), filepath.Base(exe)) && strings.EqualFold(filepath.Dir(iClean), ".")
+		jSelf := strings.EqualFold(filepath.Base(jClean), filepath.Base(exe)) && strings.EqualFold(filepath.Dir(jClean), ".")
+		if iSelf != jSelf {
+			return iSelf
+		}
+		return false
+	})
 	for _, f := range man.Files {
 		clean := filepath.Clean(filepath.FromSlash(f.Path))
 		if clean == "." || strings.HasPrefix(clean, "..") || filepath.IsAbs(clean) || strings.Contains(clean, ":") {
