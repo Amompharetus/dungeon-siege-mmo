@@ -643,7 +643,7 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         }
 
         if (remove & PM_REMOVE) {
-            if (g_cfg.role == Role::Client) {
+            if (g_cfg.role != Role::Server) {
                 ChatKeyFilter(msg);
             }
         }
