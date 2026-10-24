@@ -1720,37 +1720,53 @@ func buildLadderCharacters() []LadderCharacter {
 		zipPath := filepath.Join(portalDir, "portal-data", "saves", acctLower, "current.zip")
 		r, err := zip.OpenReader(zipPath)
 		if err == nil {
+			var dspartyFiles []*zip.File
 			for _, f := range r.File {
 				if strings.HasPrefix(f.Name, "Save/") && strings.HasSuffix(f.Name, ".dsparty") && !strings.HasSuffix(f.Name, ".bak") {
-					cleanName := strings.TrimSuffix(strings.TrimPrefix(f.Name, "Save/"), ".dsparty")
+					dspartyFiles = append(dspartyFiles, f)
+				}
+			}
 
-					var charRec *CharRec
-					if acct.Chars != nil {
-						charRec = matchCharRec(acct.Chars, cleanName)
-					}
+			saveTime := acct.SaveTime
+			if st, err := os.Stat(zipPath); err == nil && st.ModTime().After(saveTime) {
+				saveTime = st.ModTime()
+			}
 
-					charDetails := resolveCharacterDetails(canonicalAcctName, cleanName, acct.SaveSHA, charRec)
+			for _, f := range dspartyFiles {
+				cleanName := strings.TrimSuffix(strings.TrimPrefix(f.Name, "Save/"), ".dsparty")
 
-					var xp int64 = 0
-					if charRec != nil {
-						xp = charRec.XP
-					}
+				var charRec *CharRec
+				if acct.Chars != nil {
+					charRec = matchCharRec(acct.Chars, cleanName)
+				}
 
-					race := charDetails.Race
-					if race == "" {
-						race = "Human"
-					}
+				charDetails := resolveCharacterDetails(canonicalAcctName, cleanName, acct.SaveSHA, charRec)
 
-					var lastTime time.Time
-					if charRec != nil && !charRec.Updated.IsZero() && charRec.Updated.Year() >= 2020 {
-						lastTime = charRec.Updated
+				var xp int64 = 0
+				if charRec != nil {
+					xp = charRec.XP
+				}
+
+				race := charDetails.Race
+				if race == "" {
+					race = "Human"
+				}
+
+				var lastTime time.Time
+				if charRec != nil && !charRec.Updated.IsZero() && charRec.Updated.Year() >= 2020 {
+					lastTime = charRec.Updated
+				}
+				if f != nil {
+					mod := f.ModTime()
+					if !mod.IsZero() && mod.Year() >= 2020 && mod.After(lastTime) {
+						lastTime = mod
 					}
-					if f != nil {
-						mod := f.ModTime()
-						if !mod.IsZero() && mod.Year() >= 2020 && mod.After(lastTime) {
-							lastTime = mod
-						}
+				}
+				if !saveTime.IsZero() && saveTime.Year() >= 2020 && saveTime.After(lastTime) {
+					if len(dspartyFiles) <= 1 || newestChar == nil || (charRec != nil && (strings.EqualFold(newestChar.Name, charRec.Name) || normalizeCharName(newestChar.Name) == normalizeCharName(cleanName))) {
+						lastTime = saveTime
 					}
+				}
 
 					isOnline := false
 					onlineShard := ""
@@ -1805,7 +1821,6 @@ func buildLadderCharacters() []LadderCharacter {
 						OnlineShard:   onlineShard,
 					})
 				}
-			}
 			r.Close()
 		}
 	}

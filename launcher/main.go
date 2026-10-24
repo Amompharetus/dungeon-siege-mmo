@@ -1242,12 +1242,22 @@ func zipProfile(profile string) ([]byte, error) {
 			if err != nil || d.IsDir() {
 				return nil
 			}
-			rel, _ := filepath.Rel(profile, path)
 			b, err := os.ReadFile(path)
 			if err != nil {
 				return nil // file locked mid-write; next sync picks it up
 			}
-			w, err := zw.Create(filepath.ToSlash(rel))
+			info, err := d.Info()
+			if err != nil {
+				return nil
+			}
+			header, err := zip.FileInfoHeader(info)
+			if err != nil {
+				return err
+			}
+			rel, _ := filepath.Rel(profile, path)
+			header.Name = filepath.ToSlash(rel)
+			header.Method = zip.Deflate
+			w, err := zw.CreateHeader(header)
 			if err != nil {
 				return err
 			}
