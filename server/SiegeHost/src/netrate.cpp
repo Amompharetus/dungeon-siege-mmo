@@ -30,8 +30,13 @@ namespace {
 
 // The exe is not ASLR-relocated (image base 0x400000); every address in engine.h is absolute.
 const DWORD kExpectedImageBase = 0x00400000;
+void** const kNetPipeSlot = (void**)0x007ACF64;
 void** const kNetFuBiSendSlot = (void**)0x007ACF68;
+void** const kNetFuBiReceiveSlot = (void**)0x007ACF6C;
 const size_t kSendDelayOffset = 0x40;
+const size_t kRecvRetryDelayOffset = 0x60;
+const size_t kNetPipeBackupThresholdOffset = 0x168;
+const DWORD kTargetBackupThreshold = 0x20000;  // 128 KB (replaces 1 KB dial-up default at NetPipe+0x168)
 
 // A send delay outside this range means the field is not what we think it is: never write then.
 const float kMinSaneDelay = 0.001f;  // 1000 Hz
@@ -46,6 +51,8 @@ bool g_baseChecked = false;
 bool g_baseOk = false;
 bool g_loggedDefault = false;
 bool g_refusedOnce = false;
+bool g_loggedRecvRetry = false;
+bool g_loggedBackupThreshold = false;
 float g_defaultDelay = 0.0f;
 float g_curDelay = 0.0f;
 long g_reapplied = 0;
@@ -57,17 +64,20 @@ long g_reapplied = 0;
 const size_t kMpSleepOffset = 0x248;
 int g_mpSleep = -1;
 
+bool IsWritableField(const void* field) {
+    MEMORY_BASIC_INFORMATION mbi;
+    if (!VirtualQuery(field, &mbi, sizeof mbi)) return false;
+    if (mbi.State != MEM_COMMIT) return false;
+    const DWORD writable = PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
+    return (mbi.Protect & writable) != 0;
+}
+
 int* MpSleepPtr() {
     if (!g_baseOk) return nullptr;
     void* tg = eng::TattooGame_Singleton();
     if (!tg) return nullptr;
-    MEMORY_BASIC_INFORMATION mbi;
     char* field = (char*)tg + kMpSleepOffset;
-    if (!VirtualQuery(field, &mbi, sizeof mbi)) return nullptr;
-    if (mbi.State != MEM_COMMIT) return nullptr;
-    const DWORD writable = PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
-    if (!(mbi.Protect & writable)) return nullptr;
-    return (int*)field;
+    return IsWritableField(field) ? (int*)field : nullptr;
 }
 
 float* SendDelayPtr() {
@@ -83,13 +93,24 @@ float* SendDelayPtr() {
     void* obj = *kNetFuBiSendSlot;  // null until the network singleton exists
     if (!obj) return nullptr;
 
-    MEMORY_BASIC_INFORMATION mbi;
     char* field = (char*)obj + kSendDelayOffset;
-    if (!VirtualQuery(field, &mbi, sizeof mbi)) return nullptr;
-    if (mbi.State != MEM_COMMIT) return nullptr;
-    const DWORD writable = PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
-    if (!(mbi.Protect & writable)) return nullptr;
-    return (float*)field;
+    return IsWritableField(field) ? (float*)field : nullptr;
+}
+
+float* RecvRetryDelayPtr() {
+    if (!g_baseOk) return nullptr;
+    void* obj = *kNetFuBiReceiveSlot;
+    if (!obj) return nullptr;
+    char* field = (char*)obj + kRecvRetryDelayOffset;
+    return IsWritableField(field) ? (float*)field : nullptr;
+}
+
+DWORD* NetPipeBackupThresholdPtr() {
+    if (!g_baseOk) return nullptr;
+    void* obj = *kNetPipeSlot;
+    if (!obj) return nullptr;
+    char* field = (char*)obj + kNetPipeBackupThresholdOffset;
+    return IsWritableField(field) ? (DWORD*)field : nullptr;
 }
 
 }  // namespace
@@ -142,6 +163,7 @@ void NR_Tick() {
     }
 
     int want = Cfg().sendFrequency;
+    if (want == 30) want = 64;  // Upgrade 30 Hz default to 64 Hz to prevent 40-44 FPS frame-skipping aliasing
     if (want > 0) {
         float want_delay = 1.0f / (float)want;
         if (fabsf(cur - want_delay) > 1e-6f) {
@@ -154,6 +176,29 @@ void NR_Tick() {
                     g_reapplied);
         }
         cur = *p;
+
+        if (float* pr = RecvRetryDelayPtr()) {
+            float curRetry = *pr;
+            if (curRetry >= kMinSaneDelay && curRetry <= kMaxSaneDelay && fabsf(curRetry - want_delay) > 1e-6f) {
+                *pr = want_delay;
+                if (!g_loggedRecvRetry) {
+                    g_loggedRecvRetry = true;
+                    Log("NetRate: NetFuBiReceive retry delay %.5f s -> %.5f s (%.1f Hz)", curRetry, want_delay,
+                        1.0f / want_delay);
+                }
+            }
+        }
+    }
+    if (DWORD* pt = NetPipeBackupThresholdPtr()) {
+        DWORD curThresh = *pt;
+        if (curThresh >= 0x100 && curThresh < kTargetBackupThreshold) {
+            *pt = kTargetBackupThreshold;
+            if (!g_loggedBackupThreshold) {
+                g_loggedBackupThreshold = true;
+                Log("NetRate: NetPipe outbound backup threshold %lu -> %lu bytes", (unsigned long)curThresh,
+                    (unsigned long)kTargetBackupThreshold);
+            }
+        }
     }
     g_curDelay = cur;
 }
