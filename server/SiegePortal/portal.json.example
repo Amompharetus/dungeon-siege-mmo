@@ -33,7 +33,7 @@
         "region": "eu-central-1",
         "instance_id": "i-0123456789abcdef0",
         "credentials_file": "/etc/ds1mmo/aws.csv",
-        "idle_minutes": 15,
+        "idle_minutes": 5,
         "boot_timeout_minutes": 15
       }
     },
@@ -50,7 +50,7 @@
       "on_demand": {
         "provider": "systemd",
         "unit": "ds1mmo-raid.service",
-        "idle_minutes": 15,
+        "idle_minutes": 5,
         "boot_timeout_minutes": 5
       }
     }

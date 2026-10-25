@@ -41,7 +41,7 @@ type OnDemand struct {
 	InstanceID         string `json:"instance_id,omitempty"` // "i-00000000000000001"
 	CredentialsFile    string `json:"credentials_file,omitempty"` // AWS console "Download .csv file" (Access key ID,Secret access key)
 	Endpoint           string `json:"endpoint,omitempty"`   // optional override (tests); default https://ec2.<region>.amazonaws.com/
-	IdleMinutes        int    `json:"idle_minutes"`         // stop after this long with nobody on it (default 15)
+	IdleMinutes        int    `json:"idle_minutes"`         // stop after this long with nobody on it (default 5)
 	BootTimeoutMinutes int    `json:"boot_timeout_minutes"` // stop a running instance that never reaches in-game (default 15)
 	Unit               string `json:"unit,omitempty"`       // systemd unit (default instance_id if set)
 
@@ -286,7 +286,7 @@ func (p *Portal) startOnDemandLoops() {
 		}
 		od := s.OnDemand
 		if od.IdleMinutes <= 0 {
-			od.IdleMinutes = 15
+			od.IdleMinutes = 5
 		}
 		if od.BootTimeoutMinutes <= 0 {
 			od.BootTimeoutMinutes = 15
