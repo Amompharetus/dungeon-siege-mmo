@@ -31,8 +31,8 @@ struct PauseGuardState {
 
 struct PauseGuardTuning {
     DWORD joinGraceMs = 5000;  // don't touch a pause this soon after someone connected
-    DWORD pausedForMs = 3000;  // let a pause stand this long before overriding it
-    DWORD cooldownMs = 3000;   // minimum gap between two resume attempts
+    DWORD pausedForMs = 250;  // let a pause stand this long before overriding it
+    DWORD cooldownMs = 1000;   // minimum gap between two resume attempts
 };
 
 // True when a paused world should be resumed.
