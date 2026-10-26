@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include "siegehost.h"
+#include "characterabilities.h"
 
 // ----------------------------------------------------------------------------------------------
 // version.dll forwarding (real exports resolved from the system directory)
@@ -308,6 +309,12 @@ static const char* DpnMsgName(DWORD id) {
 
 static HRESULT WINAPI HookedHandler(PVOID pvCtx, DWORD id, PVOID msg) {
     auto* ctx = (HandlerCtx*)pvCtx;
+    if (id == 0xFFFF0011 && msg) {
+        DWORD* m = (DWORD*)msg;
+        if (CharacterAbilities_OnReceivePacket(ctx->role[0] == 's', m[1], (const BYTE*)m[3], m[4])) {
+            return S_OK;
+        }
+    }
     HRESULT hr = ctx->role[0] == 's' ? JG_ServerMessage(id, msg, ctx->original, ctx->userCtx)
                                      : ctx->original(ctx->userCtx, id, msg);
     if (id == 0xFFFF0005 && ctx->role[0] == 'c') JG_ClientConnectComplete(msg);
@@ -382,9 +389,11 @@ static HRESULT InitCommon(InitializeFn orig, const char* role, void* self, PVOID
     return orig(self, hc, HookedHandler, flags);
 }
 static HRESULT WINAPI HookServerInit(void* self, PVOID ctx, PFNDPNMESSAGEHANDLER pfn, DWORD flags) {
+    CharacterAbilities_SetDirectPlay(nullptr, self);
     return InitCommon(g_origServerInit, "server", self, ctx, pfn, flags);
 }
 static HRESULT WINAPI HookClientInit(void* self, PVOID ctx, PFNDPNMESSAGEHANDLER pfn, DWORD flags) {
+    CharacterAbilities_SetDirectPlay(self, nullptr);
     return InitCommon(g_origClientInit, "client", self, ctx, pfn, flags);
 }
 
@@ -497,6 +506,7 @@ static HRESULT WINAPI HookConnect(void* self, const DpnAppDesc* desc, void* host
     char h[600], d[600];
     AddrUrl(host, h, sizeof h);
     AddrUrl(dev, d, sizeof d);
+    CharacterAbilities_NotifyConnect(h);
     Log("DP8[client] Connect(host=%s, device=%s, userData=%lu bytes, flags=0x%lX, max=%lu) ...", h, d, dataSize, flags,
         desc ? desc->dwMaxPlayers : 0);
     const void* sendData = data;
@@ -619,6 +629,7 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
     if (GetCurrentThreadId() == g_mainThread) {
         NR_PumpTick();
         JG_JipTick();  // both roles: the join freeze is a per-machine thing (src/jipguard.h)
+        CharacterAbilities_Tick();
         if (g_cfg.role == Role::Server) { AutoHostTick(); LabMoveLocTick(); AreaScaleTick(); ShopStockTick(); InvFixTick(); QuestModeTick(); JipQueueTick(); PvpZoneTick(); }
         else if (g_cfg.role == Role::Client) { AutoJoinTick(); InvFixTick(); QuestModeTick(); ShopStockClientTick(); ChatFixTick(); ChatHistoryTick(); PartyPanelTick(); PanelFilterTick(); ChatDiagTick(); PartyPanelDiagTick(); }
     }
@@ -643,7 +654,9 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         }
 
         if (remove & PM_REMOVE) {
-            if (g_cfg.role != Role::Server) {
+            if (CharacterAbilities_FilterKey(msg)) {
+                // Key consumed by Character Abilities
+            } else if (g_cfg.role != Role::Server) {
                 ChatKeyFilter(msg);
             }
         }
@@ -744,6 +757,7 @@ static void Startup() {
     WorldLevelInstall();
     // 1.5.6: both roles. Zone-based PvP (Endless Dunes, Pit of Despair, Eastern Island) + dio_nothing.
     PvpZoneInstall();
+    CharacterAbilities_Init();
     if (g_cfg.role == Role::Server) { AreaScaleInstall(); ShopStockInstall(); InvFixInstall(); QuestModeInstall(); JipQueueInstall(); }
     else { InvFixInstall(); QuestModeInstall(); ShopStockClientInstall(); }   // 0.9.0: the backpack cap has to come off on a player's own machine too
     if (g_cfg.role == Role::Client) { ChatFixInstall(); PartyPanelInstall(); PortraitFixInstall(); if (g_cfg.showOtherPlayers) PanelHostFilterInstall(); PortraitDiagInstall(); ChatDiagInstall(); AreaScaleClientDiagInstall(); }
@@ -780,3 +794,4 @@ BOOL WINAPI DllMain(HINSTANCE inst, DWORD reason, LPVOID) {
     }
     return TRUE;
 }
+
