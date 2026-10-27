@@ -184,6 +184,48 @@ void SetAegisBonus(void* hero, uint32_t goid, float boost, DWORD durationMs) {
     }
 }
 
+// Experience table directly from formulas.gas (levels 0 to 150)
+static const double kExperienceTable[] = {
+    0.0, 70.0, 650.0, 1450.0, 2350.0, 3350.0, 4650.0, 6650.0, 9450.0, 12950.0, 17100.0, 22000.0, 27800.0,
+    34300.0, 41300.0, 49191.0, 58327.0, 68882.0, 81054.0, 95071.0, 111190.0, 129706.0, 150954.0,
+    175317.0, 203567.0, 236338.0, 274352.0, 318449.0, 369600.0, 428936.0, 497766.0, 577609.0,
+    670226.0, 777662.0, 902288.0, 1046855.0, 1214551.0, 1409080.0, 1634732.0, 1896489.0,
+    2200128.0, 2552348.0, 2960924.0, 3434872.0, 3984651.0, 4622395.0, 5362179.0, 6220327.0,
+    7215779.0, 8370504.0, 9709985.0, 11263782.0, 13066188.0, 15156978.0, 17582294.0,
+    20395661.0, 23659167.0, 27444833.0, 31836207.0, 36930200.0, 42839232.0, 49780637.0,
+    58283859.0, 68700306.0, 81460453.0, 97091634.0, 116239830.0, 139696370.0, 168430631.0,
+    203630102.0, 246749453.0, 299570658.0, 364276635.0, 443541456.0, 540640862.0, 659587634.0,
+    805297430.0, 983791930.0, 1202447693.0, 1470301002.0, 1798421306.0, 2200368678.0,
+    2692754209.0, 3295926485.0, 4034812522.0, 4939947918.0, 6048738778.0, 7407007581.0,
+    9070886865.0, 11109138988.0, 13605997839.0, 16664649931.0, 20411498744.0,
+    25001388540.0, 30624003540.0, 37511706915.0, 45949143550.0, 56285003427.0,
+    68946431776.0, 84456681504.0, 103456737421.0, 126731805919.0, 155243764829.0,
+    190170914494.0, 232956672834.0, 285369226800.0, 349574605408.0, 428226194203.0,
+    524574390477.0, 642600930913.0, 787183442946.0, 964297020188.0, 1181261152309.0,
+    1447042214156.0, 1772624014920.0, 2171461720855.0, 2660037910626.0,
+    3258543743095.0, 3991713387870.0, 4889846202719.0, 5990058900910.0,
+    7337819456193.0, 8988826136414.0, 11011309319686.0, 13488851219194.0,
+    16523840046091.0, 20241701359039.0, 24796081467402.0, 30375197100145.0,
+    37209613750256.0, 45581774146643.0, 55837670632215.0, 68401143827042.0,
+    83791398490705.0, 102644460453692.0, 125739461358351.0,
+    154030837466559.0, 188687773199113.0, 231142519471492.0,
+    283149583655156.0, 346858237280144.0, 424901337970755.0,
+    520504136316754.0, 637617564290602.0, 781081513558566.0,
+    956824851411821.0, 1172110440282060.0, 1435835286648100.0,
+    1758898223446500.0, 2154650321024540.0, 2639446640557650.0
+};
+
+static double CalculateLevelToXP(float level) {
+    if (level <= 0.0f) return 0.0;
+    int maxIdx = (int)(sizeof(kExperienceTable) / sizeof(kExperienceTable[0])) - 1;
+    if (level >= (float)maxIdx) return kExperienceTable[maxIdx];
+    int fl = (int)floorf(level);
+    int ce = fl + 1;
+    if (ce > maxIdx) ce = maxIdx;
+    double frac = (double)(level - (float)fl);
+    return kExperienceTable[fl] + frac * (kExperienceTable[ce] - kExperienceTable[fl]);
+}
+
 // ---- Award Experience to Specific Discipline Stat on Server ----
 void AwardAbilityExperience(void* hero, uint32_t heroGoid, const char* statKey, double xp) {
     if (!hero || !heroGoid || !statKey || xp <= 0.0) return;
@@ -292,7 +334,16 @@ void ApplyRadialAoE(void* hero, uint32_t heroGoid, const SiegePos* heroPos, int 
     uint32_t nullGoid = *(uint32_t*)0x007ADC88;
     void* wfx = *(void**)0x007ACFB4;
     float totalXpAwarded = 0.0f;
-    const float kMaxAbilityXp = 300.0f;
+
+    // Dynamic next-level XP cap based on formulas.gas (later_levels = 0.025 = 2.5% of next level)
+    void* heroActor = *(void**)((char*)hero + 0x00);
+    float heroSkillLevel = (heroActor && Readable(heroActor, 0x40)) ? GoActor_GetSkillLevel(heroActor, g_powers[slot].statKey) : 30.0f;
+    if (heroSkillLevel < 30.0f) heroSkillLevel = 30.0f;
+    int curLevelFloor = (int)floorf(heroSkillLevel);
+    double curLevelXp = CalculateLevelToXP((float)curLevelFloor);
+    double nextLevelXp = CalculateLevelToXP((float)(curLevelFloor + 1));
+    double deltaXp = nextLevelXp - curLevelXp;
+    const float kMaxAbilityXp = (deltaXp > 0.0) ? (float)(deltaXp * 0.025) : 2000.0f;
 
     for (int i = 0; i < numTargets; ++i) {
         void* targetGo      = targets[i].go;
@@ -305,15 +356,37 @@ void ApplyRadialAoE(void* hero, uint32_t heroGoid, const SiegePos* heroPos, int 
         if (isServerAuth && rawDamage > 0.0f && gRules && Readable(gRules, 0x80)) {
             float def = ((float(__thiscall*)(void*, uint32_t))0x005B4422)(gRules, targetGoid);
             float reduction = def / (def + 150.0f);
-            if (piercing) reduction *= 0.5f;
+            if (piercing) {
+                // W (slot 1): ignores 30% of enemy armor reduction
+                // R (slot 3): ignores 50% of enemy armor reduction
+                float armorIgnore = (slot == 1) ? 0.30f : 0.50f;
+                reduction *= (1.0f - armorIgnore);
+            }
             float finalDmg = rawDamage * (1.0f - reduction);
             if (finalDmg < rawDamage * 0.40f) finalDmg = rawDamage * 0.40f;
 
             Log("Ability hit begin. Target=0x%08lX Dmg=%.0f.", targetGoid, finalDmg);
-            float xp = Rules_CalculateExperience(gRules, &heroGoid, &heroGoid, &targetGoid, finalDmg);
-            if (xp <= 0.0f) xp = finalDmg * 0.25f;
 
-            // Multi-target diminishing returns: 100% on first 2 targets, 25% on subsequent targets, capped at 300 total XP
+            // Calculate XP from monster aspect properties (0x50 = total XP, 0x54 = remaining XP pool, 0xAC = max life)
+            float targetBaseXp = *(float*)((char*)targetAspect + 0x50);
+            float targetCurXp  = *(float*)((char*)targetAspect + 0x54);
+            float targetMaxHp  = *(float*)((char*)targetAspect + 0xAC);
+            float xp = 0.0f;
+            if (targetMaxHp > 0.0f && targetBaseXp > 0.0f) {
+                xp = targetBaseXp * (finalDmg / targetMaxHp);
+                if (targetCurXp > 0.0f && xp > targetCurXp) xp = targetCurXp;
+            } else {
+                xp = finalDmg * 0.25f;
+            }
+
+            // Deduct awarded raw XP from monster's available pool
+            if (targetCurXp > 0.0f && xp > 0.0f) {
+                float remaining = targetCurXp - xp;
+                if (remaining < 0.0f) remaining = 0.0f;
+                *(float*)((char*)targetAspect + 0x54) = remaining;
+            }
+
+            // Multi-target diminishing returns: 100% on first 2 targets, 25% on subsequent targets, capped at 2.5% next-level XP
             float xpMult = (i < 2) ? 1.0f : 0.25f;
             xp *= xpMult;
             if (totalXpAwarded + xp > kMaxAbilityXp) {
@@ -327,7 +400,7 @@ void ApplyRadialAoE(void* hero, uint32_t heroGoid, const SiegePos* heroPos, int 
 
             // Pass nullGoid as weapon so engine's native DamageGo doesn't award weapon-based XP to equipped weapons
             Rules_DamageGo(gRules, targetGoid, heroGoid, nullGoid, finalDmg, piercing, true);
-            Log("Ability hit done. Target=0x%08lX.", targetGoid);
+            Log("Ability hit done. Target=0x%08lX XP=%.1f.", targetGoid, xp);
         }
 
         // Spawn hit visual effect on the target (local only)
