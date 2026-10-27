@@ -400,6 +400,120 @@ extern "C" bool __fastcall SiegeHost_InvOwnerMayUseBackpacks(void* go) {
     return true;
 }
 
+// 4. GROUND ITEM AND GOLD PERSISTENCE ACROSS LOGOUT / DISCONNECT
+// ---------------------------------------------------------------------------------------------------
+// When a player disconnects, Player::~Player (0x005692E8) calls GoDb::PurgePlayerObjects (0x0054C749),
+// which iterates dynamic objects and calls GoDb::SMarkForDeletion (0x0054C1C9) on anything where
+// go->m_Player == disconnectingPlayer.
+//
+// Because dropped gold (GoMind::RSDropGold) and dropped items retained the player as owner,
+// PurgePlayerObjects destroyed them upon logout - so alts or joining friends could not pick them up.
+//
+// We hook GoDb::PurgePlayerObjects to set a purge flag, and hook GoDb::SMarkForDeletion to intercept
+// items and gold lying on the ground (no actor, no parent, has placement, has aspect, is gold or item).
+// Instead of deleting them, we reassign their owner to Server::GetComputerPlayer, preserving them
+// in the world as long as the server remains running.
+
+extern "C" void __fastcall Orig_GoDb_PurgePlayerObjects(void* godb, void* unused_edx, void* playerId, int flags);
+__asm__(
+    ".text\n"
+    ".globl _Orig_GoDb_PurgePlayerObjects\n"
+    ".globl @Orig_GoDb_PurgePlayerObjects@16\n"
+    "_Orig_GoDb_PurgePlayerObjects:\n"
+    "@Orig_GoDb_PurgePlayerObjects@16:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  subl $0x98, %esp\n"
+    "  movl $0x0054C752, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" void __fastcall Orig_GoDb_SMarkForDeletion(void* godb, void* unused_edx, void* go, int p3, int p4, int p5);
+__asm__(
+    ".text\n"
+    ".globl _Orig_GoDb_SMarkForDeletion\n"
+    ".globl @Orig_GoDb_SMarkForDeletion@24\n"
+    "_Orig_GoDb_SMarkForDeletion:\n"
+    "@Orig_GoDb_SMarkForDeletion@24:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  subl $0x0c, %esp\n"
+    "  movl $0x0054C1CF, %eax\n"
+    "  jmp *%eax\n"
+);
+
+const DWORD kPurgePlayerObjectsVa = 0x0054C749;
+const DWORD kSMarkForDeletionVa   = 0x0054C1C9;
+
+volatile int g_inPurgePlayerObjects = 0;
+DWORD g_groundRescued = 0;
+DWORD g_groundRescuedTotal = 0;
+
+static void* GetComputerPlayer() {
+    void* srv = *(void**)0x007ACF70;
+    if (!srv || !Readable(srv, 0x20)) return nullptr;
+    typedef void* (__thiscall* GetCompPlayerFn)(void* server);
+    return ((GetCompPlayerFn)0x0047272F)(srv);
+}
+
+static void SetGoPlayer(void* go, void* player) {
+    if (!go || !Readable(go, 0x80)) return;
+    if (player) {
+        typedef void (__thiscall* SetPlayerFn)(void* go, void* player);
+        ((SetPlayerFn)0x0053904E)(go, player);
+    } else {
+        *(void**)((char*)go + 0x78) = nullptr;
+    }
+}
+
+static bool IsGroundItemOrGold(void* go) {
+    if (!go || !Readable(go, 0x98)) return false;
+
+    // Must NOT have an Actor (characters, monsters, summons have Actor at +0x00)
+    if (*(void**)go != nullptr) return false;
+
+    // Must NOT have a Parent (items inside inventory/chest have Parent at +0x6C)
+    if (*(void**)((char*)go + 0x6C) != nullptr) return false;
+
+    // Must NOT be marked as inside an inventory (Go::IsInsideInventory bit at +0x97 bit 6)
+    if (((*(unsigned char*)((char*)go + 0x97) >> 6) & 1) != 0) return false;
+
+    // Must have Placement (placed in world at +0x40)
+    if (*(void**)((char*)go + 0x40) == nullptr) return false;
+
+    // Must have Aspect (at +0x04)
+    if (*(void**)((char*)go + 0x04) == nullptr) return false;
+
+    // Must be either gold (+0x24) or item (+0x28 Gui or +0x10 Common, with no party +0x38)
+    bool isGold = (*(void**)((char*)go + 0x24) != nullptr);
+    bool isItem = (*(void**)((char*)go + 0x38) == nullptr) &&
+                  ((*(void**)((char*)go + 0x28) != nullptr) || (*(void**)((char*)go + 0x10) != nullptr));
+
+    return isGold || isItem;
+}
+
+extern "C" void __fastcall Hook_GoDb_PurgePlayerObjects(void* godb, void* unused_edx, void* playerId, int flags) {
+    ++g_inPurgePlayerObjects;
+    Orig_GoDb_PurgePlayerObjects(godb, unused_edx, playerId, flags);
+    --g_inPurgePlayerObjects;
+}
+
+extern "C" void __fastcall Hook_GoDb_SMarkForDeletion(void* godb, void* unused_edx, void* go, int p3, int p4, int p5) {
+    if (g_inPurgePlayerObjects > 0 && IsGroundItemOrGold(go)) {
+        void* compPlayer = GetComputerPlayer();
+        SetGoPlayer(go, compPlayer);
+        ++g_groundRescued;
+        ++g_groundRescuedTotal;
+        ++g_ourTotal;
+        const char* name = TemplateName ? TemplateName(go) : "unknown";
+        DWORD goid = *(DWORD*)((char*)go + 0x4C);
+        Log("InvFix: preserved ground %s '%s' (%08lX) from deletion on player logout (reassigned to ComputerPlayer)",
+            (*(void**)((char*)go + 0x24) != nullptr) ? "gold" : "item", name, goid);
+        return;
+    }
+    Orig_GoDb_SMarkForDeletion(godb, unused_edx, go, p3, p4, p5);
+}
+
 
 void InvFixTick() {
     if (!g_on) return;
@@ -407,19 +521,25 @@ void InvFixTick() {
     if (!g_lastSummary) g_lastSummary = now;
     if (now - g_lastSummary < 60000) return;
     g_lastSummary = now;
-    if (!g_ourYes) return;                       // only worth a line when it actually did something
-    Log("InvFix: last minute %lu time(s) a player's character was about to lose an item that did not "
-        "fit, and was sent to their backpack or their feet instead (%lu total since this server "
-        "started).", g_ourYes, g_ourTotal);
-    g_engineYes = g_ourYes = g_no = 0;
+    if (g_ourYes) {
+        Log("InvFix: last minute %lu time(s) a player's character was about to lose an item that did not "
+            "fit, and was sent to their backpack or their feet instead (%lu total since this server "
+            "started).", g_ourYes, g_ourTotal);
+        g_engineYes = g_ourYes = g_no = 0;
+    }
+    if (g_groundRescued) {
+        Log("InvFix: last minute %lu dropped item(s)/gold rescued from deletion on player logout (%lu total).",
+            g_groundRescued, g_groundRescuedTotal);
+        g_groundRescued = 0;
+    }
 }
 
 std::string InvFixHeartbeatLines() {
     if (!g_on) return std::string("invfix=off\nbackpackcap=on\nbackpackcount_fixed=0\n");
     char b[128];
-    snprintf(b, sizeof b, "invfix=on\ninvfix_rescued=%lu\nbackpackcap=on\n"
+    snprintf(b, sizeof b, "invfix=on\ninvfix_rescued=%lu\nground_rescued=%lu\nbackpackcap=on\n"
              "backpackcount_sites=%d\nbackpackcount_fixed=%lu\n",
-             g_ourTotal, g_countFix ? kSiteCount : 0, g_fixedTotal);
+             g_ourTotal, g_groundRescuedTotal, g_countFix ? kSiteCount : 0, g_fixedTotal);
     return b;
 }
 
@@ -447,6 +567,45 @@ void InvFixInstall() {
         Log("InvFix: one backpack per character - the game's own rule is untouched; the number it "
             "reads is recomputed from what the character really carries at %d of %d places.",
             n, kSiteCount);
+    }
+
+    // Ground item and gold persistence across player logout / disconnect (server only)
+    if (!GetEnvironmentVariableA("SIEGEHOST_NO_GROUND_PERSIST", e, sizeof e)) {
+        // 1. Hook GoDb::PurgePlayerObjects at 0x0054C749 (9 bytes: 55 8B EC 81 EC 98 00 00 00)
+        const BYTE kPurgeExpect[9] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x98, 0x00, 0x00, 0x00 };
+        BYTE* pPurge = (BYTE*)kPurgePlayerObjectsVa;
+        if (memcmp(pPurge, kPurgeExpect, 9) == 0) {
+            DWORD o;
+            if (VirtualProtect(pPurge, 9, PAGE_EXECUTE_READWRITE, &o)) {
+                pPurge[0] = 0xE9;
+                *(int32_t*)(pPurge + 1) = (int32_t)((DWORD)(void*)&Hook_GoDb_PurgePlayerObjects - (kPurgePlayerObjectsVa + 5));
+                for (int i = 5; i < 9; ++i) pPurge[i] = 0x90;
+                VirtualProtect(pPurge, 9, o, &o);
+                FlushInstructionCache(GetCurrentProcess(), pPurge, 9);
+                g_on = true;
+                Log("InvFix: GoDb::PurgePlayerObjects hooked at 0x%08lX (tracking player purge)", kPurgePlayerObjectsVa);
+            }
+        } else {
+            Log("InvFix: VERIFY FAILED at 0x%08lX for GoDb::PurgePlayerObjects", kPurgePlayerObjectsVa);
+        }
+
+        // 2. Hook GoDb::SMarkForDeletion at 0x0054C1C9 (6 bytes: 55 8B EC 83 EC 0C)
+        const BYTE kSMarkExpect[6] = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C };
+        BYTE* pSMark = (BYTE*)kSMarkForDeletionVa;
+        if (memcmp(pSMark, kSMarkExpect, 6) == 0) {
+            DWORD o;
+            if (VirtualProtect(pSMark, 6, PAGE_EXECUTE_READWRITE, &o)) {
+                pSMark[0] = 0xE9;
+                *(int32_t*)(pSMark + 1) = (int32_t)((DWORD)(void*)&Hook_GoDb_SMarkForDeletion - (kSMarkForDeletionVa + 5));
+                pSMark[5] = 0x90;
+                VirtualProtect(pSMark, 6, o, &o);
+                FlushInstructionCache(GetCurrentProcess(), pSMark, 6);
+                g_on = true;
+                Log("InvFix: GoDb::SMarkForDeletion hooked at 0x%08lX (ground items/gold persist across logout)", kSMarkForDeletionVa);
+            }
+        } else {
+            Log("InvFix: VERIFY FAILED at 0x%08lX for GoDb::SMarkForDeletion", kSMarkForDeletionVa);
+        }
     }
 
     if (GetEnvironmentVariableA("SIEGEHOST_NO_INVFIX", e, sizeof e)) {
