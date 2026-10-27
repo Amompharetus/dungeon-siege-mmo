@@ -17,7 +17,7 @@ The following mods are currently delivered to players via the update manifest:
 | Mod | Distributed File | Target Location | Scope | Description |
 |---|---|---|---|---|
 | **Ground Tooltip** | `groundtooltip_loa.dsdll`, `groundtooltip.ini` | Root (`DSLOA.exe` folder) | Client-Only | Shows item tooltips when hovering over ground item labels. |
-| **BuffedBuffs** | `BuffedBuffsMod.dsres` | `DSLOA/` | Server & Client | Extends buff durations to 30 minutes and improves orb spell replacement. |
+| **BuffedSpells** | `BuffedSpellsMod.dsres` | `DSLOA/` | Server & Client | Extends buff durations to 30 minutes, tunes spell balancing, and improves orb spell replacement. |
 | **Unlocked Loot** | `Unlocked Loot.dsres` | `DSLOA/` | Server & Client | Restores 80+ cut and bugged weapons and armor pieces to monster drop tables. |
 | **Difficulty Patch** | `DS1_Difficulty_Patch.dsres` | `DSLOA/` | Server & Client | Adjusts multiplayer encounter scaling and difficulty progression. |
 | **Clone Duping Fix** | `Clone Item Duping Fix.dsres` | `DSLOA/` | Server & Client | Fixes multiplayer item and gold duplication exploit on Clone spell death. |
@@ -48,24 +48,24 @@ this stack does not use.
 Verified alongside SiegeHost 1.3.0: the mod loads, a client joins and plays normally, and no
 SiegeHost feature is affected.
 
-## BuffedBuffs (Spell Duration Rebalance)
+## BuffedSpells (Spell Duration & Balance Overhaul)
 
-Extends Nature Magic and Combat Magic buff durations and adjusts orb spell replacement behavior.
+Extends Nature Magic and Combat Magic buff durations, tunes non-buff spells, and adjusts orb spell replacement behavior.
 
 | | |
 |---|---|
-| Files | `BuffedBuffsMod.dsres` (distributed binary), sources in `buffedbuffs/` |
+| Files | `BuffedSpellsMod.dsres` (distributed binary), sources in `buffedspells/` |
 | Installed to | `DSLOA/` |
 | Requires | Legends of Aranna 1.50 |
 | Scope | Spell duration rebalance and orb replacement logic |
 
-Replaces default short spell buff durations (typically 30–60 seconds) with extended durations to reduce repetitive buff recasting during exploration and multiplayer sessions.
+Replaces default short spell buff durations (typically 30-60 seconds) with extended durations to reduce repetitive buff recasting during exploration and multiplayer sessions.
 
 The mod includes:
 - `spell_orb.skrit`: Component script ensuring newly cast orb spells replace active ones.
 - `spl_spell.gas` & `dsx_spl_spell.gas`: Spell template definitions updating duration parameters across base game and expansion buff spells.
 
-The compiled `.dsres` archive is distributed to players via the launcher update manifest. Source scripts and templates are preserved in `buffedbuffs/` for review and maintenance.
+The compiled `.dsres` archive is distributed to players via the launcher update manifest. Source scripts and templates are preserved in `buffedspells/` for review and maintenance.
 
 ## Unlocked Loot
 
