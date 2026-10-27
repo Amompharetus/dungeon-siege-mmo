@@ -51,6 +51,8 @@ struct Config {
     int showServerHost = 0;     // client: 1 = keep the server's ServerHost in the top-left panel (0.7.6)
     int nearbyOnly = 1;         // client: 1 = top-left panel shows only players in your area group (0.7.6)
     int portraitFix = 1;        // client: 1 = frame other players' portraits from the screen centre (0.7.6)
+    int abilityBarOption1 = 1;  // client: 1 = display Option 1 (AWP sub-bar next to slots 1 2 3 4)
+    int abilityBarOption2 = 0;  // client: 1 = display Option 2 (Center-bottom modern action bar)
     int exitAfterGame = 1;      // client: close DSLOA.exe once the player has left the MMO game (0.6.1)
     // [World] (1.5.2) - one shard only: the level a veteran world asks for, whatever its map says.
     int veteranRequiredLevel = 0;   // 0 = leave every world exactly as the map set it
