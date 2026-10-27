@@ -486,6 +486,13 @@ void ApplyAegisToAllies(void* hero, uint32_t heroGoid, const SiegePos* heroPos, 
     }
 
     float totalAllyHealXp = 0.0f;
+    int curLevelFloor = (int)floorf(level);
+    double curLevelXp = CalculateLevelToXP((float)curLevelFloor);
+    double nextLevelXp = CalculateLevelToXP((float)(curLevelFloor + 1));
+    double deltaXp = nextLevelXp - curLevelXp;
+    if (deltaXp <= 0.0) deltaXp = 79843.0; // Level 30 delta fallback
+    float maxAllyTotalXp = (float)(deltaXp * 0.005); // 0.5% next-level cap across allies
+    float maxPerAllyXp   = maxAllyTotalXp * 0.5f;    // 0.25% max per individual ally
 
     for (int i = 0; i < numAllies; ++i) {
         void* allyGo = allies[i].go;
@@ -517,11 +524,11 @@ void ApplyAegisToAllies(void* hero, uint32_t heroGoid, const SiegePos* heroPos, 
                 } else {
                     SSetCurrentLife(allyAspect, newLife);
                 }
-                // Ally heal XP: 0.25x multiplier, max 50 XP per ally, capped at 100 XP total across all allies
-                if (actualHeal > 0.0f && totalAllyHealXp < 100.0f) {
+                // Ally heal XP: 0.25x multiplier, awarded exclusively to the caster
+                if (actualHeal > 0.0f && totalAllyHealXp < maxAllyTotalXp) {
                     float allyXp = actualHeal * 0.25f;
-                    if (allyXp > 50.0f) allyXp = 50.0f;
-                    if (totalAllyHealXp + allyXp > 100.0f) allyXp = 100.0f - totalAllyHealXp;
+                    if (allyXp > maxPerAllyXp) allyXp = maxPerAllyXp;
+                    if (totalAllyHealXp + allyXp > maxAllyTotalXp) allyXp = maxAllyTotalXp - totalAllyHealXp;
                     if (allyXp > 0.0f) {
                         totalAllyHealXp += allyXp;
                         AwardAbilityExperience(hero, heroGoid, "nature magic", (double)allyXp);
@@ -739,8 +746,14 @@ void ExecuteCharacterAbility(int slot, void* hero, float level, bool isServerAut
                             SSetCurrentLife(aspect, newLife);
                         }
                         if (actualHeal > 0.0f) {
+                            int curLevelFloor = (int)floorf(level);
+                            double curLevelXp = CalculateLevelToXP((float)curLevelFloor);
+                            double nextLevelXp = CalculateLevelToXP((float)(curLevelFloor + 1));
+                            double deltaXp = nextLevelXp - curLevelXp;
+                            if (deltaXp <= 0.0) deltaXp = 79843.0; // Level 30 delta fallback
+                            float maxSelfXp = (float)(deltaXp * 0.010); // 1.0% next-level cap for self-heal
                             float heroXp = actualHeal * 0.25f;
-                            if (heroXp > 150.0f) heroXp = 150.0f;
+                            if (heroXp > maxSelfXp) heroXp = maxSelfXp;
                             AwardAbilityExperience(hero, heroGoid, "nature magic", (double)heroXp);
                         }
                     } else {
