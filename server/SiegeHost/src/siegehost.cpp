@@ -130,6 +130,8 @@ static void LoadConfig() {
     g_cfg.chatHistoryOnOpen = GetPrivateProfileIntA("Chat", "HistoryOnOpen", 1, ini.c_str());
     g_cfg.nearbyOnly = GetPrivateProfileIntA("UI", "NearbyOnly", 1, ini.c_str());
     g_cfg.portraitFix = GetPrivateProfileIntA("UI", "PortraitFix", 1, ini.c_str());
+    g_cfg.abilityBarOption1 = GetPrivateProfileIntA("UI", "AbilityBarOption1", 1, ini.c_str());
+    g_cfg.abilityBarOption2 = GetPrivateProfileIntA("UI", "AbilityBarOption2", 0, ini.c_str());
     g_cfg.mpSleep = GetPrivateProfileIntA("Net", "MPSleep", -1, ini.c_str());
     if (g_cfg.maxSlots < 9) g_cfg.maxSlots = 9;
     if (g_cfg.maxSlots > 31) g_cfg.maxSlots = 31;  // PlayerId = 1<<index in a DWORD; keep bit 31 unused
@@ -654,7 +656,9 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         }
 
         if (remove & PM_REMOVE) {
-            if (CharacterAbilities_FilterKey(msg)) {
+            if (CharacterAbilities_FilterMouse(msg)) {
+                // Click handled by Character Abilities
+            } else if (CharacterAbilities_FilterKey(msg)) {
                 // Key consumed by Character Abilities
             } else if (g_cfg.role != Role::Server) {
                 ChatKeyFilter(msg);
@@ -667,6 +671,31 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
 // ----------------------------------------------------------------------------------------------
 // Crash reporting: log + minidump into SiegeHostLogs
 // ----------------------------------------------------------------------------------------------
+typedef void (WINAPI *ExitProcessFn)(UINT);
+static ExitProcessFn g_origExitProcess = nullptr;
+
+static void WINAPI HookExitProcess(UINT code) {
+    Log("!!!! HookExitProcess: ExitProcess called with code=%u from %p !!!!", code, __builtin_return_address(0));
+    void* stack[32];
+    USHORT captured = CaptureStackBackTrace(0, 32, stack, nullptr);
+    for (USHORT i = 0; i < captured; ++i) {
+        char mod[MAX_PATH] = "?";
+        HMODULE hm = nullptr;
+        if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                               (LPCSTR)stack[i], &hm))
+            GetModuleFileNameA(hm, mod, MAX_PATH);
+        Log("    [%u] %p (%s + 0x%lX)", (unsigned)i, stack[i], mod, hm ? (DWORD)((BYTE*)stack[i] - (BYTE*)hm) : 0);
+    }
+    DWORD* sp;
+    __asm__("movl %%esp, %0" : "=r"(sp));
+    for (int i = 0; i < 32 && !IsBadReadPtr(sp + i, 4); ++i) {
+        Log("    [esp+%02X] %08lX", i * 4, sp[i]);
+    }
+    if (g_log) fflush(g_log);
+    if (g_origExitProcess) g_origExitProcess(code);
+    else ExitProcess(code);
+}
+
 [[noreturn]] void FlushAndExit(UINT code) {
     Log("Process exiting with code %u", code);
     if (g_log) fflush(g_log);
@@ -767,6 +796,11 @@ static void Startup() {
         PatchCall(0x004885C4, (void*)WrapNetPipeConnect);
         Log("Wrapped NetPipe::Connect call sites (join diagnostics).");
     }
+    if (HookIAT(exe, "kernel32.dll", "ExitProcess", (void*)HookExitProcess, (void**)&g_origExitProcess))
+        Log("Hooked kernel32!ExitProcess (shutdown diagnostics).");
+    else
+        Log("WARNING: could not hook ExitProcess.");
+
     if (HookIAT(exe, "ole32.dll", "CoCreateInstance", (void*)HookCoCreateInstance, (void**)&g_origCoCreate))
         Log("Hooked ole32!CoCreateInstance (DirectPlay instrumentation).");
     else

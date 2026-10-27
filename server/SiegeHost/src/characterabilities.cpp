@@ -89,6 +89,7 @@ const auto GoAspect_SSetNaturalMaxMana = (void(__thiscall*)(void* aspect, float 
 const auto Aspect_SetCurrentLifeLocal  = (void(__thiscall*)(void* aspect, float life))0x005349D6;
 const auto SSetCurrentLife             = (void(__thiscall*)(void* aspect, float life))0x005348D7;
 const auto Sim_SExplodeGo              = (bool(__thiscall*)(void* sim, uint32_t goid, float magnitude, const float* dirVec3))0x005A3224;
+const auto Go_PlayVoiceSound           = (uint32_t(__thiscall*)(void* go, const char* eventName, bool distanced))0x00539D77;
 const auto WorldMessage_Ctor           = (void*(__thiscall*)(void* msg, int event, uint32_t data1, uint32_t from, uint32_t to))0x005967F9;
 const auto WorldMessage_Send           = (void(__thiscall*)(void* msg, int flags))0x005969E0;
 
@@ -836,7 +837,7 @@ void CharacterAbilities_Init() {
     }
 
     // Hook GoDefend::ResetModifiers at 0x005D3F4D (7 bytes: 55 8B EC 51 56 8B F1)
-    {
+    if (Cfg().role != Role::Server) {
         const BYTE kExpect[7] = { 0x55, 0x8B, 0xEC, 0x51, 0x56, 0x8B, 0xF1 };
         BYTE* p = (BYTE*)0x005D3F4D;
         if (memcmp(p, kExpect, 7) == 0) {
@@ -879,8 +880,15 @@ bool CharacterAbilities_OnReceivePacket(bool isServer, DWORD /*senderDpnid*/, co
     return true;
 }
 
+static void UpdateAbilityUI();
+
 void CharacterAbilities_Tick() {
     if (!CharacterAbilities_IsServerSupported()) return;
+
+    if (Cfg().role != Role::Server) {
+        UpdateAbilityUI();
+    }
+
     // Process queued network packets (Client -> Server requests or Server -> Client broadcasts)
     if (!g_pktCsInit) return;
     AbilityPacket localPkts[16];
@@ -934,9 +942,248 @@ void CharacterAbilities_Tick() {
     }
 }
 
+static void SetWindowVisible(void* w, bool vis) {
+    if (!w) return;
+    typedef void (__thiscall* SetVisFn)(void*, bool);
+    static const auto s_setVis = (SetVisFn)0x0047B06E;
+    s_setVis(w, vis);
+    *(bool*)((char*)w + 0x108) = vis;
+}
+
+static void SetWindowAlpha(void* w, float alpha) {
+    if (!w) return;
+    *(float*)((char*)w + 0x104) = alpha;
+}
+
+static void SetTextWindow(void* w, const char* text, DWORD color, char* cachedStr) {
+    if (!w) return;
+    *(DWORD*)((char*)w + 0x1B4) = color;
+    if (cachedStr && strcmp(cachedStr, text) == 0) return;
+    if (cachedStr) {
+        strncpy(cachedStr, text, 31);
+        cachedStr[31] = '\0';
+    }
+    typedef void (__thiscall* SetTextFn)(void*, const eng::gpstring*, bool);
+    static const auto s_setText = (SetTextFn)0x0047B4C4;
+    eng::GpStr g(text);
+    s_setText(w, &g.s, false);
+}
+
+static bool IsInventoryOpen() {
+    void* ui = eng::UI();
+    if (!ui) return false;
+
+    if (eng::InterfaceVisible("character")) return true;
+
+    void* arrange = eng::FindWindow("button_arrange", "inventory");
+    if (arrange && *(bool*)((char*)arrange + 0x108)) return true;
+
+    return false;
+}
+
+static char s_cachedAwpCd[4][32] = {};
+static char s_cachedAwpKey[4][32] = {};
+
+static void UpdateAbilityUI() {
+    const char* ws = eng::CurrentWorldState();
+    if (!strstr(ws, "_ingame")) return;
+
+    void* ui = eng::UI();
+    if (!ui) return;
+
+    void* srv = *(void**)0x007ACF70;
+    if (!srv || !Readable(srv, 0x20)) return;
+
+    void* hero = GetScreenHero(srv);
+    bool inGame = (hero && Readable(hero, 0x80) && IsCharacterAliveAndConscious(hero));
+    if (!inGame) return;
+    void* actor = *(void**)((char*)hero + 0x00);
+
+    bool invOpen = IsInventoryOpen();
+    bool showOption1 = !invOpen;
+
+    const char* const kAwpBtns[4] = { "awp_ability_btn_0", "awp_ability_btn_1", "awp_ability_btn_2", "awp_ability_btn_3" };
+    const char* const kAwpCds[4]  = { "awp_ability_cd_0",  "awp_ability_cd_1",  "awp_ability_cd_2",  "awp_ability_cd_3"  };
+    const char* const kAwpKeys[4] = { "awp_ability_key_0", "awp_ability_key_1", "awp_ability_key_2", "awp_ability_key_3" };
+
+    void* awpPanel = eng::FindWindow("awp_ability_subpanel_1", "character_awp");
+    if (awpPanel) SetWindowVisible(awpPanel, showOption1);
+
+    static void* s_lastFirstBtn = nullptr;
+    void* firstBtn = eng::FindWindow(kAwpBtns[0], "character_awp");
+    if (firstBtn != s_lastFirstBtn) {
+        s_lastFirstBtn = firstBtn;
+        memset(s_cachedAwpCd, 0, sizeof(s_cachedAwpCd));
+        memset(s_cachedAwpKey, 0, sizeof(s_cachedAwpKey));
+    }
+
+    DWORD now = GetTickCount();
+
+    for (int i = 0; i < 4; ++i) {
+        float level = (actor && Readable(actor, 0x40)) ? GoActor_GetSkillLevel(actor, g_powers[i].statKey) : 0.0f;
+        bool isLocked = (level < g_powers[i].reqLevel);
+
+        float cdRemaining = 0.0f;
+        if (g_powers[i].lastUsedMs != 0 && now - g_powers[i].lastUsedMs < g_powers[i].cooldownMs) {
+            cdRemaining = (float)(g_powers[i].cooldownMs - (now - g_powers[i].lastUsedMs)) / 1000.0f;
+        }
+
+        bool justOffCd = false;
+        if (g_powers[i].lastUsedMs != 0 && cdRemaining <= 0.0f) {
+            DWORD elapsed = now - g_powers[i].lastUsedMs;
+            if (elapsed >= g_powers[i].cooldownMs && elapsed < g_powers[i].cooldownMs + 400) {
+                justOffCd = true;
+            }
+        }
+
+        float alpha = 1.0f;
+        char cdStr[16] = "";
+        DWORD cdColor = 0xFFFFFFFF;
+        DWORD keyColor = 0xFFCCCCCC;
+
+        if (isLocked) {
+            alpha = 0.35f;
+            cdStr[0] = '\0';
+            cdColor = 0xFFFFFFFF;
+            keyColor = 0xFF555555; // Dimmed hotkey
+        } else if (cdRemaining > 0.0f) {
+            alpha = 0.50f;
+            int sec = (int)ceilf(cdRemaining);
+            snprintf(cdStr, sizeof(cdStr), "%d", sec);
+            cdColor = 0xFFFFFFFF;
+            keyColor = 0xFF888888;
+        } else if (justOffCd) {
+            alpha = 1.0f;
+            cdStr[0] = '\0';
+            keyColor = 0xFFFFD700; // Gold flash when just ready
+        } else {
+            alpha = 1.0f;
+            cdStr[0] = '\0';
+            keyColor = 0xFFD8D8D8;
+        }
+
+        // Option 1 (Top-Left active weapon panel)
+        void* awpBtn = eng::FindWindow(kAwpBtns[i], "character_awp");
+        void* awpCd  = eng::FindWindow(kAwpCds[i], "character_awp");
+        void* awpKey = eng::FindWindow(kAwpKeys[i], "character_awp");
+        if (awpBtn) {
+            SetWindowVisible(awpBtn, showOption1);
+            if (showOption1) SetWindowAlpha(awpBtn, alpha);
+        }
+        if (awpCd) {
+            SetWindowVisible(awpCd, showOption1);
+            if (showOption1) SetTextWindow(awpCd, cdStr, cdColor, s_cachedAwpCd[i]);
+        }
+        if (awpKey) {
+            SetWindowVisible(awpKey, showOption1);
+            if (showOption1) {
+                char kbuf[2] = { g_powers[i].keyChar, '\0' };
+                SetTextWindow(awpKey, kbuf, keyColor, s_cachedAwpKey[i]);
+            }
+        }
+    }
+}
+
+static bool TriggerAbility(int slot) {
+    if (slot < 0 || slot > 3) return false;
+    if (!CharacterAbilities_IsServerSupported()) return false;
+
+    // Must be in game and controlling a hero
+    void* srv = *(void**)0x007ACF70;
+    if (!srv || !Readable(srv, 0x20)) return false;
+
+    void* hero = GetScreenHero(srv);
+    if (!hero || !Readable(hero, 0x80)) return false;
+
+    void* actor = *(void**)((char*)hero + 0x00);
+    if (!actor || !Readable(actor, 0x40)) return false;
+
+    // Cannot use abilities while unconscious, dead, or a ghost (no chat messages)
+    if (!IsCharacterAliveAndConscious(hero)) {
+        return false;
+    }
+
+    // Check discipline level requirement
+    float level = GoActor_GetSkillLevel(actor, g_powers[slot].statKey);
+    if (level < g_powers[slot].reqLevel) {
+        Go_PlayVoiceSound(hero, "order_out_of_mana", false);
+        char buf[128];
+        snprintf(buf, sizeof(buf), "%s requires %s level %.1f (Current: %.1f).",
+                 g_powers[slot].name, g_powers[slot].statDisplay, g_powers[slot].reqLevel, level);
+        PrintThrottled(g_lastReqMsg, buf);
+        return false;
+    }
+
+    // Check cooldown
+    DWORD now = GetTickCount();
+    if (g_powers[slot].lastUsedMs != 0 && now - g_powers[slot].lastUsedMs < g_powers[slot].cooldownMs) {
+        Go_PlayVoiceSound(hero, "order_out_of_mana", false);
+        float remaining = (float)(g_powers[slot].cooldownMs - (now - g_powers[slot].lastUsedMs)) / 1000.0f;
+        char buf[128];
+        snprintf(buf, sizeof(buf), "%s cooling down (%.1fs remaining).",
+                 g_powers[slot].name, remaining);
+        PrintThrottled(g_lastCoolMsg, buf);
+        return false;
+    }
+
+    // Successfully trigger ability!
+    g_powers[slot].lastUsedMs = now;
+
+    bool serverLocal = IsServerLocal();
+    ExecuteCharacterAbility(slot, hero, level, serverLocal);
+    if (!serverLocal) {
+        uint32_t heroGoid = *(uint32_t*)((char*)hero + 0x4C);
+        SendAbilityPacketToServer(heroGoid, slot);
+    }
+    return true;
+}
+
+bool CharacterAbilities_FilterMouse(LPMSG msg) {
+    if (!msg || msg->message != WM_LBUTTONDOWN) return false;
+    if (!CharacterAbilities_IsServerSupported()) return false;
+    if (Cfg().role == Role::Server) return false;
+    if (IsInventoryOpen()) return false;
+
+    HWND hwnd = g_gameHwnd ? g_gameHwnd : msg->hwnd;
+    POINT pt = msg->pt;
+    if (hwnd) ScreenToClient(hwnd, &pt);
+    int mx = pt.x, my = pt.y;
+
+    void* ui = eng::UI();
+    if (!ui) return false;
+
+    // Check Option 1 (Top-Left AWP Sub-bar)
+    if (Cfg().abilityBarOption1) {
+        const char* const kAwpBtns[4] = {
+            "awp_ability_btn_0", "awp_ability_btn_1",
+            "awp_ability_btn_2", "awp_ability_btn_3"
+        };
+        for (int i = 0; i < 4; ++i) {
+            void* w = eng::FindWindow(kAwpBtns[i], "character_awp");
+            if (w && *(bool*)((char*)w + 0x108)) {
+                int left   = *(int*)((char*)w + 0x60) - 2;
+                int top    = *(int*)((char*)w + 0x64) - 2;
+                int right  = *(int*)((char*)w + 0x68) + 2;
+                int bottom = *(int*)((char*)w + 0x6C) + 16;
+                if (mx >= left && mx <= right && my >= top && my <= bottom) {
+                    TriggerAbility(i);
+                    msg->message = WM_NULL;
+                    msg->wParam = 0;
+                    msg->lParam = 0;
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
 bool CharacterAbilities_FilterKey(LPMSG msg) {
     if (!msg) return false;
     if (!CharacterAbilities_IsServerSupported()) return false;
+    if (Cfg().role == Role::Server) return false;
+    if (IsInventoryOpen()) return false;
 
     // Handle character eating to avoid letter leaking if key was consumed
     if (msg->message == WM_CHAR) {
@@ -983,68 +1230,8 @@ bool CharacterAbilities_FilterKey(LPMSG msg) {
     // If chat edit box is open, never intercept: allow normal typing
     if (IsChatActive()) return false;
 
-    // Must be in game and controlling a hero
-    void* srv = *(void**)0x007ACF70;
-    if (!srv || !Readable(srv, 0x20)) return false;
-
-    void* hero = GetScreenHero(srv);
-    if (!hero || !Readable(hero, 0x80)) return false;
-
-    void* actor = *(void**)((char*)hero + 0x00);
-    if (!actor || !Readable(actor, 0x40)) return false;
-
-    // Cannot use abilities while unconscious, dead, or a ghost (no chat messages)
-    if (!IsCharacterAliveAndConscious(hero)) {
-        msg->message = WM_NULL;
-        msg->wParam = 0;
-        msg->lParam = 0;
-        g_eatNextChar = true;
-        g_eatCharVal = key;
-        return true;
-    }
-
-    // Check discipline level requirement
-    float level = GoActor_GetSkillLevel(actor, g_powers[slot].statKey);
-    if (level < g_powers[slot].reqLevel) {
-        char buf[128];
-        snprintf(buf, sizeof(buf), "%s requires %s level %.1f (Current: %.1f).",
-                 g_powers[slot].name, g_powers[slot].statDisplay, g_powers[slot].reqLevel, level);
-        PrintThrottled(g_lastReqMsg, buf);
-
-        // Neutralize key so vanilla hotkey does not fire
-        msg->message = WM_NULL;
-        msg->wParam = 0;
-        msg->lParam = 0;
-        g_eatNextChar = true;
-        g_eatCharVal = key;
-        return true;
-    }
-
-    // Check cooldown
-    DWORD now = GetTickCount();
-    if (g_powers[slot].lastUsedMs != 0 && now - g_powers[slot].lastUsedMs < g_powers[slot].cooldownMs) {
-        float remaining = (float)(g_powers[slot].cooldownMs - (now - g_powers[slot].lastUsedMs)) / 1000.0f;
-        char buf[128];
-        snprintf(buf, sizeof(buf), "%s cooling down (%.1fs remaining).",
-                 g_powers[slot].name, remaining);
-        PrintThrottled(g_lastCoolMsg, buf);
-
-        msg->message = WM_NULL;
-        msg->wParam = 0;
-        msg->lParam = 0;
-        g_eatNextChar = true;
-        g_eatCharVal = key;
-        return true;
-    }
-
-    // Successfully trigger ability!
-    g_powers[slot].lastUsedMs = now;
-
-    bool serverLocal = IsServerLocal();
-    ExecuteCharacterAbility(slot, hero, level, serverLocal);
-    if (!serverLocal) {
-        uint32_t heroGoid = *(uint32_t*)((char*)hero + 0x4C);
-        SendAbilityPacketToServer(heroGoid, slot);
+    if ((msg->lParam & 0x40000000) == 0) {
+        TriggerAbility(slot);
     }
 
     // Consume input
