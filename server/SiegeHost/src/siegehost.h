@@ -1,4 +1,6 @@
 #pragma once
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <windows.h>
 #include <string>
 
@@ -61,6 +63,10 @@ struct Config {
     int jgEnabled = 1;          // server: refuse players without a valid launcher join ticket (needs Key + ServerId)
     std::string jgKey;          // server: hex HMAC key (siegeserver derives it from the shard key)
     std::string jgServerId;     // server: this server's id ("na", "eu")
+    // [Portal] (Shared Stash cross-server sync)
+    std::string portalHubUrl;
+    std::string portalShardId;
+    std::string portalShardKey;
 };
 
 extern HWND g_gameHwnd;
