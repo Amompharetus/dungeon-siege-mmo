@@ -285,18 +285,11 @@ float GetHeroUberLevel(void* hero) {
 
     float uber = 0.0f;
 
-    // 1. Check Player::m_HeroUberLevel (Player + 0x90)
-    void* player = *(void**)((char*)hero + 0x78);
-    if (player && Readable(player, 0x98)) {
-        float plUber = *(float*)((char*)player + 0x90);
-        if (plUber > uber) uber = plUber;
-    }
-
-    // 2. Check GoActor skills
+    // Check GoActor skills belonging strictly to this specific hero (never shared across characters)
     void* actor = *(void**)((char*)hero + 0x00);
     if (actor && Readable(actor, 0x40)) {
-        float m = s_getSkillLevel(actor, "melee");
-        float r = s_getSkillLevel(actor, "ranged");
+        float m  = s_getSkillLevel(actor, "melee");
+        float r  = s_getSkillLevel(actor, "ranged");
         float nm = s_getSkillLevel(actor, "nature magic");
         float cm = s_getSkillLevel(actor, "combat magic");
         float maxCombat = (std::max)({m, r, nm, cm});
@@ -306,6 +299,25 @@ float GetHeroUberLevel(void* hero) {
         if (u1 > uber) uber = u1;
         float u2 = s_getSkillLevel(actor, "Uber");
         if (u2 > uber) uber = u2;
+
+        char* sb = *(char**)((char*)actor + 0x18);
+        char* se = *(char**)((char*)actor + 0x1C);
+        if (sb && se && se >= sb && (size_t)(se - sb) <= 0x1000) {
+            for (char* s = sb; s + 0x34 <= se; s += 0x48) {
+                if (!Readable(s, 0x38)) break;
+                const char* nm_str = *(char**)s;
+                if (nm_str && Readable(nm_str, 4)) {
+                    float lvl = *(float*)(s + 0x30);
+                    if (lvl > uber && lvl < 1000.0f) {
+                        if (_stricmp(nm_str, "Uber") == 0 || _stricmp(nm_str, "melee") == 0 ||
+                            _stricmp(nm_str, "ranged") == 0 || _stricmp(nm_str, "nature magic") == 0 ||
+                            _stricmp(nm_str, "combat magic") == 0) {
+                            uber = lvl;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     return uber;
@@ -431,6 +443,7 @@ void OpenClientInventoryForStash(void* hero) {
 
 void OpenClientStashUI(void* hero, void* stashGo) {
     if (!hero || !stashGo || !Readable(hero, 0x80) || !Readable(stashGo, 0x80)) return;
+    if (GetHeroUberLevel(hero) <= 30.0f) return;
     void* heroInv = *(void**)((char*)hero + 0x2C);
     void* uiPartyMgr = *(void**)0x007ACF90;
     if (!heroInv || !uiPartyMgr || !Readable(heroInv, 0xB0) || !Readable(uiPartyMgr, 0x1E8)) return;
@@ -1107,6 +1120,12 @@ void LoadStashFromFile(const std::string& account, void* hero, void* stashGo) {
 
 void* GetOrCreateServerStash(const std::string& account, void* hero) {
     if (account.empty() || !hero || !Readable(hero, 0x80)) return nullptr;
+    float uberLevel = GetHeroUberLevel(hero);
+    if (uberLevel <= 30.0f) {
+        Log("SharedStash: GetOrCreateServerStash denied for account '%s' hero 0x%08lX (uberLevel=%.1f <= 30.0)",
+            account.c_str(), *(uint32_t*)((char*)hero + 0x4C), uberLevel);
+        return nullptr;
+    }
     uint32_t currentHeroGoid = *(uint32_t*)((char*)hero + 0x4C);
     void* godb = *(void**)0x007ACF4C;
 
@@ -1667,6 +1686,12 @@ void SharedStash_Tick() {
 
                     void* hero = ResolveGo(q.pkt.heroGoid);
                     if (hero) {
+                        float uberLevel = GetHeroUberLevel(hero);
+                        if (uberLevel <= 30.0f) {
+                            Log("SharedStash: server REJECTED ReqOpen from dpnid 0x%08lX account '%s' hero 0x%08lX (uberLevel=%.1f <= 30.0)",
+                                q.senderDpnid, account.c_str(), q.pkt.heroGoid, uberLevel);
+                            continue;
+                        }
                         void* stashGo = GetOrCreateServerStash(account, hero);
                         if (stashGo) {
                             uint32_t stashGoid = *(uint32_t*)((char*)stashGo + 0x4C);
@@ -1682,6 +1707,15 @@ void SharedStash_Tick() {
                     Log("SharedStash: client received stashGoid 0x%08lX from server", g_localStashGoid);
 
                     void* hero = GetLocalScreenHero();
+                    if (hero) {
+                        float uber = GetHeroUberLevel(hero);
+                        if (uber <= 30.0f) {
+                            Log("SharedStash: client rejected StashInfo (hero uberLevel=%.1f <= 30.0)", uber);
+                            g_localStashGoid = 0;
+                            g_pendingOpenStash = false;
+                            continue;
+                        }
+                    }
                     void* stashGo = ResolveGo(g_localStashGoid);
                     if (hero && stashGo) {
                         OpenClientStashUI(hero, stashGo);
@@ -1696,11 +1730,30 @@ void SharedStash_Tick() {
 
     // 2. Client tick: complete pending open and manage stash / backpack UI state
     if (Cfg().role != Role::Server) {
+        void* curHero = GetLocalScreenHero();
+        if (curHero && Readable(curHero, 0x50)) {
+            uint32_t curHeroGoid = *(uint32_t*)((char*)curHero + 0x4C);
+            static uint32_t s_lastClientHeroGoid = 0;
+            if (s_lastClientHeroGoid != 0 && curHeroGoid != s_lastClientHeroGoid) {
+                // Character switched! Invalidate all client stash state
+                CleanupClientStashUI();
+                g_localStashGoid = 0;
+                g_pendingOpenStash = false;
+            }
+            s_lastClientHeroGoid = curHeroGoid;
+        }
+
         if (g_pendingOpenStash && g_localStashGoid != 0) {
             void* hero = GetLocalScreenHero();
             void* stashGo = ResolveGo(g_localStashGoid);
             if (hero && stashGo) {
-                OpenClientStashUI(hero, stashGo);
+                float uber = GetHeroUberLevel(hero);
+                if (uber > 30.0f) {
+                    OpenClientStashUI(hero, stashGo);
+                } else {
+                    g_pendingOpenStash = false;
+                    g_localStashGoid = 0;
+                }
             }
         }
 
@@ -1896,6 +1949,8 @@ bool SharedStash_FilterKey(LPMSG msg) {
                             Log("SharedStash: command triggered, hero 0x%08lX uberLevel=%.1f", heroGoid, uberLevel);
 
                             if (uberLevel <= 30.0f) {
+                                g_pendingOpenStash = false;
+                                g_localStashGoid = 0;
                                 s_playVoice(hero, "order_out_of_mana", false);
                                 char buf[128];
                                 snprintf(buf, sizeof(buf), "Shared Stash requires Uber level above 30 (Current: %.1f).", uberLevel);
