@@ -158,7 +158,7 @@ std::vector<Refusal> g_refusals;              // last few, for the heartbeat
 std::vector<uint8_t> g_key;
 bool g_enforce = false;
 // XpCheck state; see the block further down for what it does and why it lives on the server.
-int g_xpMode = 0;                 // 0 report, 1 enforce, -1 off
+int g_xpMode = 1;                 // 0 report, 1 enforce, -1 off
 DWORD g_xpChecked = 0, g_xpFlagged = 0;
 std::string g_serverId;
 
@@ -390,10 +390,15 @@ bool PartyXp(void* pl, long long& xp, int& members) {
             const char* nm = *(char**)s;
             if (nm && _stricmp(nm, "Uber") == 0) continue;  // uber level is derived from the others
             double v = *(double*)(s + 0x20);
-            if (v > 0 && v < 1e12) sum += v;
+            if (v > 0 && v < 1e17) {
+                sum += v;
+            } else if (v >= 1e17) {
+                sum = 1e17; // saturate so huge/overflow XP is caught and kicked
+            }
         }
     }
     if (!members) return false;
+    if (sum > (double)0x7FFFFFFFFFFFFFFFLL) sum = (double)0x7FFFFFFFFFFFFFFFLL;
     xp = (long long)sum;
     return true;
 }
@@ -507,7 +512,14 @@ bool XpCheck(void* pl, char* detail, size_t cap) {
             if (nm && _stricmp(nm, "Uber") == 0) continue;   // derived from the others, not paid for
             double xp = *(double*)(s + 0x20);
             float lvl = *(float*)(s + 0x30);
-            if (!(xp >= 0 && xp < 1e15) || !(lvl >= 0 && lvl < 1e5)) continue;   // unreadable, skip
+            if (lvl < 0.0f || lvl > 150.0f || (lvl != lvl)) {
+                bad = true; worstBy = 999.0;
+                snprintf(worstName, sizeof worstName, "%s", nm ? nm : "?");
+                worstXp = xp; worstLvl = lvl; worstShould = 150.0;
+                break;
+            }
+            if (nm && _stricmp(nm, "Uber") == 0) continue;   // derived from the others, not paid for
+            if (!(xp >= 0 && xp < 1e17) || !(lvl >= 0 && lvl <= 150.0f)) continue;   // unreadable, skip
             double should = LevelForXp(xp);
             double by = lvl - should;
             if (by > kLevelSlack && by > worstBy) {
@@ -667,6 +679,11 @@ void JoinGuardServerTick() {
                 }
             }
             if (!j.verified) {
+                char xd[500];
+                if (XpCheck(pl, xd, sizeof xd)) {
+                    Kick(pl, j, "levels", xd);
+                    continue;
+                }
                 std::string key = CharKey(j.hero);
                 auto rec = j.t.chars.find(key);
                 char detail[400];

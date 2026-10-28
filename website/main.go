@@ -1327,6 +1327,55 @@ func extractStartLocation(account string) string {
 	return "Elddim"
 }
 
+var kExpTable = []float64{
+	0, 70, 650, 1450, 2350,
+	3350, 4650, 6650, 9450, 12950,
+	17100, 22000, 27800, 34300, 41300,
+	49191, 58327, 68882, 81054, 95071,
+	111190, 129706, 150954, 175317, 203567,
+	236338, 274352, 318449, 369600, 428936,
+	497766, 577609, 670226, 777662, 902288,
+	1046855, 1214551, 1409080, 1634732, 1896489,
+	2200128, 2552348, 2960924, 3434872, 3984651,
+	4622395, 5362179, 6220327, 7215779, 8370504,
+	9709985, 11263782, 13066188, 15156978, 17582294,
+	20395661, 23659167, 27444833, 31836207, 36930200,
+	42839232, 49780637, 58283859, 68700306, 81460453,
+	97091634, 116239830, 139696370, 168430631, 203630102,
+	246749453, 299570658, 364276635, 443541456, 540640862,
+	659587634, 805297430, 983791930, 1202447693, 1470301002,
+	1798421306, 2200368678, 2692754209, 3295926485, 4034812522,
+	4939947918, 6048738778, 7407007581, 9070886865, 11109138988,
+	13605997839, 16664649931, 20411498744, 25001388540, 30624003540,
+	37511706915, 45949143550, 56285003427, 68946431776, 84456681504,
+	103456737421, 126731805919, 155243764829, 190170914494, 232956672834,
+	285369226800, 349574605408, 428226194203, 524574390477, 642600930913,
+	787183442946, 964297020188, 1181261152309, 1447042214156, 1772624014920,
+	2171461720855, 2660037910626, 3258543743095, 3991713387870, 4889846202719,
+	5990058900910, 7337819456193, 8988826136414, 11011309319686, 13488851219194,
+	16523840046091, 20241701359039, 24796081467402, 30375197100145, 37209613750256,
+	45581774146643, 55837670632215, 68401143827042, 83791398490705, 102644460453692,
+	125739461358351, 154030837466559, 188687773199113, 231142519471492, 283149583655156,
+	346858237280144, 424901337970755, 520504136316754, 637617564290602, 781081513558566,
+	956824851411821, 1172110440282060, 1435835286648100, 1758898223446500, 2154650321024540,
+	2639446640557650,
+}
+
+func maxLevelForXP(xp int64) int {
+	if xp <= 0 {
+		return 0
+	}
+	lo := 0
+	for i := 0; i < len(kExpTable); i++ {
+		if float64(xp) >= kExpTable[i] {
+			lo = i
+		} else {
+			break
+		}
+	}
+	return lo
+}
+
 func resolveCharacterDetails(account, charName, saveSHA string, rec *CharRec) CachedChar {
 	cacheKey := fmt.Sprintf("%s:%s", strings.ToLower(account), strings.ToLower(charName))
 
@@ -1340,7 +1389,7 @@ func resolveCharacterDetails(account, charName, saveSHA string, rec *CharRec) Ca
 
 	lvl := 0
 	if rec != nil && rec.XP > 0 {
-		lvl = int(math.Floor(math.Sqrt(float64(rec.XP)/120.0))) + 1
+		lvl = maxLevelForXP(rec.XP)
 	}
 	res := CachedChar{
 		Name:      charName,
@@ -1430,7 +1479,21 @@ func resolveCharacterDetails(account, charName, saveSHA string, rec *CharRec) Ca
 									if res.Level < 0 {
 										res.Level = 0
 									}
+									// Anti-cheat: clamp unverified level to what verified server XP allows
+									if rec != nil && rec.XP > 0 {
+										maxLvl := maxLevelForXP(rec.XP) + 2
+										if res.Level > maxLvl {
+											res.Level = maxLevelForXP(rec.XP)
+										}
+									} else if rec == nil || rec.XP == 0 {
+										if res.Level > 1 {
+											res.Level = 0
+										}
+									}
 								}
+							}
+							if res.Level < 140 && strings.Contains(strings.ToLower(res.Class), "siegemaster") {
+								res.Class = "Adventurer"
 							}
 							if m := screenNmRe.FindStringSubmatch(gasStr); len(m) > 1 {
 								res.Name = m[1]
@@ -1738,6 +1801,12 @@ func buildLadderCharacters() []LadderCharacter {
 				var charRec *CharRec
 				if acct.Chars != nil {
 					charRec = matchCharRec(acct.Chars, cleanName)
+				}
+
+				// Only MMO characters that have an active server record can be on the ladder.
+				// Prevents local-only hacked singleplayer saves from polluting the ladder.
+				if charRec == nil {
+					continue
 				}
 
 				charDetails := resolveCharacterDetails(canonicalAcctName, cleanName, acct.SaveSHA, charRec)
