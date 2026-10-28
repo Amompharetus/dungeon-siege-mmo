@@ -94,6 +94,9 @@ static const auto s_setForceClientAllowed = (SetForceClientAllowedFn)0x0047BCD1;
 typedef uint32_t (__thiscall* SCloneGoFn)(void* godb, const void* req, const char* templateName);
 static const auto s_sCloneGo = (SCloneGoFn)0x0054A356;
 
+typedef uint32_t (__thiscall* SCloneGoWithContentFn)(void* godb, const void* req, const char* pcontent, int zero);
+static const auto s_sCloneGoWithContent = (SCloneGoWithContentFn)0x0054A457;
+
 typedef void* (__thiscall* RSAddFn)(void* inv, void* go, int loc, int origin, bool autoPlace);
 static const auto s_rsAdd = (RSAddFn)0x0057545B;
 
@@ -138,6 +141,40 @@ inline bool Readable(const void* p, size_t n) {
     const DWORD ok = PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY |
                      PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
     return (mbi.Protect & ok) != 0;
+}
+
+inline std::string GetSafeModifierString(void* container, int offset) {
+    if (!container || !Readable(container, offset + 4)) return "";
+    void* ptr = *(void**)((char*)container + offset);
+    if (!ptr) return "";
+
+    auto isAsciiStr = [](const char* s) -> bool {
+        if (!s || !Readable(s, 1)) return false;
+        int len = 0;
+        while (len < 64) {
+            if (!Readable(s + len, 1)) return false;
+            char c = s[len];
+            if (c == '\0') return len > 0;
+            if ((unsigned char)c < 32 || (unsigned char)c > 126) return false;
+            len++;
+        }
+        return false;
+    };
+
+    // Format A: direct char* (where ptr itself is char*)
+    if (isAsciiStr((char*)ptr)) {
+        return std::string((char*)ptr);
+    }
+
+    // Format B: gpstring* (where *ptr is char* m_pData)
+    if (Readable(ptr, 4)) {
+        char* inner = *(char**)ptr;
+        if (inner && isAsciiStr(inner)) {
+            return std::string(inner);
+        }
+    }
+
+    return "";
 }
 
 inline void* ResolveGo(uint32_t goid) {
@@ -570,11 +607,22 @@ void* CloneAndAddItemOnServer(void* ownerGo, void* inv, const char* tmplOrPConte
     unsigned char& reqByte30 = *((unsigned char*)req + 0x30);
     reqByte30 = (unsigned char)((reqByte30 & 0xEF) | (ownerAllClients << 4));
 
-    uint32_t newGoid = s_sCloneGo(godb, req, tmplOrPContent);
-    if (!newGoid || newGoid == *(uint32_t*)0x007ADC88) return nullptr;
+    uint32_t newGoid = 0;
+    if (tmplOrPContent[0] == '#') {
+        newGoid = s_sCloneGoWithContent(godb, req, tmplOrPContent, 0);
+    } else {
+        newGoid = s_sCloneGo(godb, req, tmplOrPContent);
+    }
+    if (!newGoid || newGoid == *(uint32_t*)0x007ADC88) {
+        Log("SharedStash: clone failed for '%s'", tmplOrPContent);
+        return nullptr;
+    }
 
     void* newGo = ResolveGo(newGoid);
-    if (!newGo) return nullptr;
+    if (!newGo) {
+        Log("SharedStash: failed to resolve goid 0x%08lX for '%s'", newGoid, tmplOrPContent);
+        return nullptr;
+    }
 
     s_rsAdd(inv, newGo, loc, 2 /*AO_COMMANDS*/, autoPlace);
     return newGo;
@@ -905,11 +953,8 @@ void SaveStashToFile(const std::string& account, void* stashGo) {
             void* bpInv = *(void**)((char*)item + 0x2C);
             if (bpInv && Readable(bpInv, 0x90) && *((unsigned char*)bpInv + 0x86) != 0) continue;
 
-            const char* varName = "";
             void* gui = *(void**)((char*)item + 0x28);
-            if (gui && Readable(gui, 0x34)) {
-                varName = eng::GpC(gui, 0x2C);
-            }
+            std::string varName = GetSafeModifierString(gui, 0x2C);
 
             int gv = 0;
             void* aspect = *(void**)((char*)item + 0x04);
@@ -917,20 +962,25 @@ void SaveStashToFile(const std::string& account, void* stashGo) {
                 gv = *(int*)((char*)aspect + 0x4C);
             }
 
-            const char* pfx = "";
-            const char* sfx = "";
+            std::string pfx;
+            std::string sfx;
             void* magic = *(void**)((char*)item + 0x30);
             if (magic && Readable(magic, 0x40)) {
-                pfx = eng::GpC(magic, 0x24);
-                sfx = eng::GpC(magic, 0x28);
+                pfx = GetSafeModifierString(magic, 0x24);
+                sfx = GetSafeModifierString(magic, 0x28);
             }
 
             fprintf(f, "\t\t[%d]\n\t\t{\n", idx++);
             fprintf(f, "\t\t\ttemplate_name = \"%s\";\n", tmpl);
-            if (varName && *varName) fprintf(f, "\t\t\tvariation_name = \"%s\";\n", varName);
+            if (!varName.empty()) fprintf(f, "\t\t\tvariation_name = \"%s\";\n", varName.c_str());
             if (gv > 0) fprintf(f, "\t\t\tgold_value = %d;\n", gv);
-            if (pfx && *pfx) fprintf(f, "\t\t\tmodifier_prefix_name = \"%s\";\n", pfx);
-            if (sfx && *sfx) fprintf(f, "\t\t\tmodifier_suffix_name = \"%s\";\n", sfx);
+            if (!pfx.empty()) fprintf(f, "\t\t\tmodifier_prefix_name = \"%s\";\n", pfx.c_str());
+            if (!sfx.empty()) fprintf(f, "\t\t\tmodifier_suffix_name = \"%s\";\n", sfx.c_str());
+
+            if (!pfx.empty() || !sfx.empty()) {
+                Log("SharedStash: saved enchanted item '%s' pfx='%s' sfx='%s' var='%s'",
+                    tmpl, pfx.c_str(), sfx.c_str(), varName.c_str());
+            }
 
             // Persist any child spells if this item is a spellbook
             void** cb = *(void***)((char*)item + 0x88);
@@ -1081,9 +1131,12 @@ void LoadStashFromFile(const std::string& account, void* hero, void* stashGo) {
                     if (!varName.empty()) cloneStr += ":" + varName;
                     if (!pfx.empty()) cloneStr += "/+" + pfx;
                     if (!sfx.empty()) cloneStr += "/+" + sfx;
-                    if (pfx.empty() && sfx.empty()) cloneStr += "/-no_mod";
                 } else {
                     cloneStr = currentTmpl;
+                }
+
+                if (!pfx.empty() || !sfx.empty()) {
+                    Log("SharedStash: loading enchanted item '%s'", cloneStr.c_str());
                 }
 
                 void* newItem = CloneAndAddItemOnServer(hero, stashInv, cloneStr.c_str(), 0x15 /*il_main*/, true /*autoPlace*/);
