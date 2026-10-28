@@ -744,3 +744,13 @@ std::string JG_HeartbeatLines() {
     }
     return out;
 }
+
+std::string JG_GetAccountForDpnid(DWORD dpnid) {
+    if (!g_csInit) return "";
+    Lock l;
+    auto it = g_joined.find(dpnid);
+    if (it != g_joined.end()) {
+        return it->second.t.account;
+    }
+    return "";
+}
