@@ -617,10 +617,38 @@ void BroadcastAbilityPacketToClients(uint32_t heroGoid, int slot) {
 }
 
 bool IsChatActive() {
+    // 1. WorldState console/chat active flag
+    void* ws = *(void**)0x007ACF44;
+    if (ws && Readable(ws, 0x100) && *(const unsigned char*)((const char*)ws + 0xFC) != 0) {
+        return true;
+    }
+
+    // 2. In-game console edit box
     if (eng::WindowVisible("console_edit", "game_console_mp")) return true;
+    if (eng::WindowVisible("console_edit", "game_console")) return true;
+    if (eng::WindowVisible("console_edit", nullptr)) return true;
+
+    auto IsBoxActive = [](void* box) -> bool {
+        if (!box || !Readable(box, 0x1C0)) return false;
+        const unsigned char* p = (const unsigned char*)box;
+        if (p[0x108] != 0) return true; // m_bVisible
+        if (p[0x1A1] != 0 || p[0x157] != 0 || p[0x1A2] != 0) return true; // input/focus
+        return false;
+    };
+
+    if (IsBoxActive(eng::FindWindow("console_edit", "game_console_mp"))) return true;
+    if (IsBoxActive(eng::FindWindow("console_edit", "game_console"))) return true;
+    if (IsBoxActive(eng::FindWindow("console_edit", nullptr))) return true;
+
+    // 3. Staging and end-game edit boxes
     if (eng::WindowVisible("staging_char_name_edit_box", "staging_area_create_character")) return true;
     if (eng::WindowVisible("staging_area_chat_editbox", "staging_area")) return true;
     if (eng::WindowVisible("end_game_chat_editbox", "end_game_summary")) return true;
+
+    if (IsBoxActive(eng::FindWindow("staging_char_name_edit_box", nullptr))) return true;
+    if (IsBoxActive(eng::FindWindow("staging_area_chat_editbox", nullptr))) return true;
+    if (IsBoxActive(eng::FindWindow("end_game_chat_editbox", nullptr))) return true;
+
     return false;
 }
 
@@ -1185,6 +1213,13 @@ bool CharacterAbilities_FilterKey(LPMSG msg) {
     if (Cfg().role == Role::Server) return false;
     if (IsInventoryOpen()) return false;
 
+    // If chat or any text input is active, never intercept keys or eat characters
+    if (IsChatActive()) {
+        g_eatNextChar = false;
+        g_eatCharVal = 0;
+        return false;
+    }
+
     // Handle character eating to avoid letter leaking if key was consumed
     if (msg->message == WM_CHAR) {
         if (g_eatNextChar && (msg->wParam == g_eatCharVal ||
@@ -1204,12 +1239,10 @@ bool CharacterAbilities_FilterKey(LPMSG msg) {
 
     if (msg->message == WM_KEYUP) {
         if (msg->wParam == 'Q' || msg->wParam == 'W' || msg->wParam == 'E' || msg->wParam == 'R') {
-            if (!IsChatActive()) {
-                msg->message = WM_NULL;
-                msg->wParam = 0;
-                msg->lParam = 0;
-                return true;
-            }
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
+            return true;
         }
         return false;
     }
@@ -1226,9 +1259,6 @@ bool CharacterAbilities_FilterKey(LPMSG msg) {
         case 'R': slot = 3; break;
         default: return false;
     }
-
-    // If chat edit box is open, never intercept: allow normal typing
-    if (IsChatActive()) return false;
 
     if ((msg->lParam & 0x40000000) == 0) {
         TriggerAbility(slot);

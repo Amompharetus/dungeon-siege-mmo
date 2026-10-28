@@ -94,8 +94,20 @@ static const auto s_setForceClientAllowed = (SetForceClientAllowedFn)0x0047BCD1;
 typedef uint32_t (__thiscall* SCloneGoFn)(void* godb, const void* req, const char* templateName);
 static const auto s_sCloneGo = (SCloneGoFn)0x0054A356;
 
-typedef uint32_t (__thiscall* SCloneGoWithContentFn)(void* godb, const void* req, const char* pcontent, int zero);
-static const auto s_sCloneGoWithContent = (SCloneGoWithContentFn)0x0054A457;
+typedef void (__thiscall* PContentDataCtorFn)(void* self);
+static const auto s_pcontentDataCtor = (PContentDataCtorFn)0x005FE440;
+
+typedef void (__thiscall* PContentDataSetModifierFn)(void* self, int slot, void* pModifier);
+static const auto s_pcontentDataSetModifier = (PContentDataSetModifierFn)0x005FE4C3;
+
+typedef void (__thiscall* PContentDataDtorFn)(void* self);
+static const auto s_pcontentDataDtor = (PContentDataDtorFn)0x0053BC53;
+
+typedef void* (__thiscall* PContentFindModifierFn)(void* pcontentMgr, const char* name);
+static const auto s_pcontentFindModifier = (PContentFindModifierFn)0x005FBB88;
+
+typedef void (__thiscall* PContentApplyModifiersFn)(void* pcontentMgr, void* go, void* pcontentData);
+static const auto s_pcontentApplyModifiers = (PContentApplyModifiersFn)0x005FD042;
 
 typedef void* (__thiscall* RSAddFn)(void* inv, void* go, int loc, int origin, bool autoPlace);
 static const auto s_rsAdd = (RSAddFn)0x0057545B;
@@ -120,6 +132,15 @@ uint32_t g_localStashGoid = 0;
 int g_lastTitleMode = 0; // 0 = unset, 1 = Shared Stash, 2 = Backpack
 DWORD g_lastTitleUpdate = 0;
 
+struct StashItemRecord {
+    std::string template_name;
+    std::string variation_name;
+    int gold_value{0};
+    std::string modifier_prefix_name;
+    std::string modifier_suffix_name;
+    std::vector<std::pair<std::string, int>> spells;
+};
+
 struct AccountStash {
     std::string account;
     uint32_t heroGoid{0};
@@ -128,6 +149,7 @@ struct AccountStash {
     uint32_t lastHash{0};
     int lastItemCount{-1};
     DWORD lastSavedMs{0};
+    std::vector<StashItemRecord> unspawnedItems;
 };
 
 std::map<std::string, AccountStash> g_serverStashes; // account -> AccountStash
@@ -589,8 +611,56 @@ void SendStashPacketToClient(DWORD senderDpnid, uint32_t heroGoid, uint32_t stas
         senderDpnid, heroGoid, stashGoid, hr);
 }
 
-void* CloneAndAddItemOnServer(void* ownerGo, void* inv, const char* tmplOrPContent, int loc, bool autoPlace) {
-    if (!ownerGo || !inv || !tmplOrPContent || !*tmplOrPContent) return nullptr;
+inline void ApplyItemModifiers(void* itemGo, const std::string& pfx, const std::string& sfx) {
+    if (!itemGo || (pfx.empty() && sfx.empty())) return;
+
+    void* pcontentMgr = *(void**)0x007AD328;
+    if (!pcontentMgr || !Readable(pcontentMgr, 0x30)) {
+        Log("SharedStash: pcontentMgr not available");
+        return;
+    }
+
+    void* pfxMod = nullptr;
+    if (!pfx.empty()) {
+        pfxMod = s_pcontentFindModifier(pcontentMgr, pfx.c_str());
+        if (!pfxMod) {
+            Log("SharedStash: prefix modifier '%s' not found in PContent database", pfx.c_str());
+        }
+    }
+
+    void* sfxMod = nullptr;
+    if (!sfx.empty()) {
+        sfxMod = s_pcontentFindModifier(pcontentMgr, sfx.c_str());
+        if (!sfxMod) {
+            Log("SharedStash: suffix modifier '%s' not found in PContent database", sfx.c_str());
+        }
+    }
+
+    if (!pfxMod && !sfxMod) {
+        Log("SharedStash: no valid modifiers found for pfx='%s' sfx='%s'", pfx.c_str(), sfx.c_str());
+        return;
+    }
+
+    alignas(8) char pcontentData[128];
+    memset(pcontentData, 0, sizeof(pcontentData));
+    s_pcontentDataCtor(pcontentData);
+
+    if (pfxMod) {
+        s_pcontentDataSetModifier(pcontentData, 0, pfxMod);
+    }
+    if (sfxMod) {
+        s_pcontentDataSetModifier(pcontentData, 1, sfxMod);
+    }
+
+    s_pcontentApplyModifiers(pcontentMgr, itemGo, pcontentData);
+    s_pcontentDataDtor(pcontentData);
+
+    Log("SharedStash: applied modifiers pfx='%s' sfx='%s' to item", pfx.c_str(), sfx.c_str());
+}
+
+void* CloneAndAddItemOnServer(void* ownerGo, void* inv, const char* templateName, int loc, bool autoPlace,
+                             const std::string& pfx = "", const std::string& sfx = "") {
+    if (!ownerGo || !inv || !templateName || !*templateName) return nullptr;
     void* godb = *(void**)0x007ACF4C;
     void* placement = *(void**)((char*)ownerGo + 0x40);
     if (!godb || !placement || !Readable(placement, 0x30)) return nullptr;
@@ -607,21 +677,20 @@ void* CloneAndAddItemOnServer(void* ownerGo, void* inv, const char* tmplOrPConte
     unsigned char& reqByte30 = *((unsigned char*)req + 0x30);
     reqByte30 = (unsigned char)((reqByte30 & 0xEF) | (ownerAllClients << 4));
 
-    uint32_t newGoid = 0;
-    if (tmplOrPContent[0] == '#') {
-        newGoid = s_sCloneGoWithContent(godb, req, tmplOrPContent, 0);
-    } else {
-        newGoid = s_sCloneGo(godb, req, tmplOrPContent);
-    }
+    uint32_t newGoid = s_sCloneGo(godb, req, templateName);
     if (!newGoid || newGoid == *(uint32_t*)0x007ADC88) {
-        Log("SharedStash: clone failed for '%s'", tmplOrPContent);
+        Log("SharedStash: clone failed for '%s'", templateName);
         return nullptr;
     }
 
     void* newGo = ResolveGo(newGoid);
     if (!newGo) {
-        Log("SharedStash: failed to resolve goid 0x%08lX for '%s'", newGoid, tmplOrPContent);
+        Log("SharedStash: failed to resolve goid 0x%08lX for '%s'", newGoid, templateName);
         return nullptr;
+    }
+
+    if (!pfx.empty() || !sfx.empty()) {
+        ApplyItemModifiers(newGo, pfx, sfx);
     }
 
     s_rsAdd(inv, newGo, loc, 2 /*AO_COMMANDS*/, autoPlace);
@@ -1002,6 +1071,27 @@ void SaveStashToFile(const std::string& account, void* stashGo) {
         }
     }
 
+    auto stIt = g_serverStashes.find(account);
+    if (stIt != g_serverStashes.end()) {
+        for (const auto& itemRec : stIt->second.unspawnedItems) {
+            fprintf(f, "\t\t[%d]\n\t\t{\n", idx++);
+            fprintf(f, "\t\t\ttemplate_name = \"%s\";\n", itemRec.template_name.c_str());
+            if (!itemRec.variation_name.empty()) fprintf(f, "\t\t\tvariation_name = \"%s\";\n", itemRec.variation_name.c_str());
+            if (itemRec.gold_value > 0) fprintf(f, "\t\t\tgold_value = %d;\n", itemRec.gold_value);
+            if (!itemRec.modifier_prefix_name.empty()) fprintf(f, "\t\t\tmodifier_prefix_name = \"%s\";\n", itemRec.modifier_prefix_name.c_str());
+            if (!itemRec.modifier_suffix_name.empty()) fprintf(f, "\t\t\tmodifier_suffix_name = \"%s\";\n", itemRec.modifier_suffix_name.c_str());
+            int spIdx = 0;
+            for (const auto& sp : itemRec.spells) {
+                if (sp.second > 0) {
+                    fprintf(f, "\t\t\tspell_%d = \"%s:%d\";\n", spIdx++, sp.first.c_str(), sp.second);
+                } else {
+                    fprintf(f, "\t\t\tspell_%d = \"%s\";\n", spIdx++, sp.first.c_str());
+                }
+            }
+            fprintf(f, "\t\t}\n");
+        }
+    }
+
     fprintf(f, "\t}\n}\n");
     fclose(f);
     Log("SharedStash: saved %d item(s) to %s", idx, path.c_str());
@@ -1084,6 +1174,8 @@ void LoadStashFromFile(const std::string& account, void* hero, void* stashGo) {
         return;
     }
 
+    g_serverStashes[account].unspawnedItems.clear();
+
     char line[256];
     std::string currentTmpl, varName, pfx, sfx;
     std::vector<std::pair<std::string, int>> spells;
@@ -1125,21 +1217,17 @@ void LoadStashFromFile(const std::string& account, void* hero, void* stashGo) {
             }
         } else if (*p == '}' && !currentTmpl.empty()) {
             if (_stricmp(currentTmpl.c_str(), "gold") != 0) {
-                std::string cloneStr;
-                if (!varName.empty() || !pfx.empty() || !sfx.empty()) {
-                    cloneStr = "#" + currentTmpl;
-                    if (!varName.empty()) cloneStr += ":" + varName;
-                    if (!pfx.empty()) cloneStr += "/+" + pfx;
-                    if (!sfx.empty()) cloneStr += "/+" + sfx;
-                } else {
-                    cloneStr = currentTmpl;
+                std::string tmpl = currentTmpl;
+                if (!varName.empty()) {
+                    tmpl += ":" + varName;
                 }
 
                 if (!pfx.empty() || !sfx.empty()) {
-                    Log("SharedStash: loading enchanted item '%s'", cloneStr.c_str());
+                    Log("SharedStash: loading enchanted item '%s' pfx='%s' sfx='%s'",
+                        tmpl.c_str(), pfx.c_str(), sfx.c_str());
                 }
 
-                void* newItem = CloneAndAddItemOnServer(hero, stashInv, cloneStr.c_str(), 0x15 /*il_main*/, true /*autoPlace*/);
+                void* newItem = CloneAndAddItemOnServer(hero, stashInv, tmpl.c_str(), 0x15 /*il_main*/, true /*autoPlace*/, pfx, sfx);
                 if (newItem && Readable(newItem, 0x80)) {
                     if (gv > 0) {
                         void* aspect = *(void**)((char*)newItem + 0x04);
@@ -1157,6 +1245,10 @@ void LoadStashFromFile(const std::string& account, void* hero, void* stashGo) {
                         }
                     }
                     loaded++;
+                } else {
+                    Log("SharedStash: failed to spawn item '%s', preserving in unspawnedItems list", tmpl.c_str());
+                    auto& st = g_serverStashes[account];
+                    st.unspawnedItems.push_back({ currentTmpl, varName, gv, pfx, sfx, spells });
                 }
             }
             currentTmpl.clear();
