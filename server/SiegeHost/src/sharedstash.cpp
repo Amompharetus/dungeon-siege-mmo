@@ -574,9 +574,11 @@ void SaveStashToFile(const std::string& account, void* stashGo) {
             const char* tmpl = s_templateName(item);
             if (!tmpl || !*tmpl) continue;
 
-            // Do not store gold (Go::m_pGold is at +0x24)
+            // Do not store gold (Go::m_pGold is at +0x24) or backpacks
             bool isGold = (*(void**)((char*)item + 0x24) != nullptr) || (_stricmp(tmpl, "gold") == 0);
             if (isGold) continue;
+            void* bpInv = *(void**)((char*)item + 0x2C);
+            if (bpInv && Readable(bpInv, 0x90) && *((unsigned char*)bpInv + 0x86) != 0) continue;
 
             const char* varName = "";
             void* gui = *(void**)((char*)item + 0x28);
@@ -895,6 +897,101 @@ extern "C" void __fastcall Hook_UIPartyManager_ToggleBackpack(void* uiPartyMgr, 
     }
 }
 
+// -------------------------------------------------------------------------------------------------
+// Unique & Rare Item Color Fix (preserve gold/yellow text for pcontent_special_type)
+// -------------------------------------------------------------------------------------------------
+extern "C" const eng::gpstring* __fastcall Orig_GoGui_GetToolTipColorName(void* goGui);
+__asm__(
+    ".text\n"
+    ".globl _Orig_GoGui_GetToolTipColorName\n"
+    ".globl @Orig_GoGui_GetToolTipColorName@4\n"
+    "_Orig_GoGui_GetToolTipColorName:\n"
+    "@Orig_GoGui_GetToolTipColorName@4:\n"
+    "  testb $1, 0x007AF400\n"
+    "  pushl $0x00541E5F\n"
+    "  ret\n"
+);
+
+extern "C" const eng::gpstring* __fastcall Hook_GoGui_GetToolTipColorName(void* goGui, void* unused_edx) {
+    const eng::gpstring* res = Orig_GoGui_GetToolTipColorName(goGui);
+    if (res && res->p && *res->p) {
+        return res;
+    }
+    if (goGui && Readable(goGui, 8)) {
+        void* go = *(void**)((char*)goGui + 4);
+        if (go && Readable(go, 0x80)) {
+            typedef const eng::gpstring* (__thiscall* GetComponentStringFn)(void* go, const char* comp, const char* prop);
+            static const auto s_getCompStr = (GetComponentStringFn)0x0047C0F9;
+            const eng::gpstring* special = s_getCompStr(go, "common", "pcontent_special_type");
+            if (special && special->p && *special->p) {
+                return special;
+            }
+        }
+    }
+    return res;
+}
+
+// -------------------------------------------------------------------------------------------------
+// Backpack in Shared Stash rejection message fix ("inside Shared Stash" instead of "inside another backpack")
+// -------------------------------------------------------------------------------------------------
+static const char* kMsgBpInBp    = "$MSG$You may not place a backpack inside another backpack.\n";
+static const char* kMsgBpInStash = "$MSG$You may not place a backpack inside Shared Stash.\n";
+
+extern "C" const char* __cdecl DetermineBackpackMsg_Drop(void* param2, void* param3) {
+    if (g_sharedStashActive && g_localStashGoid != 0) {
+        if (param2 && Readable(param2, 0x50)) {
+            uint32_t goid2 = *(uint32_t*)((char*)param2 + 0x4C);
+            if (goid2 == g_localStashGoid) return kMsgBpInStash;
+        }
+        if (param3 && Readable(param3, 0x50)) {
+            uint32_t goid3 = *(uint32_t*)((char*)param3 + 0x4C);
+            if (goid3 == g_localStashGoid) return kMsgBpInStash;
+        }
+        void* uiPartyMgr = *(void**)0x007ACF90;
+        if (uiPartyMgr && Readable(uiPartyMgr, 0x1E8)) {
+            uint32_t activeBpGoid = *(uint32_t*)((char*)uiPartyMgr + 0x1E0);
+            if (activeBpGoid == g_localStashGoid) return kMsgBpInStash;
+        }
+    }
+    return kMsgBpInBp;
+}
+
+extern "C" const char* __cdecl DetermineBackpackMsg_Hover() {
+    if (g_sharedStashActive && g_localStashGoid != 0) {
+        void* uiPartyMgr = *(void**)0x007ACF90;
+        if (uiPartyMgr && Readable(uiPartyMgr, 0x1E8)) {
+            uint32_t activeBpGoid = *(uint32_t*)((char*)uiPartyMgr + 0x1E0);
+            if (activeBpGoid == g_localStashGoid) return kMsgBpInStash;
+        }
+    }
+    return kMsgBpInBp;
+}
+
+extern "C" void Hook_PushBackpackMsg_Drop();
+__asm__(
+    ".text\n"
+    ".globl _Hook_PushBackpackMsg_Drop\n"
+    "_Hook_PushBackpackMsg_Drop:\n"
+    "  pushl 12(%ebp)\n"
+    "  pushl 8(%ebp)\n"
+    "  call _DetermineBackpackMsg_Drop\n"
+    "  addl $8, %esp\n"
+    "  pushl %eax\n"
+    "  movl $0x00500900, %edx\n"
+    "  jmp *%edx\n"
+);
+
+extern "C" void Hook_PushBackpackMsg_Hover();
+__asm__(
+    ".text\n"
+    ".globl _Hook_PushBackpackMsg_Hover\n"
+    "_Hook_PushBackpackMsg_Hover:\n"
+    "  call _DetermineBackpackMsg_Hover\n"
+    "  pushl %eax\n"
+    "  movl $0x004FF318, %edx\n"
+    "  jmp *%edx\n"
+);
+
 void SharedStash_SetDirectPlay(void* dpClient, void* dpServer) {
     if (dpClient) g_dp8Client = dpClient;
     if (dpServer) g_dp8Server = dpServer;
@@ -941,6 +1038,49 @@ void SharedStash_Init() {
             VirtualProtect(pToggleBp, 6, oldProt, &oldProt);
             FlushInstructionCache(GetCurrentProcess(), pToggleBp, 6);
             Log("SharedStash: hooked UIPartyManager::ToggleBackpack at 0x0049D0F6 (spellbook SFX for backpack/stash)");
+        }
+    }
+
+    // Hook GoGui::GetToolTipColorName at 0x00541E58 (7 bytes: F6 05 00 F4 7A 00 01)
+    const BYTE kColorNameExpect[7] = { 0xF6, 0x05, 0x00, 0xF4, 0x7A, 0x00, 0x01 };
+    BYTE* pColorName = (BYTE*)0x00541E58;
+    if (Readable(pColorName, 7) && memcmp(pColorName, kColorNameExpect, 7) == 0) {
+        DWORD oldProt = 0;
+        if (VirtualProtect(pColorName, 7, PAGE_EXECUTE_READWRITE, &oldProt)) {
+            pColorName[0] = 0xE9;
+            *(int32_t*)(pColorName + 1) = (int32_t)((DWORD)(void*)&Hook_GoGui_GetToolTipColorName - (0x00541E58 + 5));
+            pColorName[5] = 0x90;
+            pColorName[6] = 0x90;
+            VirtualProtect(pColorName, 7, oldProt, &oldProt);
+            FlushInstructionCache(GetCurrentProcess(), pColorName, 7);
+            Log("SharedStash: hooked GoGui::GetToolTipColorName at 0x00541E58 (unique/rare item color fix)");
+        }
+    }
+
+    // Hook backpack rejection message (hover) at 0x004FF313 (5 bytes: 68 B0 B7 78 00)
+    const BYTE kPushMsgExpect[5] = { 0x68, 0xB0, 0xB7, 0x78, 0x00 };
+    BYTE* pMsg1 = (BYTE*)0x004FF313;
+    if (Readable(pMsg1, 5) && memcmp(pMsg1, kPushMsgExpect, 5) == 0) {
+        DWORD oldProt = 0;
+        if (VirtualProtect(pMsg1, 5, PAGE_EXECUTE_READWRITE, &oldProt)) {
+            pMsg1[0] = 0xE9;
+            *(int32_t*)(pMsg1 + 1) = (int32_t)((DWORD)(void*)&Hook_PushBackpackMsg_Hover - (0x004FF313 + 5));
+            VirtualProtect(pMsg1, 5, oldProt, &oldProt);
+            FlushInstructionCache(GetCurrentProcess(), pMsg1, 5);
+            Log("SharedStash: hooked backpack rejection message (hover) at 0x004FF313");
+        }
+    }
+
+    // Hook backpack rejection message (drop) at 0x005008FB (5 bytes: 68 B0 B7 78 00)
+    BYTE* pMsg2 = (BYTE*)0x005008FB;
+    if (Readable(pMsg2, 5) && memcmp(pMsg2, kPushMsgExpect, 5) == 0) {
+        DWORD oldProt = 0;
+        if (VirtualProtect(pMsg2, 5, PAGE_EXECUTE_READWRITE, &oldProt)) {
+            pMsg2[0] = 0xE9;
+            *(int32_t*)(pMsg2 + 1) = (int32_t)((DWORD)(void*)&Hook_PushBackpackMsg_Drop - (0x005008FB + 5));
+            VirtualProtect(pMsg2, 5, oldProt, &oldProt);
+            FlushInstructionCache(GetCurrentProcess(), pMsg2, 5);
+            Log("SharedStash: hooked backpack rejection message (drop) at 0x005008FB");
         }
     }
 
