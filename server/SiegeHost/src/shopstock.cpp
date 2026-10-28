@@ -643,7 +643,7 @@ void SweepOnce() {
         return;
     }
     // 1.0.2: the cap itself is untouched. What we changed is the number it reads: the stub in
-    // invfix.cpp recounts the character's real contents first. So the test is no longer "is the cap
+    // inventoryfix.cpp recounts the character's real contents first. So the test is no longer "is the cap
     // off" - it is "does a wrong stored counter still decide the answer". Both directions matter:
     // a counter stuck high locks players out of backpack pickup, while a counter stuck low is
     // what would let somebody carry two.

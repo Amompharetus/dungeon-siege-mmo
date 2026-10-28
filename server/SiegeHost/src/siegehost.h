@@ -90,7 +90,7 @@ std::string WorldLevelHeartbeatLines();
 void PvpZoneInstall();                  // 1.5.6: zone-based PvP + dio_nothing (src/pvpzone.cpp)
 void PvpZoneTick();
 std::string PvpZoneHeartbeatLines();
-void InvFixInstall();                   // 0.8.4: pickups that do not fit go to the backpack (src/invfix.cpp)
+void InvFixInstall();                   // 0.8.4: pickups that do not fit go to the backpack (src/inventoryfix.cpp)
 void InvFixTick();
 std::string InvFixHeartbeatLines();
 void ShopStockInstall();                // 0.8.2: backpacks on every shop's MISC tab (src/shopstock.cpp)
