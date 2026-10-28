@@ -232,8 +232,10 @@ int LiveBackpackCount(void* inv) {
         if (!Readable(it, kNodeGo + 4)) return -1;
         void* item = *(void**)((char*)it + kNodeGo);
         if (Readable(item, kGoInv + 4)) {
+            void* gui = *(void**)((char*)item + 0x28);
+            bool zeroSize = (Readable(gui, 0x20) && *(int*)((char*)gui + 0x18) == 0 && *(int*)((char*)gui + 0x1C) == 0);
             void* iinv = *(void**)((char*)item + kGoInv);
-            if (Readable(iinv, kInvIsBackpack + 1) && *(char*)((char*)iinv + kInvIsBackpack)) ++n;
+            if (!zeroSize && Readable(iinv, kInvIsBackpack + 1) && *(char*)((char*)iinv + kInvIsBackpack)) ++n;
         }
         ListAdvance(&it);
     }

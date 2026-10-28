@@ -32,6 +32,10 @@ static const auto Server_Singleton = (void* (__cdecl*)())0x0047273B;
 static const auto UIShell_FindUIWindow = (void* (__thiscall*)(void*, const char*, const char*))0x006EA5A4;
 // bool UIShell::IsInterfaceVisible(const gpstring&)
 static const auto UIShell_IsInterfaceVisible = (bool (__thiscall*)(void*, const gpstring*))0x006ECDE7;
+// void UIShell::ShowInterface(const gpstring&)
+static const auto UIShell_ShowInterface = (void (__thiscall*)(void*, const gpstring*))0x006E8C12;
+// void UIShell::HideInterface(const gpstring&)
+static const auto UIShell_HideInterface = (void (__thiscall*)(void*, const gpstring*))0x006E8C20;
 // bool UIShell::SendUIMessage(eUIMessage, const char* window, const char* interface)
 static const auto UIShell_SendUIMessage = (bool (__thiscall*)(void*, int, const char*, const char*))0x006EA737;
 
@@ -139,6 +143,20 @@ inline bool InterfaceVisible(const char* name) {
     if (!ui) return false;
     GpStr g(name);
     return UIShell_IsInterfaceVisible(ui, &g.s);
+}
+
+inline void ShowInterface(const char* name) {
+    if (void* ui = UI()) {
+        GpStr g(name);
+        UIShell_ShowInterface(ui, &g.s);
+    }
+}
+
+inline void HideInterface(const char* name) {
+    if (void* ui = UI()) {
+        GpStr g(name);
+        UIShell_HideInterface(ui, &g.s);
+    }
 }
 
 inline void* FindWindow(const char* name, const char* iface) {
