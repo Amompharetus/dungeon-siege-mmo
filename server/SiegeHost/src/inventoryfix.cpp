@@ -1,4 +1,4 @@
-// invfix.cpp
+// inventoryfix.cpp
 //
 // Two things, both about backpacks, and after 0.8.7/0.8.8/0.8.9 the second one is deliberately as
 // small as a change can be.
