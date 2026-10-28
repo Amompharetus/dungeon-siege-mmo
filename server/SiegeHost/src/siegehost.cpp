@@ -164,6 +164,9 @@ static void LoadConfig() {
     g_cfg.jgEnabled = GetPrivateProfileIntA("JoinGuard", "Enabled", 1, ini.c_str());
     g_cfg.jgKey = IniString("JoinGuard", "Key", "", ini);
     g_cfg.jgServerId = IniString("JoinGuard", "ServerId", "", ini);
+    g_cfg.portalHubUrl   = IniString("Portal", "HubUrl", "", ini);
+    g_cfg.portalShardId  = IniString("Portal", "ShardId", "", ini);
+    g_cfg.portalShardKey = IniString("Portal", "ShardKey", "", ini);
 }
 
 // ----------------------------------------------------------------------------------------------

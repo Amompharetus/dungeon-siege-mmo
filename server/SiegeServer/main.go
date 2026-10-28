@@ -30,7 +30,7 @@ import (
 const version = "0.7.3"
 
 // defaultSendFrequency is the engine multiplayer send rate we ship. The engine's own default is 5 Hz
-// (200 ms between network flushes, measured in lab testing); 30 Hz is the lab-verified value.
+// (200 ms between network flushes, measured in lab T-20260917-49); 30 Hz is the lab-verified value.
 // An absent "send_frequency" key means "use this", so a server whose config update.sh preserved
 // still picks the fix up. An explicit 0 keeps the engine default.
 const defaultSendFrequency = 30
@@ -70,7 +70,7 @@ type Config struct {
 	Map              string `json:"map"`                 // internal map name (default "multiplayer_world" = Utraean Peninsula; "-" = game default)
 	World            string `json:"world"`               // regular/veteran/elite; empty = game default
 	StartLocation    string `json:"start_location"`      // start group for every player (default "elddim"; "-" = map default)
-	GamePort         int    `json:"game_port"`           // fixed DirectPlay host UDP port clients search directly (default 2350, -1 = dynamic)
+	GamePort         int    `json:"game_port"`           // fixed DirectPlay host UDP port clients search directly (default 2350, -1 = dynamic). MC-026
 	SendFrequency    *int   `json:"send_frequency,omitempty"` // engine multiplayer send rate in Hz. Absent = 30; 0 = leave the engine default (5)
 	PickStartTown    *bool  `json:"pick_start_town,omitempty"` // players choose their start town in staging. Absent = true; false = everyone at start_location
 
@@ -95,7 +95,7 @@ type Config struct {
 	// that port on a machine, so the first game server to start takes it and every later one fails its
 	// Host() with DPNERR_DPNSVRNOTAVAILABLE (0x80158185) after a 13 second timeout. A box running more than
 	// one shard needs this on. The host then listens on game_port itself, which is where the launcher sends
-	// players anyway, so nothing is lost: dpnsvr only ever served the engine's own LAN browser.
+	// players anyway (MC-026), so nothing is lost: dpnsvr only ever served the engine's own LAN browser.
 	NoDpnsvr bool `json:"no_dpnsvr,omitempty"`
 }
 
@@ -225,6 +225,9 @@ func gameCmd(cfg Config, base string) *exec.Cmd {
 		content += fmt.Sprintf("[JoinGuard]\r\nEnabled=1\r\nServerId=%s\r\nKey=%s\r\n", cfg.ShardID, hex.EncodeToString(m.Sum(nil)))
 	} else {
 		content += "[JoinGuard]\r\nEnabled=0\r\n"
+	}
+	if cfg.HubURL != "" {
+		content += fmt.Sprintf("[Portal]\r\nHubUrl=%s\r\nShardId=%s\r\nShardKey=%s\r\n", cfg.HubURL, cfg.ShardID, cfg.ShardKey)
 	}
 	_ = os.WriteFile(ini, []byte(content), 0o600)
 	_ = os.Chmod(ini, 0o600) // holds the join key

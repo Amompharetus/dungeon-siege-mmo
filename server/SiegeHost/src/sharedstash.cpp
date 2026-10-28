@@ -3,11 +3,14 @@
 #include "characterabilities.h"
 #include "siegehost.h"
 #include "engine.h"
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <windows.h>
 #include <cstdint>
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -227,6 +230,54 @@ void ZeroStashGoFootprint(void* heroInv, void* stashGo) {
         }
         *(int*)((char*)heroInv + 0x88) = realBackpacks;
     }
+}
+
+void* FindHeroStashGo(void* inv) {
+    if (!inv || !Readable(inv, 0x80)) return nullptr;
+    void* heroGo = *(void**)((char*)inv + 0x04);
+    if (!heroGo || !Readable(heroGo, 0x90)) return nullptr;
+    uint32_t heroGoid = *(uint32_t*)((char*)heroGo + 0x4C);
+
+    // 1. Check server stashes
+    for (const auto& kv : g_serverStashes) {
+        if (kv.second.heroGoid == heroGoid) {
+            void* stashGo = ResolveGo(kv.second.stashGoid);
+            if (stashGo && Readable(stashGo, 0x80)) return stashGo;
+        }
+    }
+
+    // 2. Check client stash
+    if (g_localStashGoid != 0) {
+        void* stashGo = ResolveGo(g_localStashGoid);
+        if (stashGo && Readable(stashGo, 0x80)) {
+            void** b = *(void***)((char*)heroGo + 0x88);
+            void** e = *(void***)((char*)heroGo + 0x8C);
+            if (b && e && e > b && (size_t)(e - b) <= 4096) {
+                for (void** it = b; it != e; ++it) {
+                    if (*it == stashGo) return stashGo;
+                }
+            }
+        }
+    }
+
+    // 3. Search hero's children for dsx_backpack_empty at il_invalid
+    void** b = *(void***)((char*)heroGo + 0x88);
+    void** e = *(void***)((char*)heroGo + 0x8C);
+    if (b && e && e > b && (size_t)(e - b) <= 4096) {
+        for (void** it = b; it != e; ++it) {
+            void* child = *it;
+            if (!child || !Readable(child, 0x98)) continue;
+            if ((*((unsigned char*)child + 0x96) & 8) != 0) continue;
+            const char* tmpl = s_templateName(child);
+            if (tmpl && _stricmp(tmpl, "dsx_backpack_empty") == 0) {
+                int loc = GetInventoryDbLocation(inv, child);
+                if (loc == 0x11 /*il_invalid*/) {
+                    return child;
+                }
+            }
+        }
+    }
+    return nullptr;
 }
 
 float GetHeroUberLevel(void* hero) {
@@ -521,6 +572,267 @@ std::string GetStashFilePath(const std::string& account) {
     return "stash/" + SanitizeFilename(account) + ".gas";
 }
 
+// -------------------------------------------------------------------------------------------------
+// Cross-server Stash Sync via Central Portal
+// -------------------------------------------------------------------------------------------------
+enum class SyncTaskType {
+    Download,
+    Upload
+};
+
+struct SyncTask {
+    SyncTaskType type;
+    std::string account;
+    std::string data;
+};
+
+static CRITICAL_SECTION g_syncCs;
+static bool g_syncCsInit = false;
+static HANDLE g_syncEvent = NULL;
+static HANDLE g_syncThread = NULL;
+static volatile bool g_syncStop = false;
+static std::vector<SyncTask> g_syncQueue;
+static std::string g_activeSyncAccount;
+static std::set<std::string> g_syncedAccounts;
+
+static bool ParseUrl(const std::string& url, std::string& host, std::string& port) {
+    if (url.empty()) return false;
+    std::string s = url;
+    if (s.rfind("http://", 0) == 0) {
+        s = s.substr(7);
+    }
+    size_t slash = s.find('/');
+    if (slash != std::string::npos) {
+        s = s.substr(0, slash);
+    }
+    size_t colon = s.find(':');
+    if (colon != std::string::npos) {
+        host = s.substr(0, colon);
+        port = s.substr(colon + 1);
+    } else {
+        host = s;
+        port = "80";
+    }
+    return !host.empty();
+}
+
+static bool PortalHttpRequest(const char* method, const std::string& pathAndQuery, const std::string& body, std::string& outBody, int& outStatus) {
+    outStatus = 0;
+    outBody.clear();
+    if (Cfg().portalHubUrl.empty() || Cfg().portalShardId.empty() || Cfg().portalShardKey.empty()) {
+        return false;
+    }
+    std::string host, port;
+    if (!ParseUrl(Cfg().portalHubUrl, host, port)) {
+        return false;
+    }
+
+    struct addrinfo hints{}, *res = nullptr;
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    if (getaddrinfo(host.c_str(), port.c_str(), &hints, &res) != 0 || !res) {
+        Log("SharedStash: getaddrinfo failed for %s:%s", host.c_str(), port.c_str());
+        return false;
+    }
+
+    SOCKET s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if (s == INVALID_SOCKET) {
+        freeaddrinfo(res);
+        return false;
+    }
+
+    DWORD timeoutMs = 5000;
+    setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeoutMs, sizeof(timeoutMs));
+    setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeoutMs, sizeof(timeoutMs));
+
+    if (connect(s, res->ai_addr, (int)res->ai_addrlen) != 0) {
+        Log("SharedStash: connect failed to %s:%s", host.c_str(), port.c_str());
+        closesocket(s);
+        freeaddrinfo(res);
+        return false;
+    }
+    freeaddrinfo(res);
+
+    std::string req = std::string(method) + " " + pathAndQuery + " HTTP/1.1\r\n"
+                    + "Host: " + host + ":" + port + "\r\n"
+                    + "X-Shard-Id: " + Cfg().portalShardId + "\r\n"
+                    + "X-Shard-Key: " + Cfg().portalShardKey + "\r\n"
+                    + "Connection: close\r\n";
+    if (!body.empty() || strcmp(method, "PUT") == 0) {
+        req += "Content-Type: text/plain; charset=utf-8\r\n";
+        req += "Content-Length: " + std::to_string(body.size()) + "\r\n";
+    }
+    req += "\r\n";
+    if (!body.empty()) {
+        req += body;
+    }
+
+    int sent = send(s, req.data(), (int)req.size(), 0);
+    if (sent <= 0) {
+        closesocket(s);
+        return false;
+    }
+
+    std::string resp;
+    char buf[4096];
+    int n = 0;
+    while ((n = recv(s, buf, sizeof(buf), 0)) > 0) {
+        resp.append(buf, n);
+    }
+    closesocket(s);
+
+    if (resp.size() < 12) return false;
+    size_t space = resp.find(' ');
+    if (space == std::string::npos || space + 3 >= resp.size()) return false;
+    outStatus = atoi(resp.c_str() + space + 1);
+
+    size_t headerEnd = resp.find("\r\n\r\n");
+    if (headerEnd != std::string::npos) {
+        outBody = resp.substr(headerEnd + 4);
+    }
+    return true;
+}
+
+static bool SyncStashFromCentral(const std::string& account) {
+    if (Cfg().role != Role::Server) return false;
+    if (Cfg().portalHubUrl.empty()) return false;
+
+    std::string pathAndQuery = "/api/shard/stash?account=" + SanitizeFilename(account);
+    std::string outBody;
+    int status = 0;
+    bool ok = PortalHttpRequest("GET", pathAndQuery, "", outBody, status);
+    if (!ok) {
+        Log("SharedStash: failed to reach central portal to fetch stash for account '%s'", account.c_str());
+        return false;
+    }
+    if (status == 200) {
+        std::string filePath = GetStashFilePath(account);
+        FILE* f = fopen(filePath.c_str(), "wb");
+        if (f) {
+            fwrite(outBody.data(), 1, outBody.size(), f);
+            fclose(f);
+            Log("SharedStash: downloaded latest stash for account '%s' (%zu bytes) from central portal",
+                account.c_str(), outBody.size());
+            return true;
+        }
+    } else if (status == 404) {
+        Log("SharedStash: no stash on central portal for account '%s' (new/empty stash)", account.c_str());
+        return true;
+    } else {
+        Log("SharedStash: central portal returned HTTP %d for account '%s'", status, account.c_str());
+    }
+    return false;
+}
+
+static bool UploadStashToCentral(const std::string& account, const std::string& data) {
+    if (Cfg().role != Role::Server) return false;
+    if (Cfg().portalHubUrl.empty()) return false;
+
+    std::string pathAndQuery = "/api/shard/stash?account=" + SanitizeFilename(account);
+    std::string outBody;
+    int status = 0;
+    bool ok = PortalHttpRequest("PUT", pathAndQuery, data, outBody, status);
+    if (ok && status == 200) {
+        Log("SharedStash: uploaded stash for account '%s' (%zu bytes) to central portal", account.c_str(), data.size());
+        return true;
+    } else {
+        Log("SharedStash: failed to upload stash for account '%s' to central portal (status=%d, ok=%d)",
+            account.c_str(), status, (int)ok);
+        return false;
+    }
+}
+
+static DWORD WINAPI StashSyncWorkerThread(LPVOID) {
+    while (!g_syncStop) {
+        WaitForSingleObject(g_syncEvent, 1000);
+        if (g_syncStop) break;
+
+        SyncTask task{};
+        bool hasTask = false;
+
+        EnterCriticalSection(&g_syncCs);
+        if (!g_syncQueue.empty()) {
+            task = g_syncQueue.front();
+            g_syncQueue.erase(g_syncQueue.begin());
+            g_activeSyncAccount = task.account;
+            hasTask = true;
+        }
+        LeaveCriticalSection(&g_syncCs);
+
+        if (hasTask) {
+            if (task.type == SyncTaskType::Download) {
+                SyncStashFromCentral(task.account);
+                EnterCriticalSection(&g_syncCs);
+                g_syncedAccounts.insert(task.account);
+                LeaveCriticalSection(&g_syncCs);
+            } else if (task.type == SyncTaskType::Upload) {
+                UploadStashToCentral(task.account, task.data);
+            }
+
+            EnterCriticalSection(&g_syncCs);
+            g_activeSyncAccount.clear();
+            LeaveCriticalSection(&g_syncCs);
+        }
+    }
+    return 0;
+}
+
+static void QueueStashDownload(const std::string& account) {
+    if (Cfg().role != Role::Server || Cfg().portalHubUrl.empty()) return;
+    EnterCriticalSection(&g_syncCs);
+    bool exists = false;
+    for (const auto& item : g_syncQueue) {
+        if (item.account == account) {
+            exists = true;
+            break;
+        }
+    }
+    if (!exists) {
+        g_syncQueue.push_back({ SyncTaskType::Download, account, "" });
+    }
+    LeaveCriticalSection(&g_syncCs);
+    SetEvent(g_syncEvent);
+}
+
+static void QueueStashUpload(const std::string& account, const std::string& content) {
+    if (Cfg().role != Role::Server || Cfg().portalHubUrl.empty()) return;
+    EnterCriticalSection(&g_syncCs);
+    bool replaced = false;
+    for (auto& item : g_syncQueue) {
+        if (item.type == SyncTaskType::Upload && item.account == account) {
+            item.data = content;
+            replaced = true;
+            break;
+        }
+    }
+    if (!replaced) {
+        g_syncQueue.push_back({ SyncTaskType::Upload, account, content });
+    }
+    LeaveCriticalSection(&g_syncCs);
+    SetEvent(g_syncEvent);
+}
+
+static void FlushAccountUpload(const std::string& account, DWORD maxWaitMs) {
+    if (Cfg().role != Role::Server || Cfg().portalHubUrl.empty()) return;
+    SetEvent(g_syncEvent);
+    DWORD start = GetTickCount();
+    while (GetTickCount() - start < maxWaitMs) {
+        bool pending = false;
+        EnterCriticalSection(&g_syncCs);
+        for (const auto& item : g_syncQueue) {
+            if (item.type == SyncTaskType::Upload && item.account == account) {
+                pending = true;
+                break;
+            }
+        }
+        if (g_activeSyncAccount == account) pending = true;
+        LeaveCriticalSection(&g_syncCs);
+
+        if (!pending) break;
+        Sleep(20);
+    }
+}
+
 uint32_t ComputeStashHash(void* stashGo) {
     if (!stashGo || !Readable(stashGo, 0x90)) return 0;
     void** b = *(void***)((char*)stashGo + 0x88);
@@ -630,10 +942,72 @@ void SaveStashToFile(const std::string& account, void* stashGo) {
     fprintf(f, "\t}\n}\n");
     fclose(f);
     Log("SharedStash: saved %d item(s) to %s", idx, path.c_str());
+
+    // Read back saved content and queue upload to central portal
+    if (Cfg().role == Role::Server && !Cfg().portalHubUrl.empty()) {
+        std::string content;
+        FILE* rf = fopen(path.c_str(), "rb");
+        if (rf) {
+            fseek(rf, 0, SEEK_END);
+            long sz = ftell(rf);
+            fseek(rf, 0, SEEK_SET);
+            if (sz > 0 && sz < 10 * 1024 * 1024) {
+                content.resize(sz);
+                fread(&content[0], 1, sz, rf);
+            }
+            fclose(rf);
+        }
+        if (!content.empty()) {
+            QueueStashUpload(account, content);
+        }
+    }
 }
 
 void LoadStashFromFile(const std::string& account, void* hero, void* stashGo) {
     if (account.empty() || !hero || !stashGo || !Readable(stashGo, 0x90)) return;
+
+    if (Cfg().role == Role::Server && !Cfg().portalHubUrl.empty()) {
+        bool needWait = false;
+        EnterCriticalSection(&g_syncCs);
+        for (const auto& item : g_syncQueue) {
+            if (item.type == SyncTaskType::Download && item.account == account) {
+                needWait = true;
+                break;
+            }
+        }
+        if (!needWait && g_activeSyncAccount == account) needWait = true;
+        LeaveCriticalSection(&g_syncCs);
+
+        if (needWait) {
+            DWORD start = GetTickCount();
+            while (GetTickCount() - start < 1000) {
+                Sleep(20);
+                bool done = true;
+                EnterCriticalSection(&g_syncCs);
+                for (const auto& item : g_syncQueue) {
+                    if (item.type == SyncTaskType::Download && item.account == account) {
+                        done = false;
+                        break;
+                    }
+                }
+                if (g_activeSyncAccount == account) done = false;
+                LeaveCriticalSection(&g_syncCs);
+                if (done) break;
+            }
+        } else {
+            bool synced = false;
+            EnterCriticalSection(&g_syncCs);
+            synced = (g_syncedAccounts.find(account) != g_syncedAccounts.end());
+            LeaveCriticalSection(&g_syncCs);
+            if (!synced) {
+                SyncStashFromCentral(account);
+                EnterCriticalSection(&g_syncCs);
+                g_syncedAccounts.insert(account);
+                LeaveCriticalSection(&g_syncCs);
+            }
+        }
+    }
+
     std::string path = GetStashFilePath(account);
     FILE* f = fopen(path.c_str(), "r");
     if (!f) {
@@ -992,12 +1366,112 @@ __asm__(
     "  jmp *%edx\n"
 );
 
+// -------------------------------------------------------------------------------------------------
+// Fix Ctrl+Click Drop & Drop From Shared Stash
+// -------------------------------------------------------------------------------------------------
+extern "C" bool __fastcall Orig_GoInventory_ContainsIncludeBackpacks(void* inv, void* unused_edx, void* itemGo);
+__asm__(
+    ".text\n"
+    ".globl _Orig_GoInventory_ContainsIncludeBackpacks\n"
+    ".globl @Orig_GoInventory_ContainsIncludeBackpacks@12\n"
+    "_Orig_GoInventory_ContainsIncludeBackpacks:\n"
+    "@Orig_GoInventory_ContainsIncludeBackpacks@12:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  pushl %ecx\n"
+    "  pushl %ecx\n"
+    "  pushl %ebx\n"
+    "  movl $0x00573762, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" bool __fastcall Hook_GoInventory_ContainsIncludeBackpacks(void* inv, void* unused_edx, void* itemGo) {
+    if (Orig_GoInventory_ContainsIncludeBackpacks(inv, unused_edx, itemGo)) {
+        return true;
+    }
+    void* stashGo = FindHeroStashGo(inv);
+    if (stashGo) {
+        void* stashInv = *(void**)((char*)stashGo + 0x2C);
+        if (stashInv && Readable(stashInv, 0x80)) {
+            typedef bool (__thiscall* ContainsFn)(void*, void*);
+            static const auto s_contains = (ContainsFn)0x00573731;
+            if (s_contains(stashInv, itemGo)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+extern "C" bool __fastcall Orig_GoInventory_RemoveFromDbAndPlaceInWorld(void* inv, void* unused_edx, void* itemGo, void* p2, void* p3, void* p4);
+__asm__(
+    ".text\n"
+    ".globl _Orig_GoInventory_RemoveFromDbAndPlaceInWorld\n"
+    ".globl @Orig_GoInventory_RemoveFromDbAndPlaceInWorld@24\n"
+    "_Orig_GoInventory_RemoveFromDbAndPlaceInWorld:\n"
+    "@Orig_GoInventory_RemoveFromDbAndPlaceInWorld@24:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  subl $0x3C, %esp\n"
+    "  movl $0x005764F2, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" bool __fastcall Hook_GoInventory_RemoveFromDbAndPlaceInWorld(void* inv, void* unused_edx, void* itemGo, void* p2, void* p3, void* p4) {
+    if (Orig_GoInventory_RemoveFromDbAndPlaceInWorld(inv, unused_edx, itemGo, p2, p3, p4)) {
+        return true;
+    }
+    void* stashGo = FindHeroStashGo(inv);
+    if (stashGo) {
+        void* stashInv = *(void**)((char*)stashGo + 0x2C);
+        if (stashInv && Readable(stashInv, 0x80)) {
+            bool ok = Orig_GoInventory_RemoveFromDbAndPlaceInWorld(stashInv, unused_edx, itemGo, p2, p3, p4);
+            if (ok) {
+                void* heroGo = *(void**)((char*)inv + 0x04);
+                if (heroGo && Readable(heroGo, 0x80)) {
+                    uint32_t heroGoid = *(uint32_t*)((char*)heroGo + 0x4C);
+                    for (auto& kv : g_serverStashes) {
+                        if (kv.second.heroGoid == heroGoid) {
+                            kv.second.lastHash = ComputeStashHash(stashGo);
+                            void** b = *(void***)((char*)stashGo + 0x88);
+                            void** e = *(void***)((char*)stashGo + 0x8C);
+                            kv.second.lastItemCount = (b && e && e >= b) ? (int)(e - b) : 0;
+                            SaveStashToFile(kv.second.account, stashGo);
+                            kv.second.lastSavedMs = GetTickCount();
+                            break;
+                        }
+                    }
+                }
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void SharedStash_SetDirectPlay(void* dpClient, void* dpServer) {
     if (dpClient) g_dp8Client = dpClient;
     if (dpServer) g_dp8Server = dpServer;
 }
 
 void SharedStash_Init() {
+    // Initialize Winsock
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+    // Initialize sync worker
+    if (!g_syncCsInit) {
+        InitializeCriticalSection(&g_syncCs);
+        g_syncCsInit = true;
+    }
+    if (!g_syncEvent) {
+        g_syncEvent = CreateEventA(NULL, FALSE, FALSE, NULL);
+    }
+    if (!g_syncThread && Cfg().role == Role::Server) {
+        g_syncStop = false;
+        g_syncThread = CreateThread(NULL, 0, StashSyncWorkerThread, NULL, 0, NULL);
+    }
+
     if (!g_stashPktCsInit) {
         InitializeCriticalSection(&g_stashPktCs);
         g_stashPktCsInit = true;
@@ -1084,6 +1558,36 @@ void SharedStash_Init() {
         }
     }
 
+    // Hook GoInventory::ContainsIncludeBackpacks at 0x0057375C (6 bytes: 55 8B EC 51 51 53)
+    const BYTE kContainsExpect[6] = { 0x55, 0x8B, 0xEC, 0x51, 0x51, 0x53 };
+    BYTE* pContains = (BYTE*)0x0057375C;
+    if (Readable(pContains, 6) && memcmp(pContains, kContainsExpect, 6) == 0) {
+        DWORD oldProt = 0;
+        if (VirtualProtect(pContains, 6, PAGE_EXECUTE_READWRITE, &oldProt)) {
+            pContains[0] = 0xE9;
+            *(int32_t*)(pContains + 1) = (int32_t)((DWORD)(void*)&Hook_GoInventory_ContainsIncludeBackpacks - (0x0057375C + 5));
+            pContains[5] = 0x90;
+            VirtualProtect(pContains, 6, oldProt, &oldProt);
+            FlushInstructionCache(GetCurrentProcess(), pContains, 6);
+            Log("SharedStash: hooked GoInventory::ContainsIncludeBackpacks at 0x0057375C (drop fix)");
+        }
+    }
+
+    // Hook GoInventory::RemoveFromDbAndPlaceInWorld at 0x005764EC (6 bytes: 55 8B EC 83 EC 3C)
+    const BYTE kRemoveExpect[6] = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x3C };
+    BYTE* pRemove = (BYTE*)0x005764EC;
+    if (Readable(pRemove, 6) && memcmp(pRemove, kRemoveExpect, 6) == 0) {
+        DWORD oldProt = 0;
+        if (VirtualProtect(pRemove, 6, PAGE_EXECUTE_READWRITE, &oldProt)) {
+            pRemove[0] = 0xE9;
+            *(int32_t*)(pRemove + 1) = (int32_t)((DWORD)(void*)&Hook_GoInventory_RemoveFromDbAndPlaceInWorld - (0x005764EC + 5));
+            pRemove[5] = 0x90;
+            VirtualProtect(pRemove, 6, oldProt, &oldProt);
+            FlushInstructionCache(GetCurrentProcess(), pRemove, 6);
+            Log("SharedStash: hooked GoInventory::RemoveFromDbAndPlaceInWorld at 0x005764EC (drop fix)");
+        }
+    }
+
     Log("SharedStash: module initialized.");
 }
 
@@ -1091,6 +1595,7 @@ void SharedStash_OnPlayerJoin(DWORD mach, const char* account) {
     if (account && *account) {
         g_machToAccount[mach] = account;
         Log("SharedStash: mapped mach 0x%08lX to account '%s'", mach, account);
+        QueueStashDownload(account);
     }
 }
 
@@ -1108,6 +1613,7 @@ void SharedStash_OnPlayerLeave(DWORD mach) {
             g_serverStashes.erase(stIt);
             Log("SharedStash: saved and cleaned up stash for account '%s'", account.c_str());
         }
+        FlushAccountUpload(account, 1000);
     }
 }
 

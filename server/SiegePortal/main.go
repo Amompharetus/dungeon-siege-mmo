@@ -193,6 +193,8 @@ func main() {
 	mux.HandleFunc("GET /files/", p.handleFiles)
 	mux.HandleFunc("GET /api/manifest", p.handleManifest)
 	mux.HandleFunc("POST /api/shard/heartbeat", p.handleShardHeartbeat)
+	mux.HandleFunc("GET /api/shard/stash", p.handleGetShardStash)
+	mux.HandleFunc("PUT /api/shard/stash", p.handlePutShardStash)
 	mux.HandleFunc("POST /api/servers/wake", p.auth(p.handleWake))
 	p.startOnDemandLoops()
 
@@ -464,19 +466,96 @@ func (p *Portal) serverList() []map[string]any {
 	return list
 }
 
-// POST /api/shard/heartbeat  (X-Shard-Id, X-Shard-Key)  body: {"fields":{...heartbeat.txt...},"address":"1.2.3.4"}
-func (p *Portal) handleShardHeartbeat(w http.ResponseWriter, r *http.Request) {
+func (p *Portal) checkShardAuth(r *http.Request) (*ServerEntry, bool) {
 	id, key := r.Header.Get("X-Shard-Id"), r.Header.Get("X-Shard-Key")
-	var entry *ServerEntry
 	for i := range p.cfg.Servers {
 		if p.cfg.Servers[i].ID == id {
-			entry = &p.cfg.Servers[i]
+			entry := &p.cfg.Servers[i]
+			if entry.ShardKey != "" && hmac.Equal([]byte(key), []byte(entry.ShardKey)) {
+				return entry, true
+			}
+			return nil, false
 		}
 	}
-	if entry == nil || entry.ShardKey == "" || !hmac.Equal([]byte(key), []byte(entry.ShardKey)) {
+	return nil, false
+}
+
+func sanitizeAccount(s string) string {
+	var b strings.Builder
+	for _, c := range strings.ToLower(s) {
+		if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-' {
+			b.WriteRune(c)
+		}
+	}
+	return b.String()
+}
+
+// GET /api/shard/stash?account=<name> (X-Shard-Id, X-Shard-Key)
+func (p *Portal) handleGetShardStash(w http.ResponseWriter, r *http.Request) {
+	if _, ok := p.checkShardAuth(r); !ok {
 		jsonErr(w, 403, "unknown shard or bad key")
 		return
 	}
+	acct := sanitizeAccount(r.URL.Query().Get("account"))
+	if acct == "" {
+		jsonErr(w, 400, "missing account")
+		return
+	}
+	path := filepath.Join(p.cfg.DataDir, "stash", acct+".gas")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		jsonErr(w, 500, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
+
+// PUT /api/shard/stash?account=<name> (X-Shard-Id, X-Shard-Key) body: gas file contents
+func (p *Portal) handlePutShardStash(w http.ResponseWriter, r *http.Request) {
+	if _, ok := p.checkShardAuth(r); !ok {
+		jsonErr(w, 403, "unknown shard or bad key")
+		return
+	}
+	acct := sanitizeAccount(r.URL.Query().Get("account"))
+	if acct == "" {
+		jsonErr(w, 400, "missing account")
+		return
+	}
+	data, err := io.ReadAll(io.LimitReader(r.Body, 4<<20))
+	if err != nil {
+		jsonErr(w, 400, "could not read body")
+		return
+	}
+	dir := filepath.Join(p.cfg.DataDir, "stash")
+	_ = os.MkdirAll(dir, 0o755)
+	tmp := filepath.Join(dir, fmt.Sprintf(".%s.%d.tmp", acct, time.Now().UnixNano()))
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		jsonErr(w, 500, "write error: "+err.Error())
+		return
+	}
+	dest := filepath.Join(dir, acct+".gas")
+	if err := os.Rename(tmp, dest); err != nil {
+		jsonErr(w, 500, "rename error: "+err.Error())
+		return
+	}
+	log.Printf("shard stash saved: %s (%d bytes)", acct, len(data))
+	jsonOut(w, map[string]any{"ok": true})
+}
+
+// POST /api/shard/heartbeat  (X-Shard-Id, X-Shard-Key)  body: {"fields":{...heartbeat.txt...},"address":"1.2.3.4"}
+func (p *Portal) handleShardHeartbeat(w http.ResponseWriter, r *http.Request) {
+	entry, ok := p.checkShardAuth(r)
+	if !ok {
+		jsonErr(w, 403, "unknown shard or bad key")
+		return
+	}
+	id := entry.ID
 	var body struct {
 		Fields  map[string]string `json:"fields"`
 		Address string            `json:"address"`
