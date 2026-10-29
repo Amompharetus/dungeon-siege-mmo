@@ -648,10 +648,11 @@ bool IsOfficialTemplate(const char* tmpl) {
         return false;
     }
 
-    eng::gpstring s; char alloc[4] = {0};
-    eng::gpstring_ctor(&s, tmpl, alloc);
-    void* rec = ((void* (__thiscall*)(void*, const eng::gpstring*))0x0052683C)(cdb, &s);
-    eng::gpstring_dtor(&s);
+    auto findRec = (void* (__thiscall*)(void*, const char*))0x0052683C;
+    void* rec = findRec(cdb, tmpl);
+    if (!rec && lower != tmpl) {
+        rec = findRec(cdb, lower.c_str());
+    }
 
     return rec != nullptr;
 }
