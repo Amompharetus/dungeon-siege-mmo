@@ -248,6 +248,31 @@ static void BuildMaxPlayersPatch(std::vector<Patch>& out) {
 }
 
 // ----------------------------------------------------------------------------------------------
+// Staging screen: disable the "Import Character" button so clicking it does nothing (not hidden)
+// ----------------------------------------------------------------------------------------------
+static void StagingImportDisableInstall() {
+    // In DSLOA.exe v1.50, UIMultiplayer::ReceiveNotify (0x004803EF) routes both
+    // staging_import_character and staging_import_dsx_character to 0x00485351.
+    // Original code at 0x00485351: 68 8C C6 77 00 (push 0x77C68C)
+    // Function epilogue at 0x00485583: 5F 5E 5B C9 C2 08 00 (pop edi; pop esi; pop ebx; leave; ret 8)
+    // Patching with a relative jmp (0xE9 0x0000022D) safely exits the notify handler,
+    // so the button plays its click animation/sound normally but performs no import.
+    const DWORD target = 0x00485351;
+    const DWORD dest   = 0x00485583;
+    const BYTE expect[5] = { 0x68, 0x8C, 0xC6, 0x77, 0x00 };
+    BYTE patch[5] = { 0xE9, 0, 0, 0, 0 };
+    DWORD rel = dest - (target + 5);
+    memcpy(patch + 1, &rel, 4);
+
+    if (memcmp((void*)target, expect, 5) == 0) {
+        WriteCode(target, patch, 5);
+        Log("StagingImport: disabled import button at 0x%08lX (jmp 0x%08lX). Button remains visible and clickable, but does nothing.", target, dest);
+    } else {
+        Log("StagingImport: unexpected bytes at 0x%08lX, patch skipped.", target);
+    }
+}
+
+// ----------------------------------------------------------------------------------------------
 // DirectPlay 8 instrumentation (IAT hook on ole32!CoCreateInstance -> vtable hooks)
 // ----------------------------------------------------------------------------------------------
 static const GUID CLSID_DP8Server = {0xDA825E1B, 0x6830, 0x43D7, {0x83, 0x5D, 0x0B, 0x5A, 0xD8, 0x29, 0x56, 0xA2}};
@@ -799,6 +824,7 @@ static void Startup() {
     PvpZoneInstall();
     CharacterAbilities_Init();
     SharedStash_Init();
+    StagingImportDisableInstall();
     if (g_cfg.role == Role::Server) { AreaScaleInstall(); ShopStockInstall(); InvFixInstall(); QuestModeInstall(); JipQueueInstall(); }
     else { InvFixInstall(); QuestModeInstall(); ShopStockClientInstall(); }   // 0.9.0: the backpack cap has to come off on a player's own machine too
     if (g_cfg.role == Role::Client) { ChatFixInstall(); PartyPanelInstall(); PortraitFixInstall(); if (g_cfg.showOtherPlayers) PanelHostFilterInstall(); PortraitDiagInstall(); ChatDiagInstall(); AreaScaleClientDiagInstall(); }
