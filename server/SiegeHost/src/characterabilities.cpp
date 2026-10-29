@@ -617,11 +617,24 @@ void BroadcastAbilityPacketToClients(uint32_t heroGoid, int slot) {
 }
 
 bool IsChatActive() {
-    if (eng::InterfaceVisible("game_console_mp")) return true;
-    if (eng::InterfaceVisible("game_console")) return true;
-    if (eng::InterfaceVisible("staging_area")) return true;
-    if (eng::InterfaceVisible("staging_area_create_character")) return true;
-    if (eng::InterfaceVisible("end_game_summary")) return true;
+    // 1. In-game console chat edit box
+    if (eng::WindowVisible("console_edit", "game_console_mp")) return true;
+    if (eng::WindowVisible("staging_char_name_edit_box", "staging_area_create_character")) return true;
+    if (eng::WindowVisible("staging_area_chat_editbox", "staging_area")) return true;
+    if (eng::WindowVisible("end_game_chat_editbox", "end_game_summary")) return true;
+
+    // 2. In-game UI text / chat input lock flag on WorldOptions
+    void* wo = *(void**)0x007ACFD4;
+    if (wo && Readable(wo, 0x50) && *((const unsigned char*)wo + 0x46) != 0) {
+        return true;
+    }
+
+    // 3. Single-player / dev console active flag on Game
+    void* game = *(void**)0x007ACF8C;
+    if (game && Readable(game, 0x100) && *((const unsigned char*)game + 0xFC) != 0) {
+        return true;
+    }
+
     return false;
 }
 
@@ -971,15 +984,11 @@ static void SetTextWindow(void* w, const char* text, DWORD color, char* cachedSt
 }
 
 static bool IsInventoryOpen() {
-    void* ui = eng::UI();
-    if (!ui) return false;
-
-    if (eng::InterfaceVisible("character")) return true;
-
-    void* arrange = eng::FindWindow("button_arrange", "inventory");
-    if (arrange && *(bool*)((char*)arrange + 0x108)) return true;
-
-    return false;
+    void* uiPartyMgr = *(void**)0x007ACF90;
+    if (!uiPartyMgr || !Readable(uiPartyMgr, 0x60)) return false;
+    bool charVis = eng::InterfaceVisible("character");
+    bool gridOpen = (*((const char*)uiPartyMgr + 0x5F) != 0);
+    return charVis && gridOpen;
 }
 
 static char s_cachedAwpCd[4][32] = {};
@@ -1139,10 +1148,22 @@ static bool TriggerAbility(int slot) {
     return true;
 }
 
+static bool IsInGame() {
+    const char* ws = eng::CurrentWorldState();
+    if (ws && strstr(ws, "_ingame") != nullptr) return true;
+    void* srv = *(void**)0x007ACF70;
+    if (srv && Readable(srv, 0x20)) {
+        void* hero = GetScreenHero(srv);
+        if (hero && Readable(hero, 0x80)) return true;
+    }
+    return false;
+}
+
 bool CharacterAbilities_FilterMouse(LPMSG msg) {
     if (!msg || msg->message != WM_LBUTTONDOWN) return false;
     if (!CharacterAbilities_IsServerSupported()) return false;
     if (Cfg().role == Role::Server) return false;
+    if (!IsInGame()) return false;
     if (IsInventoryOpen()) return false;
 
     HWND hwnd = g_gameHwnd ? g_gameHwnd : msg->hwnd;
@@ -1184,7 +1205,7 @@ bool CharacterAbilities_FilterKey(LPMSG msg) {
     if (!msg) return false;
     if (!CharacterAbilities_IsServerSupported()) return false;
     if (Cfg().role == Role::Server) return false;
-    if (IsInventoryOpen()) return false;
+    if (!IsInGame()) return false;
 
     // If chat or any text input is active, never intercept keys or eat characters
     if (IsChatActive()) {
