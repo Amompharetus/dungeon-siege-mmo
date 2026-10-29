@@ -617,38 +617,11 @@ void BroadcastAbilityPacketToClients(uint32_t heroGoid, int slot) {
 }
 
 bool IsChatActive() {
-    // 1. WorldState console/chat active flag
-    void* ws = *(void**)0x007ACF44;
-    if (ws && Readable(ws, 0x100) && *(const unsigned char*)((const char*)ws + 0xFC) != 0) {
-        return true;
-    }
-
-    // 2. In-game console edit box
-    if (eng::WindowVisible("console_edit", "game_console_mp")) return true;
-    if (eng::WindowVisible("console_edit", "game_console")) return true;
-    if (eng::WindowVisible("console_edit", nullptr)) return true;
-
-    auto IsBoxActive = [](void* box) -> bool {
-        if (!box || !Readable(box, 0x1C0)) return false;
-        const unsigned char* p = (const unsigned char*)box;
-        if (p[0x108] != 0) return true; // m_bVisible
-        if (p[0x1A1] != 0 || p[0x157] != 0 || p[0x1A2] != 0) return true; // input/focus
-        return false;
-    };
-
-    if (IsBoxActive(eng::FindWindow("console_edit", "game_console_mp"))) return true;
-    if (IsBoxActive(eng::FindWindow("console_edit", "game_console"))) return true;
-    if (IsBoxActive(eng::FindWindow("console_edit", nullptr))) return true;
-
-    // 3. Staging and end-game edit boxes
-    if (eng::WindowVisible("staging_char_name_edit_box", "staging_area_create_character")) return true;
-    if (eng::WindowVisible("staging_area_chat_editbox", "staging_area")) return true;
-    if (eng::WindowVisible("end_game_chat_editbox", "end_game_summary")) return true;
-
-    if (IsBoxActive(eng::FindWindow("staging_char_name_edit_box", nullptr))) return true;
-    if (IsBoxActive(eng::FindWindow("staging_area_chat_editbox", nullptr))) return true;
-    if (IsBoxActive(eng::FindWindow("end_game_chat_editbox", nullptr))) return true;
-
+    if (eng::InterfaceVisible("game_console_mp")) return true;
+    if (eng::InterfaceVisible("game_console")) return true;
+    if (eng::InterfaceVisible("staging_area")) return true;
+    if (eng::InterfaceVisible("staging_area_create_character")) return true;
+    if (eng::InterfaceVisible("end_game_summary")) return true;
     return false;
 }
 
