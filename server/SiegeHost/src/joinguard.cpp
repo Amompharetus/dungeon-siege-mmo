@@ -619,6 +619,104 @@ void Kick(void* pl, Joined& j, const std::string& why, const std::string& detail
     auto kick = (void (__thiscall*)(void*, DWORD))0x0048D5FF;  // UIMultiplayer::SKickPlayer(PlayerId) — does not use this
     kick(nullptr, pid);
 }
+// ---------------------------------------------------------------------------------------------------------------
+// Inventory Scanner: validates every item template against the server's official ContentDb.
+// Prevents players from bringing in modded/external items (e.g. XP amulets, mod spells) or hacked starting gold.
+// ---------------------------------------------------------------------------------------------------------------
+bool MemReadable(const void* p, size_t n) {
+    if (!p) return false;
+    MEMORY_BASIC_INFORMATION mbi;
+    if (!VirtualQuery(p, &mbi, sizeof mbi)) return false;
+    if (mbi.State != MEM_COMMIT) return false;
+    const DWORD ok = PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY |
+                     PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
+    return (mbi.Protect & ok) != 0;
+}
+
+bool IsOfficialTemplate(const char* tmpl) {
+    if (!tmpl || !*tmpl) return true;
+    void* cdb = *(void**)0x007ACF48;
+    if (!cdb || !MemReadable(cdb, 0x40)) return true; // ContentDb not initialized, don't false-kick
+
+    std::string lower(tmpl);
+    for (char& c : lower) c = (char)tolower((unsigned char)c);
+    if (lower.find("xp_amulet") != std::string::npos ||
+        lower.find("xp_ring") != std::string::npos ||
+        lower.find("kanese") != std::string::npos ||
+        lower.find("cheat_") != std::string::npos ||
+        lower.find("godmode") != std::string::npos) {
+        return false;
+    }
+
+    eng::gpstring s; char alloc[4] = {0};
+    eng::gpstring_ctor(&s, tmpl, alloc);
+    void* rec = ((void* (__thiscall*)(void*, const eng::gpstring*))0x0052683C)(cdb, &s);
+    eng::gpstring_dtor(&s);
+
+    return rec != nullptr;
+}
+
+void CollectGoItems(void* rootGo, std::vector<void*>& outItems, int depth = 0) {
+    if (!rootGo || depth > 5 || !MemReadable(rootGo, 0x90)) return;
+    void** b = *(void***)((char*)rootGo + 0x88);
+    void** e = *(void***)((char*)rootGo + 0x8C);
+    if (!b || !e || e < b || (size_t)(e - b) > 4096) return;
+    for (void** it = b; it != e; ++it) {
+        if (!MemReadable(it, sizeof(void*))) break;
+        void* item = *it;
+        if (!item || !MemReadable(item, 0x90)) continue;
+        outItems.push_back(item);
+        CollectGoItems(item, outItems, depth + 1);
+    }
+}
+
+bool ScanInventory(void* pl, const Joined& j, std::string& outBadItem) {
+    if (!pl || !MemReadable(pl, 0xC0)) return true;
+    char* p = (char*)pl;
+    if (*(void**)(p + 0xAC) == *(void**)(p + 0xB0)) return true;
+    void** partyPtr = *(void***)(p + 0xAC);
+    if (!partyPtr || !MemReadable(partyPtr, sizeof(void*))) return true;
+    char* party = (char*)*partyPtr;
+    if (!party || !MemReadable(party, 0x90)) return true;
+
+    void** cb = *(void***)(party + 0x88);
+    void** ce = *(void***)(party + 0x8C);
+    if (!cb || !ce || ce < cb || (size_t)(ce - cb) > 32) return true;
+
+    const auto TemplateName = (const char* (__thiscall*)(void*))0x005390A3;
+
+    for (void** c = cb; c && c < ce; ++c) {
+        if (!MemReadable(c, sizeof(void*))) break;
+        void* memberGo = *c;
+        if (!memberGo || !MemReadable(memberGo, 0x90)) continue;
+
+        // Check starting gold on low-level/new character
+        void* inv = *(void**)((char*)memberGo + 0x2C);
+        if (inv && MemReadable(inv, 0x80)) {
+            int gold = *(int*)((char*)inv + 0x78);
+            if (j.xp <= 200 && gold > 50000) {
+                outBadItem = "hacked starting gold (" + std::to_string(gold) + ")";
+                return false;
+            }
+        }
+
+        std::vector<void*> allItems;
+        CollectGoItems(memberGo, allItems);
+
+        for (void* itemGo : allItems) {
+            if (!itemGo || !MemReadable(itemGo, 0x60)) continue;
+            const char* tn = TemplateName(itemGo);
+            if (!tn || !*tn) continue;
+
+            if (!IsOfficialTemplate(tn)) {
+                outBadItem = tn;
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 }  // namespace
 
 void JoinGuardServerTick() {
@@ -659,6 +757,21 @@ void JoinGuardServerTick() {
                 j.partySeenTick = now;
                 Log("JoinGuard: account '%s' hero '%s' entered the world: party experience %lld (%d members)", j.t.account.c_str(), j.hero.c_str(), xp, members);
                 { char e[8]; if (GetEnvironmentVariableA("SIEGEHOST_SKILLDUMP", e, sizeof e)) SkillDump(pl); }
+            }
+            // Every 15 s (and on first enter): scan player inventory for modded or unauthorized items
+            {
+                static std::map<DWORD, DWORD> lastInvScan;
+                DWORD& lastScan = lastInvScan[mach];
+                if (!lastScan || now - lastScan > 15000) {
+                    lastScan = now;
+                    std::string badItem;
+                    if (!ScanInventory(pl, j, badItem)) {
+                        char detail[400];
+                        snprintf(detail, sizeof detail, "Character '%s' has unauthorized or modded item '%s' in inventory. Modded items from outside the MMO realm are not allowed.", j.hero.c_str(), badItem.c_str());
+                        Kick(pl, j, "illegal_item", detail);
+                        continue;
+                    }
+                }
             }
             // Every 60 s, not only at the door: a modified table keeps paying out for as long as the
             // player keeps killing things, so someone can arrive honest and drift while playing.
