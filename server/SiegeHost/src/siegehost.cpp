@@ -692,6 +692,8 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         if (remove & PM_REMOVE) {
             if (CharacterAbilities_FilterMouse(msg)) {
                 // Click handled by Character Abilities
+            } else if (SharedStash_FilterMouse(msg)) {
+                // Click handled by Shared Stash
             } else if (CharacterAbilities_FilterKey(msg)) {
                 // Key consumed by Character Abilities
             } else if (SharedStash_FilterKey(msg)) {

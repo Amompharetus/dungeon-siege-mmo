@@ -6,6 +6,7 @@
 //   [R] Combat Magic Ability: Flame Nova (expanding elemental blast + heavy fire damage)
 
 #include "characterabilities.h"
+#include "sharedstash.h"
 #include "siegehost.h"
 #include "engine.h"
 #include <cstdio>
@@ -1018,6 +1019,10 @@ static void UpdateAbilityUI() {
 
     void* awpPanel = eng::FindWindow("awp_ability_subpanel_1", "character_awp");
     if (awpPanel) SetWindowVisible(awpPanel, showOption1);
+    void* stashBtn = eng::FindWindow("awp_stash_btn_1", "character_awp");
+    if (stashBtn) SetWindowVisible(stashBtn, showOption1);
+    void* stashKey = eng::FindWindow("awp_stash_key_1", "character_awp");
+    if (stashKey) SetWindowVisible(stashKey, showOption1);
 
     static void* s_lastFirstBtn = nullptr;
     void* firstBtn = eng::FindWindow(kAwpBtns[0], "character_awp");
@@ -1176,6 +1181,20 @@ bool CharacterAbilities_FilterMouse(LPMSG msg) {
 
     // Check Option 1 (Top-Left AWP Sub-bar)
     if (Cfg().abilityBarOption1) {
+        void* stashBtn = eng::FindWindow("awp_stash_btn_1", "character_awp");
+        if (stashBtn && *(bool*)((char*)stashBtn + 0x108)) {
+            int left   = *(int*)((char*)stashBtn + 0x60) - 2;
+            int top    = *(int*)((char*)stashBtn + 0x64) - 2;
+            int right  = *(int*)((char*)stashBtn + 0x68) + 2;
+            int bottom = *(int*)((char*)stashBtn + 0x6C) + 16;
+            if (mx >= left && mx <= right && my >= top && my <= bottom) {
+                SharedStash_TriggerOpen();
+                msg->message = WM_NULL;
+                msg->wParam = 0;
+                msg->lParam = 0;
+                return true;
+            }
+        }
         const char* const kAwpBtns[4] = {
             "awp_ability_btn_0", "awp_ability_btn_1",
             "awp_ability_btn_2", "awp_ability_btn_3"
