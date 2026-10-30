@@ -13,3 +13,4 @@ bool SharedStash_FilterMouse(LPMSG msg);
 bool SharedStash_OnReceivePacket(bool isServer, DWORD senderDpnid, const BYTE* data, DWORD size);
 void SharedStash_OnPlayerJoin(DWORD mach, const char* account);
 void SharedStash_OnPlayerLeave(DWORD mach);
+bool SharedStash_TriggerOpen();

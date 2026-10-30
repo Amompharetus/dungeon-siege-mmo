@@ -635,26 +635,23 @@ bool MemReadable(const void* p, size_t n) {
 
 bool IsOfficialTemplate(const char* tmpl) {
     if (!tmpl || !*tmpl) return true;
-    void* cdb = *(void**)0x007ACF48;
-    if (!cdb || !MemReadable(cdb, 0x40)) return true; // ContentDb not initialized, don't false-kick
 
     std::string lower(tmpl);
     for (char& c : lower) c = (char)tolower((unsigned char)c);
     if (lower.find("xp_amulet") != std::string::npos ||
         lower.find("xp_ring") != std::string::npos ||
+        lower.find("ring_xp") != std::string::npos ||
+        lower.find("amulet_xp") != std::string::npos ||
         lower.find("kanese") != std::string::npos ||
         lower.find("cheat_") != std::string::npos ||
-        lower.find("godmode") != std::string::npos) {
+        lower.find("_cheat") != std::string::npos ||
+        lower.find("godmode") != std::string::npos ||
+        lower.find("trainer") != std::string::npos ||
+        lower.find("editor") != std::string::npos) {
         return false;
     }
 
-    auto findRec = (void* (__thiscall*)(void*, const char*))0x0052683C;
-    void* rec = findRec(cdb, tmpl);
-    if (!rec && lower != tmpl) {
-        rec = findRec(cdb, lower.c_str());
-    }
-
-    return rec != nullptr;
+    return true;
 }
 
 void CollectGoItems(void* rootGo, std::vector<void*>& outItems, int depth = 0) {

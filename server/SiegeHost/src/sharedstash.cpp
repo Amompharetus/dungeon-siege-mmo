@@ -2036,60 +2036,7 @@ bool SharedStash_FilterKey(LPMSG msg) {
                             }
 
                             // Process stash command
-                            void* hero = GetLocalScreenHero();
-                            if (!hero) {
-                                Log("SharedStash: could not find local hero");
-                                return true;
-                            }
-
-                            // Uber level requirement: must be > 30.0f
-                            float uberLevel = GetHeroUberLevel(hero);
-                            uint32_t heroGoid = *(uint32_t*)((char*)hero + 0x4C);
-                            Log("SharedStash: command triggered, hero 0x%08lX uberLevel=%.1f", heroGoid, uberLevel);
-
-                            if (uberLevel <= 30.0f) {
-                                g_pendingOpenStash = false;
-                                g_localStashGoid = 0;
-                                s_playVoice(hero, "order_out_of_mana", false);
-                                char buf[128];
-                                snprintf(buf, sizeof(buf), "Shared Stash requires Uber level above 30 (Current: %.1f).", uberLevel);
-                                PrintGameChat(buf);
-                                return true;
-                            }
-
-                            // Suppress spellbook SFX if inventory was not already opened before /stash
-                            bool wasInvOpen = IsInventoryOpen();
-                            if (!wasInvOpen) {
-                                g_suppressBackpackSfx = true;
-                            }
-
-                            // Immediately open the character inventory and replace spellbook/backpack if open
-                            OpenClientInventoryForStash(hero);
-
-                            // Try to open stash immediately if already known and resolved on client
-                            if (g_localStashGoid != 0) {
-                                void* stashGo = ResolveGo(g_localStashGoid);
-                                if (stashGo) {
-                                    OpenClientStashUI(hero, stashGo);
-                                    return true;
-                                } else {
-                                    g_localStashGoid = 0;
-                                }
-                            }
-
-                            // If local host / singleplayer, create directly
-                            if (s_isServerLocal()) {
-                                void* stashGo = GetOrCreateServerStash("local", hero);
-                                if (stashGo) {
-                                    g_localStashGoid = *(uint32_t*)((char*)stashGo + 0x4C);
-                                    OpenClientStashUI(hero, stashGo);
-                                    return true;
-                                }
-                            }
-
-                            // Request from server over DirectPlay
-                            g_pendingOpenStash = true;
-                            SendStashPacketToServer(heroGoid, kPkt_ReqOpen);
+                            SharedStash_TriggerOpen();
                             return true;
                         }
                     }
@@ -2100,6 +2047,89 @@ bool SharedStash_FilterKey(LPMSG msg) {
     return false;
 }
 
+bool SharedStash_TriggerOpen() {
+    void* hero = GetLocalScreenHero();
+    if (!hero) {
+        Log("SharedStash: could not find local hero");
+        return false;
+    }
+
+    // Uber level requirement: must be > 30.0f
+    float uberLevel = GetHeroUberLevel(hero);
+    uint32_t heroGoid = *(uint32_t*)((char*)hero + 0x4C);
+    Log("SharedStash: command triggered, hero 0x%08lX uberLevel=%.1f", heroGoid, uberLevel);
+
+    if (uberLevel <= 30.0f) {
+        g_pendingOpenStash = false;
+        g_localStashGoid = 0;
+        s_playVoice(hero, "order_out_of_mana", false);
+        char buf[128];
+        snprintf(buf, sizeof(buf), "Shared Stash requires Uber level above 30 (Current: %.1f).", uberLevel);
+        PrintGameChat(buf);
+        return true;
+    }
+
+    // Suppress spellbook SFX if inventory was not already opened before /stash
+    bool wasInvOpen = IsInventoryOpen();
+    if (!wasInvOpen) {
+        g_suppressBackpackSfx = true;
+    }
+
+    // Immediately open the character inventory and replace spellbook/backpack if open
+    OpenClientInventoryForStash(hero);
+
+    // Try to open stash immediately if already known and resolved on client
+    if (g_localStashGoid != 0) {
+        void* stashGo = ResolveGo(g_localStashGoid);
+        if (stashGo) {
+            OpenClientStashUI(hero, stashGo);
+            return true;
+        } else {
+            g_localStashGoid = 0;
+        }
+    }
+
+    // If local host / singleplayer, create directly
+    if (s_isServerLocal()) {
+        void* stashGo = GetOrCreateServerStash("local", hero);
+        if (stashGo) {
+            g_localStashGoid = *(uint32_t*)((char*)stashGo + 0x4C);
+            OpenClientStashUI(hero, stashGo);
+            return true;
+        }
+    }
+
+    // Request from server over DirectPlay
+    g_pendingOpenStash = true;
+    SendStashPacketToServer(heroGoid, kPkt_ReqOpen);
+    return true;
+}
+
 bool SharedStash_FilterMouse(LPMSG msg) {
+    if (!msg || msg->message != WM_LBUTTONDOWN) return false;
+    if (s_isServerLocal() ? false : (Cfg().role == Role::Server)) return false;
+
+    HWND hwnd = g_gameHwnd ? g_gameHwnd : msg->hwnd;
+    POINT pt = msg->pt;
+    if (hwnd) ScreenToClient(hwnd, &pt);
+    int mx = pt.x, my = pt.y;
+
+    void* ui = eng::UI();
+    if (!ui) return false;
+
+    void* stashBtn = eng::FindWindow("awp_stash_btn_1", "character_awp");
+    if (stashBtn && *(bool*)((char*)stashBtn + 0x108)) {
+        int left   = *(int*)((char*)stashBtn + 0x60) - 2;
+        int top    = *(int*)((char*)stashBtn + 0x64) - 2;
+        int right  = *(int*)((char*)stashBtn + 0x68) + 2;
+        int bottom = *(int*)((char*)stashBtn + 0x6C) + 16;
+        if (mx >= left && mx <= right && my >= top && my <= bottom) {
+            SharedStash_TriggerOpen();
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
+            return true;
+        }
+    }
     return false;
 }
