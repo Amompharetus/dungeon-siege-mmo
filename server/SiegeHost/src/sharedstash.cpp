@@ -1,6 +1,7 @@
 // sharedstash.cpp - Account-wide Shared Stash for Dungeon Siege MMO
 #include "sharedstash.h"
 #include "characterabilities.h"
+#include "areagroups.h"
 #include "siegehost.h"
 #include "engine.h"
 #include <winsock2.h>
@@ -368,6 +369,50 @@ float GetHeroUberLevel(void* hero) {
     return uber;
 }
 
+bool IsHeroInTown(void* hero, unsigned* outLoc = nullptr, unsigned* outGroup = nullptr) {
+    if (outLoc) *outLoc = 0;
+    if (outGroup) *outGroup = 0;
+
+    // Town area groups 1..8 apply to Utraean Peninsula (multiplayer_world)
+    if (void* wm = eng::WorldMap_Singleton()) {
+        if (Readable(wm, 0x10)) {
+            const char* mapName = eng::GpC(wm, 4);
+            if (mapName && *mapName && _stricmp(mapName, "multiplayer_world") != 0) {
+                return false;
+            }
+        }
+    }
+
+    void* pl = nullptr;
+    void* cur = hero;
+    for (int depth = 0; depth < 4 && cur && Readable(cur, 0x80); ++depth) {
+        void* candidate = *(void**)((char*)cur + 0x78);
+        if (candidate && Readable(candidate, 0x100) && eng::Player_IsValid(candidate)) {
+            pl = candidate;
+            break;
+        }
+        cur = *(void**)((char*)cur + 0x60);
+    }
+
+    if (!pl && Cfg().role != Role::Server) {
+        void* srv = *(void**)0x007ACF70;
+        if (srv && Readable(srv, 0x20)) {
+            void* localPl = eng::Server_GetLocalHumanPlayer(srv);
+            if (localPl && Readable(localPl, 0x100) && eng::Player_IsValid(localPl)) {
+                pl = localPl;
+            }
+        }
+    }
+
+    if (!pl) return false;
+
+    unsigned loc = *(unsigned*)((char*)pl + 0xF4);
+    unsigned grp = areagroups::ForLocation(loc);
+    if (outLoc) *outLoc = loc;
+    if (outGroup) *outGroup = grp;
+    return areagroups::IsTownLocation(loc);
+}
+
 void PrintGameChat(const char* text) {
     if (!text || !*text) return;
     void* uiMp = *(void**)0x007ACF94;
@@ -489,6 +534,7 @@ void OpenClientInventoryForStash(void* hero) {
 void OpenClientStashUI(void* hero, void* stashGo) {
     if (!hero || !stashGo || !Readable(hero, 0x80) || !Readable(stashGo, 0x80)) return;
     if (GetHeroUberLevel(hero) <= 30.0f) return;
+    if (!IsHeroInTown(hero)) return;
     void* heroInv = *(void**)((char*)hero + 0x2C);
     void* uiPartyMgr = *(void**)0x007ACF90;
     if (!heroInv || !uiPartyMgr || !Readable(heroInv, 0xB0) || !Readable(uiPartyMgr, 0x1E8)) return;
@@ -1564,8 +1610,76 @@ extern "C" bool __fastcall Hook_GoInventory_RemoveFromDbAndPlaceInWorld(void* in
 }
 
 // -------------------------------------------------------------------------------------------------
+// Go::PlayVoiceSound Hook (0x00539D77)
+// Deduplicates double "put_down" SFX when placing items in Backpack, Shared Stash, or Inventory:
+// UIGridbox::SetItem (0x004FE734) plays "put_down" immediately on click and sends RSTransfer;
+// GoInventory::RCTransfer (0x00576C43) plays "put_down" a second time for the exact same item Go.
+// -------------------------------------------------------------------------------------------------
+extern "C" uint32_t __fastcall Orig_Go_PlayVoiceSound(void* thisGo, void* unused_edx, const char* eventName, uint32_t distanced);
+__asm__(
+    ".text\n"
+    ".globl _Orig_Go_PlayVoiceSound\n"
+    ".globl @Orig_Go_PlayVoiceSound@16\n"
+    "_Orig_Go_PlayVoiceSound:\n"
+    "@Orig_Go_PlayVoiceSound@16:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  subl $0x10, %esp\n"
+    "  movl $0x00539D7D, %eax\n"
+    "  jmp *%eax\n"
+);
+
+namespace {
+struct RecentPutDownEntry {
+    uint32_t goid;
+    DWORD    tick;
+};
+static RecentPutDownEntry s_recentPutDown[8] = {};
+static int s_recentPutDownIdx = 0;
+
+static void SetHoverWindowVisible(int slot, bool vis) {
+    if (slot < 0 || slot > 3) return;
+    static const char* const kHovNames[4] = {
+        "awp_ability_hover_0", "awp_ability_hover_1", "awp_ability_hover_2", "awp_ability_hover_3"
+    };
+    void* w = eng::FindWindow(kHovNames[slot], "character_awp");
+    if (!w) return;
+    typedef void (__thiscall* SetVisFn)(void*, bool);
+    static const auto s_setVis = (SetVisFn)0x0047B06E;
+    s_setVis(w, vis);
+    *(bool*)((char*)w + 0x108) = vis;
+}
+} // namespace
+
+extern "C" uint32_t __fastcall Hook_Go_PlayVoiceSound(void* thisGo, void* unused_edx, const char* eventName, uint32_t distanced) {
+    if (thisGo && eventName && Readable(thisGo, 0x50) && Readable(eventName, 1)) {
+        uint32_t goid = *(uint32_t*)((char*)thisGo + 0x4C);
+        if (goid != 0) {
+            if (strcmp(eventName, "pick_up") == 0) {
+                for (int i = 0; i < 8; ++i) {
+                    if (s_recentPutDown[i].goid == goid) {
+                        s_recentPutDown[i].goid = 0;
+                        s_recentPutDown[i].tick = 0;
+                    }
+                }
+            } else if (strcmp(eventName, "put_down") == 0) {
+                DWORD now = GetTickCount();
+                for (int i = 0; i < 8; ++i) {
+                    if (s_recentPutDown[i].goid == goid && (DWORD)(now - s_recentPutDown[i].tick) < 2000) {
+                        return 0;
+                    }
+                }
+                s_recentPutDown[s_recentPutDownIdx] = { goid, now };
+                s_recentPutDownIdx = (s_recentPutDownIdx + 1) & 7;
+            }
+        }
+    }
+    return Orig_Go_PlayVoiceSound(thisGo, unused_edx, eventName, distanced);
+}
+
+// -------------------------------------------------------------------------------------------------
 // Native UI Button Notify Hook (Messenger::Notify @ 0x0070640C)
-// Handles notify(open_shared_stash) and notify(use_ability_0..3) across all resolutions/DDrawCompat
+// Handles notify(open_shared_stash), notify(use_ability_0..3), and ability rollover highlights
 // -------------------------------------------------------------------------------------------------
 extern "C" void __fastcall Orig_Messenger_Notify(void* messenger, void* unused_edx, const eng::gpstring* msgName, void* uiWindow);
 __asm__(
@@ -1585,10 +1699,19 @@ extern "C" void __fastcall Hook_Messenger_Notify(void* messenger, void* unused_e
     if (msgName && Readable(msgName, 4) && msgName->p && Readable(msgName->p, 1)) {
         const char* s = msgName->p;
         if (strcmp(s, "open_shared_stash") == 0) {
-            Log("SharedStash: UI button pressed -> notify(open_shared_stash)");
-            g_pendingUiTriggerOpen = true;
+            static DWORD s_lastUiStashClick = 0;
+            DWORD now = GetTickCount();
+            if ((DWORD)(now - s_lastUiStashClick) >= 150) {
+                s_lastUiStashClick = now;
+                Log("SharedStash: UI button pressed -> notify(open_shared_stash)");
+                g_pendingUiTriggerOpen = true;
+            }
         } else if (strncmp(s, "use_ability_", 12) == 0 && s[12] >= '0' && s[12] <= '3' && s[13] == '\0') {
             CharacterAbilities_QueueTrigger(s[12] - '0');
+        } else if (strncmp(s, "ability_rollover_", 17) == 0 && s[17] >= '0' && s[17] <= '3' && s[18] == '\0') {
+            SetHoverWindowVisible(s[17] - '0', true);
+        } else if (strncmp(s, "ability_rolloff_", 16) == 0 && s[16] >= '0' && s[16] <= '3' && s[17] == '\0') {
+            SetHoverWindowVisible(s[16] - '0', false);
         }
     }
     Orig_Messenger_Notify(messenger, unused_edx, msgName, uiWindow);
@@ -1748,6 +1871,23 @@ void SharedStash_Init() {
         }
     }
 
+    // Hook Go::PlayVoiceSound at 0x00539D77 (6 bytes: 55 8B EC 83 EC 10) on client to prevent double put_down SFX
+    if (Cfg().role != Role::Server) {
+        const BYTE kPlayVoiceExpect[6] = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x10 };
+        BYTE* pPlayVoice = (BYTE*)0x00539D77;
+        if (Readable(pPlayVoice, 6) && memcmp(pPlayVoice, kPlayVoiceExpect, 6) == 0) {
+            DWORD oldProt = 0;
+            if (VirtualProtect(pPlayVoice, 6, PAGE_EXECUTE_READWRITE, &oldProt)) {
+                pPlayVoice[0] = 0xE9;
+                *(int32_t*)(pPlayVoice + 1) = (int32_t)((DWORD)(void*)&Hook_Go_PlayVoiceSound - (0x00539D77 + 5));
+                pPlayVoice[5] = 0x90;
+                VirtualProtect(pPlayVoice, 6, oldProt, &oldProt);
+                FlushInstructionCache(GetCurrentProcess(), pPlayVoice, 6);
+                Log("SharedStash: hooked Go::PlayVoiceSound at 0x00539D77 (deduplicating put_down SFX)");
+            }
+        }
+    }
+
     Log("SharedStash: module initialized.");
 }
 
@@ -1833,6 +1973,12 @@ void SharedStash_Tick() {
                                 q.senderDpnid, account.c_str(), q.pkt.heroGoid, uberLevel);
                             continue;
                         }
+                        unsigned srvLoc = 0, srvGrp = 0;
+                        if (!IsHeroInTown(hero, &srvLoc, &srvGrp)) {
+                            Log("SharedStash: server REJECTED ReqOpen from dpnid 0x%08lX account '%s' hero 0x%08lX (outside town: loc=%u group=%u)",
+                                q.senderDpnid, account.c_str(), q.pkt.heroGoid, srvLoc, srvGrp);
+                            continue;
+                        }
                         void* stashGo = GetOrCreateServerStash(account, hero);
                         if (stashGo) {
                             uint32_t stashGoid = *(uint32_t*)((char*)stashGo + 0x4C);
@@ -1853,6 +1999,12 @@ void SharedStash_Tick() {
                         if (uber <= 30.0f) {
                             Log("SharedStash: client rejected StashInfo (hero uberLevel=%.1f <= 30.0)", uber);
                             g_localStashGoid = 0;
+                            g_pendingOpenStash = false;
+                            continue;
+                        }
+                        unsigned cliLoc = 0, cliGrp = 0;
+                        if (!IsHeroInTown(hero, &cliLoc, &cliGrp)) {
+                            Log("SharedStash: client rejected StashInfo outside town (loc=%u group=%u)", cliLoc, cliGrp);
                             g_pendingOpenStash = false;
                             continue;
                         }
@@ -1891,7 +2043,9 @@ void SharedStash_Tick() {
         if (g_pendingOpenStash && g_localStashGoid != 0) {
             void* hero = GetLocalScreenHero();
             void* stashGo = ResolveGo(g_localStashGoid);
-            if (hero && stashGo) {
+            if (hero && !IsHeroInTown(hero)) {
+                g_pendingOpenStash = false;
+            } else if (hero && stashGo) {
                 float uber = GetHeroUberLevel(hero);
                 if (uber > 30.0f) {
                     OpenClientStashUI(hero, stashGo);
@@ -1911,6 +2065,34 @@ void SharedStash_Tick() {
         bool bpVis = eng::InterfaceVisible("DSX_backpack_ui");
         bool charVis = eng::InterfaceVisible("character");
         bool spellVis = eng::InterfaceVisible("spell");
+
+        // Automatically close Shared Stash instantly upon leaving a town area
+        if (g_pendingOpenStash || g_sharedStashActive) {
+            void* townHero = GetLocalScreenHero();
+            unsigned curLoc = 0, curGrp = 0;
+            if (!townHero || !IsHeroInTown(townHero, &curLoc, &curGrp)) {
+                if (g_pendingOpenStash) {
+                    g_pendingOpenStash = false;
+                    Log("SharedStash: cancelled pending open outside town (loc=%u group=%u)", curLoc, curGrp);
+                }
+                if (g_sharedStashActive) {
+                    bool stashWindowDisplayed = bpVis && (activeBpGoid == g_localStashGoid || activeBpGoid == 0 || activeBpGoid == invalidGoid);
+                    bool wasInvOpen = IsInventoryOpen();
+                    if (stashWindowDisplayed && uiPartyMgr && Readable(uiPartyMgr, 0x1E8)) {
+                        g_suppressBackpackSfx = true;
+                        s_toggleBackpack(uiPartyMgr, 0, 0);
+                        g_suppressBackpackSfx = false;
+                        bpVis = false;
+                        activeBpGoid = invalidGoid;
+                        if (wasInvOpen) {
+                            PlaySpellBookSfx();
+                        }
+                    }
+                    CleanupClientStashUI();
+                    Log("SharedStash: auto-closed stash upon leaving town (loc=%u group=%u)", curLoc, curGrp);
+                }
+            }
+        }
 
         if (g_sharedStashActive) {
             void* hero = GetLocalScreenHero();
@@ -2095,8 +2277,14 @@ bool SharedStash_FilterKey(LPMSG msg) {
 
 bool SharedStash_TriggerOpen() {
     void* hero = GetLocalScreenHero();
-    if (!hero) {
+    if (!hero || !Readable(hero, 0x80)) {
         Log("SharedStash: could not find local hero");
+        return false;
+    }
+
+    // Cannot open Shared Stash while unconscious, dead, or a ghost
+    void* aspect = *(void**)((char*)hero + 0x04);
+    if (!aspect || !Readable(aspect, 0xC0) || *(int*)((char*)aspect + 0xA0) != 1 || *(float*)((char*)aspect + 0xB0) <= 0.0f) {
         return false;
     }
 
@@ -2112,6 +2300,15 @@ bool SharedStash_TriggerOpen() {
         char buf[128];
         snprintf(buf, sizeof(buf), "Shared Stash requires Uber level above 30 (Current: %.1f).", uberLevel);
         PrintGameChat(buf);
+        return true;
+    }
+
+    unsigned curLoc = 0, curGrp = 0;
+    if (!IsHeroInTown(hero, &curLoc, &curGrp)) {
+        g_pendingOpenStash = false;
+        s_playVoice(hero, "order_out_of_mana", false);
+        PrintGameChat("Shared Stash can only be opened in a town.");
+        Log("SharedStash: blocked open outside town (hero 0x%08lX loc=%u group=%u)", heroGoid, curLoc, curGrp);
         return true;
     }
 
