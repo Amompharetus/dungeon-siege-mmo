@@ -1020,9 +1020,7 @@ static void UpdateAbilityUI() {
     void* awpPanel = eng::FindWindow("awp_ability_subpanel_1", "character_awp");
     if (awpPanel) SetWindowVisible(awpPanel, showOption1);
     void* stashBtn = eng::FindWindow("awp_stash_btn_1", "character_awp");
-    if (stashBtn) SetWindowVisible(stashBtn, showOption1);
-    void* stashKey = eng::FindWindow("awp_stash_key_1", "character_awp");
-    if (stashKey) SetWindowVisible(stashKey, showOption1);
+    if (stashBtn) SetWindowVisible(stashBtn, true);
 
     static void* s_lastFirstBtn = nullptr;
     void* firstBtn = eng::FindWindow(kAwpBtns[0], "character_awp");
@@ -1169,32 +1167,66 @@ bool CharacterAbilities_FilterMouse(LPMSG msg) {
     if (!CharacterAbilities_IsServerSupported()) return false;
     if (Cfg().role == Role::Server) return false;
     if (!IsInGame()) return false;
+
+    // Check Option 1 Shared Stash Button FIRST (active whether inventory is open or closed)
+    if (Cfg().abilityBarOption1) {
+        void* stashBtn = eng::FindWindow("awp_stash_btn_1", "character_awp");
+        int left = 238, top = 6, right = 270, bottom = 26;
+        if (stashBtn && Readable(stashBtn, 0x80)) {
+            left   = *(int*)((char*)stashBtn + 0x60);
+            top    = *(int*)((char*)stashBtn + 0x64);
+            right  = *(int*)((char*)stashBtn + 0x68);
+            bottom = *(int*)((char*)stashBtn + 0x6C);
+        }
+
+        int minX = left - 4;
+        int minY = top - 4;
+        int maxX = right + 4;
+        int maxY = bottom + 4;
+
+        auto inBox = [minX, minY, maxX, maxY](int x, int y) {
+            return (x >= minX && x <= maxX && y >= minY && y <= maxY);
+        };
+
+        bool hit = false;
+        int lx = (short)LOWORD(msg->lParam);
+        int ly = (short)HIWORD(msg->lParam);
+        if (inBox(lx, ly)) hit = true;
+
+        HWND hwnd = g_gameHwnd ? g_gameHwnd : msg->hwnd;
+        if (!hit && hwnd) {
+            POINT pt = msg->pt;
+            if (ScreenToClient(hwnd, &pt) && inBox(pt.x, pt.y)) hit = true;
+            if (!hit) {
+                POINT cur;
+                if (GetCursorPos(&cur) && ScreenToClient(hwnd, &cur) && inBox(cur.x, cur.y)) hit = true;
+            }
+        }
+
+        if (hit) {
+            Log("CharacterAbilities_FilterMouse: Shared Stash button clicked at (%d,%d)", lx, ly);
+            SharedStash_TriggerOpen();
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
+            return true;
+        }
+    }
+
     if (IsInventoryOpen()) return false;
 
     HWND hwnd = g_gameHwnd ? g_gameHwnd : msg->hwnd;
     POINT pt = msg->pt;
     if (hwnd) ScreenToClient(hwnd, &pt);
     int mx = pt.x, my = pt.y;
+    int lx = (short)LOWORD(msg->lParam);
+    int ly = (short)HIWORD(msg->lParam);
 
     void* ui = eng::UI();
     if (!ui) return false;
 
-    // Check Option 1 (Top-Left AWP Sub-bar)
+    // Check Option 1 (Top-Left AWP Sub-bar ability keys)
     if (Cfg().abilityBarOption1) {
-        void* stashBtn = eng::FindWindow("awp_stash_btn_1", "character_awp");
-        if (stashBtn && *(bool*)((char*)stashBtn + 0x108)) {
-            int left   = *(int*)((char*)stashBtn + 0x60) - 2;
-            int top    = *(int*)((char*)stashBtn + 0x64) - 2;
-            int right  = *(int*)((char*)stashBtn + 0x68) + 2;
-            int bottom = *(int*)((char*)stashBtn + 0x6C) + 2;
-            if (mx >= left && mx <= right && my >= top && my <= bottom) {
-                SharedStash_TriggerOpen();
-                msg->message = WM_NULL;
-                msg->wParam = 0;
-                msg->lParam = 0;
-                return true;
-            }
-        }
         const char* const kAwpBtns[4] = {
             "awp_ability_btn_0", "awp_ability_btn_1",
             "awp_ability_btn_2", "awp_ability_btn_3"
@@ -1206,7 +1238,10 @@ bool CharacterAbilities_FilterMouse(LPMSG msg) {
                 int top    = *(int*)((char*)w + 0x64) - 2;
                 int right  = *(int*)((char*)w + 0x68) + 2;
                 int bottom = *(int*)((char*)w + 0x6C) + 16;
-                if (mx >= left && mx <= right && my >= top && my <= bottom) {
+                auto inBox = [left, top, right, bottom](int x, int y) {
+                    return (x >= left && x <= right && y >= top && y <= bottom);
+                };
+                if (inBox(lx, ly) || inBox(mx, my)) {
                     TriggerAbility(i);
                     msg->message = WM_NULL;
                     msg->wParam = 0;

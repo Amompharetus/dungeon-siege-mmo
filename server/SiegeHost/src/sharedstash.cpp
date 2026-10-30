@@ -2109,27 +2109,47 @@ bool SharedStash_FilterMouse(LPMSG msg) {
     if (!msg || msg->message != WM_LBUTTONDOWN) return false;
     if (s_isServerLocal() ? false : (Cfg().role == Role::Server)) return false;
 
-    HWND hwnd = g_gameHwnd ? g_gameHwnd : msg->hwnd;
-    POINT pt = msg->pt;
-    if (hwnd) ScreenToClient(hwnd, &pt);
-    int mx = pt.x, my = pt.y;
-
-    void* ui = eng::UI();
-    if (!ui) return false;
-
     void* stashBtn = eng::FindWindow("awp_stash_btn_1", "character_awp");
-    if (stashBtn && *(bool*)((char*)stashBtn + 0x108)) {
-        int left   = *(int*)((char*)stashBtn + 0x60) - 2;
-        int top    = *(int*)((char*)stashBtn + 0x64) - 2;
-        int right  = *(int*)((char*)stashBtn + 0x68) + 2;
-        int bottom = *(int*)((char*)stashBtn + 0x6C) + 16;
-        if (mx >= left && mx <= right && my >= top && my <= bottom) {
-            SharedStash_TriggerOpen();
-            msg->message = WM_NULL;
-            msg->wParam = 0;
-            msg->lParam = 0;
-            return true;
+    int left = 238, top = 6, right = 270, bottom = 26;
+    if (stashBtn && Readable(stashBtn, 0x80)) {
+        left   = *(int*)((char*)stashBtn + 0x60);
+        top    = *(int*)((char*)stashBtn + 0x64);
+        right  = *(int*)((char*)stashBtn + 0x68);
+        bottom = *(int*)((char*)stashBtn + 0x6C);
+    }
+
+    int minX = left - 4;
+    int minY = top - 4;
+    int maxX = right + 4;
+    int maxY = bottom + 4;
+
+    auto inBox = [minX, minY, maxX, maxY](int x, int y) {
+        return (x >= minX && x <= maxX && y >= minY && y <= maxY);
+    };
+
+    bool hit = false;
+    int lx = (short)LOWORD(msg->lParam);
+    int ly = (short)HIWORD(msg->lParam);
+    if (inBox(lx, ly)) hit = true;
+
+    HWND hwnd = g_gameHwnd ? g_gameHwnd : msg->hwnd;
+    if (!hit && hwnd) {
+        POINT pt = msg->pt;
+        if (ScreenToClient(hwnd, &pt) && inBox(pt.x, pt.y)) hit = true;
+        if (!hit) {
+            POINT cur;
+            if (GetCursorPos(&cur) && ScreenToClient(hwnd, &cur) && inBox(cur.x, cur.y)) hit = true;
         }
     }
+
+    if (hit) {
+        Log("SharedStash_FilterMouse: Shared Stash button clicked at (%d,%d)", lx, ly);
+        SharedStash_TriggerOpen();
+        msg->message = WM_NULL;
+        msg->wParam = 0;
+        msg->lParam = 0;
+        return true;
+    }
+
     return false;
 }
