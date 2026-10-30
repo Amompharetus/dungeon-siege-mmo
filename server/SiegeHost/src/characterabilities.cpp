@@ -1186,7 +1186,7 @@ bool CharacterAbilities_FilterMouse(LPMSG msg) {
             int left   = *(int*)((char*)stashBtn + 0x60) - 2;
             int top    = *(int*)((char*)stashBtn + 0x64) - 2;
             int right  = *(int*)((char*)stashBtn + 0x68) + 2;
-            int bottom = *(int*)((char*)stashBtn + 0x6C) + 16;
+            int bottom = *(int*)((char*)stashBtn + 0x6C) + 2;
             if (mx >= left && mx <= right && my >= top && my <= bottom) {
                 SharedStash_TriggerOpen();
                 msg->message = WM_NULL;
