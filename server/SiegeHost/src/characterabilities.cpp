@@ -896,11 +896,24 @@ bool CharacterAbilities_OnReceivePacket(bool isServer, DWORD /*senderDpnid*/, co
 }
 
 static void UpdateAbilityUI();
+static bool TriggerAbility(int slot);
+static volatile int g_queuedUiSlot = -1;
+
+void CharacterAbilities_QueueTrigger(int slot) {
+    if (slot >= 0 && slot <= 3) {
+        g_queuedUiSlot = slot;
+    }
+}
 
 void CharacterAbilities_Tick() {
     if (!CharacterAbilities_IsServerSupported()) return;
 
     if (Cfg().role != Role::Server) {
+        int qSlot = g_queuedUiSlot;
+        if (qSlot >= 0 && qSlot <= 3) {
+            g_queuedUiSlot = -1;
+            TriggerAbility(qSlot);
+        }
         UpdateAbilityUI();
     }
 
@@ -965,6 +978,12 @@ static void SetWindowVisible(void* w, bool vis) {
     *(bool*)((char*)w + 0x108) = vis;
 }
 
+static void EnsureButtonClickable(void* w) {
+    if (!w || !Readable(w, 0x140)) return;
+    *(bool*)((char*)w + 0x137) = true; // m_bHitDetect
+    *(bool*)((char*)w + 0x139) = true; // m_bEnabled
+}
+
 static void SetWindowAlpha(void* w, float alpha) {
     if (!w) return;
     *(float*)((char*)w + 0x104) = alpha;
@@ -982,14 +1001,6 @@ static void SetTextWindow(void* w, const char* text, DWORD color, char* cachedSt
     static const auto s_setText = (SetTextFn)0x0047B4C4;
     eng::GpStr g(text);
     s_setText(w, &g.s, false);
-}
-
-static bool IsInventoryOpen() {
-    void* uiPartyMgr = *(void**)0x007ACF90;
-    if (!uiPartyMgr || !Readable(uiPartyMgr, 0x60)) return false;
-    bool charVis = eng::InterfaceVisible("character");
-    bool gridOpen = (*((const char*)uiPartyMgr + 0x5F) != 0);
-    return charVis && gridOpen;
 }
 
 static char s_cachedAwpCd[4][32] = {};
@@ -1010,8 +1021,10 @@ static void UpdateAbilityUI() {
     if (!inGame) return;
     void* actor = *(void**)((char*)hero + 0x00);
 
-    bool invOpen = IsInventoryOpen();
-    bool showOption1 = !invOpen;
+    void* slotsPanel = eng::FindWindow("window_slots_panel_1", "character_awp");
+    bool slotsVis = slotsPanel ? eng::UIWindow_GetVisible(slotsPanel) : true;
+    bool charVis = eng::InterfaceVisible("character");
+    bool showOption1 = slotsVis && !charVis;
 
     const char* const kAwpBtns[4] = { "awp_ability_btn_0", "awp_ability_btn_1", "awp_ability_btn_2", "awp_ability_btn_3" };
     const char* const kAwpCds[4]  = { "awp_ability_cd_0",  "awp_ability_cd_1",  "awp_ability_cd_2",  "awp_ability_cd_3"  };
@@ -1020,7 +1033,10 @@ static void UpdateAbilityUI() {
     void* awpPanel = eng::FindWindow("awp_ability_subpanel_1", "character_awp");
     if (awpPanel) SetWindowVisible(awpPanel, showOption1);
     void* stashBtn = eng::FindWindow("awp_stash_btn_1", "character_awp");
-    if (stashBtn) SetWindowVisible(stashBtn, true);
+    if (stashBtn) {
+        SetWindowVisible(stashBtn, showOption1);
+        if (showOption1) EnsureButtonClickable(stashBtn);
+    }
 
     static void* s_lastFirstBtn = nullptr;
     void* firstBtn = eng::FindWindow(kAwpBtns[0], "character_awp");
@@ -1081,7 +1097,10 @@ static void UpdateAbilityUI() {
         void* awpKey = eng::FindWindow(kAwpKeys[i], "character_awp");
         if (awpBtn) {
             SetWindowVisible(awpBtn, showOption1);
-            if (showOption1) SetWindowAlpha(awpBtn, alpha);
+            if (showOption1) {
+                SetWindowAlpha(awpBtn, alpha);
+                EnsureButtonClickable(awpBtn);
+            }
         }
         if (awpCd) {
             SetWindowVisible(awpCd, showOption1);
@@ -1163,95 +1182,7 @@ static bool IsInGame() {
 }
 
 bool CharacterAbilities_FilterMouse(LPMSG msg) {
-    if (!msg || msg->message != WM_LBUTTONDOWN) return false;
-    if (!CharacterAbilities_IsServerSupported()) return false;
-    if (Cfg().role == Role::Server) return false;
-    if (!IsInGame()) return false;
-
-    // Check Option 1 Shared Stash Button FIRST (active whether inventory is open or closed)
-    if (Cfg().abilityBarOption1) {
-        void* stashBtn = eng::FindWindow("awp_stash_btn_1", "character_awp");
-        int left = 238, top = 6, right = 270, bottom = 26;
-        if (stashBtn && Readable(stashBtn, 0x80)) {
-            left   = *(int*)((char*)stashBtn + 0x60);
-            top    = *(int*)((char*)stashBtn + 0x64);
-            right  = *(int*)((char*)stashBtn + 0x68);
-            bottom = *(int*)((char*)stashBtn + 0x6C);
-        }
-
-        int minX = left - 4;
-        int minY = top - 4;
-        int maxX = right + 4;
-        int maxY = bottom + 4;
-
-        auto inBox = [minX, minY, maxX, maxY](int x, int y) {
-            return (x >= minX && x <= maxX && y >= minY && y <= maxY);
-        };
-
-        bool hit = false;
-        int lx = (short)LOWORD(msg->lParam);
-        int ly = (short)HIWORD(msg->lParam);
-        if (inBox(lx, ly)) hit = true;
-
-        HWND hwnd = g_gameHwnd ? g_gameHwnd : msg->hwnd;
-        if (!hit && hwnd) {
-            POINT pt = msg->pt;
-            if (ScreenToClient(hwnd, &pt) && inBox(pt.x, pt.y)) hit = true;
-            if (!hit) {
-                POINT cur;
-                if (GetCursorPos(&cur) && ScreenToClient(hwnd, &cur) && inBox(cur.x, cur.y)) hit = true;
-            }
-        }
-
-        if (hit) {
-            Log("CharacterAbilities_FilterMouse: Shared Stash button clicked at (%d,%d)", lx, ly);
-            SharedStash_TriggerOpen();
-            msg->message = WM_NULL;
-            msg->wParam = 0;
-            msg->lParam = 0;
-            return true;
-        }
-    }
-
-    if (IsInventoryOpen()) return false;
-
-    HWND hwnd = g_gameHwnd ? g_gameHwnd : msg->hwnd;
-    POINT pt = msg->pt;
-    if (hwnd) ScreenToClient(hwnd, &pt);
-    int mx = pt.x, my = pt.y;
-    int lx = (short)LOWORD(msg->lParam);
-    int ly = (short)HIWORD(msg->lParam);
-
-    void* ui = eng::UI();
-    if (!ui) return false;
-
-    // Check Option 1 (Top-Left AWP Sub-bar ability keys)
-    if (Cfg().abilityBarOption1) {
-        const char* const kAwpBtns[4] = {
-            "awp_ability_btn_0", "awp_ability_btn_1",
-            "awp_ability_btn_2", "awp_ability_btn_3"
-        };
-        for (int i = 0; i < 4; ++i) {
-            void* w = eng::FindWindow(kAwpBtns[i], "character_awp");
-            if (w && *(bool*)((char*)w + 0x108)) {
-                int left   = *(int*)((char*)w + 0x60) - 2;
-                int top    = *(int*)((char*)w + 0x64) - 2;
-                int right  = *(int*)((char*)w + 0x68) + 2;
-                int bottom = *(int*)((char*)w + 0x6C) + 16;
-                auto inBox = [left, top, right, bottom](int x, int y) {
-                    return (x >= left && x <= right && y >= top && y <= bottom);
-                };
-                if (inBox(lx, ly) || inBox(mx, my)) {
-                    TriggerAbility(i);
-                    msg->message = WM_NULL;
-                    msg->wParam = 0;
-                    msg->lParam = 0;
-                    return true;
-                }
-            }
-        }
-    }
-
+    (void)msg;
     return false;
 }
 

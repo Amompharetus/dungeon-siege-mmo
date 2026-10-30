@@ -91,11 +91,8 @@ static const auto s_setStartingPos = (SetStartingPosFn)0x00544F77;
 typedef void (__thiscall* SetForceClientAllowedFn)(void* req, bool allowed);
 static const auto s_setForceClientAllowed = (SetForceClientAllowedFn)0x0047BCD1;
 
-typedef uint32_t (__thiscall* SCloneGoFn)(void* godb, const void* req, const char* templateName);
+typedef uint32_t (__thiscall* SCloneGoFn)(void* godb, const void* req, const char* templateOrPContent);
 static const auto s_sCloneGo = (SCloneGoFn)0x0054A356;
-
-typedef uint32_t (__thiscall* SCloneGoWithContentFn)(void* godb, const void* req, const char* pcontent, int zero);
-static const auto s_sCloneGoWithContent = (SCloneGoWithContentFn)0x0054A457;
 
 typedef void* (__thiscall* RSAddFn)(void* inv, void* go, int loc, int origin, bool autoPlace);
 static const auto s_rsAdd = (RSAddFn)0x0057545B;
@@ -114,6 +111,7 @@ void* g_dp8Server = nullptr;
 bool g_sharedStashActive = false;
 bool g_wasInventoryOpen = false;
 bool g_pendingOpenStash = false;
+volatile bool g_pendingUiTriggerOpen = false;
 bool g_eatNextReturnChar = false;
 bool g_suppressBackpackSfx = false;
 uint32_t g_localStashGoid = 0;
@@ -508,6 +506,7 @@ void OpenClientStashUI(void* hero, void* stashGo) {
     g_sharedStashActive = true;
     g_wasInventoryOpen = true;
     g_pendingOpenStash = false;
+    g_pendingUiTriggerOpen = false;
     g_lastTitleMode = 1;
     g_lastTitleUpdate = GetTickCount();
     Log("SharedStash: opened stash UI on client (stashGoid=0x%08lX)", *(uint32_t*)((char*)stashGo + 0x4C));
@@ -617,22 +616,18 @@ void* CloneAndAddItemOnServer(void* ownerGo, void* inv, const char* tmplOrPConte
     unsigned char& reqByte30 = *((unsigned char*)req + 0x30);
     reqByte30 = (unsigned char)((reqByte30 & 0xEF) | (ownerAllClients << 4));
 
-    uint32_t newGoid = 0;
-    if (tmplOrPContent[0] == '#') {
-        newGoid = s_sCloneGoWithContent(godb, req, tmplOrPContent, 0);
-        if (!newGoid || newGoid == *(uint32_t*)0x007ADC88) {
-            Log("SharedStash: SCloneGoWithContent failed for '%s', falling back to pure template", tmplOrPContent);
-            std::string pureTmpl = tmplOrPContent + 1;
-            size_t delim = pureTmpl.find_first_of(":/");
-            if (delim != std::string::npos) {
-                pureTmpl = pureTmpl.substr(0, delim);
-            }
-            newGoid = s_sCloneGo(godb, req, pureTmpl.c_str());
+    uint32_t invalidGoid = *(uint32_t*)0x007ADC88;
+    uint32_t newGoid = s_sCloneGo(godb, req, tmplOrPContent);
+    if ((!newGoid || newGoid == invalidGoid) && tmplOrPContent[0] == '#') {
+        Log("SharedStash: SCloneGo failed for pcontent '%s', falling back to base template", tmplOrPContent);
+        std::string pureTmpl = tmplOrPContent + 1;
+        size_t delim = pureTmpl.find_first_of(":/");
+        if (delim != std::string::npos) {
+            pureTmpl = pureTmpl.substr(0, delim);
         }
-    } else {
-        newGoid = s_sCloneGo(godb, req, tmplOrPContent);
+        newGoid = s_sCloneGo(godb, req, pureTmpl.c_str());
     }
-    if (!newGoid || newGoid == *(uint32_t*)0x007ADC88) {
+    if (!newGoid || newGoid == invalidGoid) {
         Log("SharedStash: clone failed for '%s'", tmplOrPContent);
         return nullptr;
     }
@@ -1173,6 +1168,7 @@ void LoadStashFromFile(const std::string& account, void* hero, void* stashGo) {
                     if (!varName.empty()) cloneStr += ":" + varName;
                     if (!pfx.empty()) cloneStr += "/+" + pfx;
                     if (!sfx.empty()) cloneStr += "/+" + sfx;
+                    if (pfx.empty() && sfx.empty()) cloneStr += "/-no_mod";
                 } else {
                     cloneStr = currentTmpl;
                 }
@@ -1567,6 +1563,37 @@ extern "C" bool __fastcall Hook_GoInventory_RemoveFromDbAndPlaceInWorld(void* in
     return false;
 }
 
+// -------------------------------------------------------------------------------------------------
+// Native UI Button Notify Hook (Messenger::Notify @ 0x0070640C)
+// Handles notify(open_shared_stash) and notify(use_ability_0..3) across all resolutions/DDrawCompat
+// -------------------------------------------------------------------------------------------------
+extern "C" void __fastcall Orig_Messenger_Notify(void* messenger, void* unused_edx, const eng::gpstring* msgName, void* uiWindow);
+__asm__(
+    ".text\n"
+    ".globl _Orig_Messenger_Notify\n"
+    ".globl @Orig_Messenger_Notify@16\n"
+    "_Orig_Messenger_Notify:\n"
+    "@Orig_Messenger_Notify@16:\n"
+    "  pushl %esi\n"
+    "  movl %ecx, %esi\n"
+    "  incl 0x14(%esi)\n"
+    "  movl $0x00706412, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" void __fastcall Hook_Messenger_Notify(void* messenger, void* unused_edx, const eng::gpstring* msgName, void* uiWindow) {
+    if (msgName && Readable(msgName, 4) && msgName->p && Readable(msgName->p, 1)) {
+        const char* s = msgName->p;
+        if (strcmp(s, "open_shared_stash") == 0) {
+            Log("SharedStash: UI button pressed -> notify(open_shared_stash)");
+            g_pendingUiTriggerOpen = true;
+        } else if (strncmp(s, "use_ability_", 12) == 0 && s[12] >= '0' && s[12] <= '3' && s[13] == '\0') {
+            CharacterAbilities_QueueTrigger(s[12] - '0');
+        }
+    }
+    Orig_Messenger_Notify(messenger, unused_edx, msgName, uiWindow);
+}
+
 void SharedStash_SetDirectPlay(void* dpClient, void* dpServer) {
     if (dpClient) g_dp8Client = dpClient;
     if (dpServer) g_dp8Server = dpServer;
@@ -1706,6 +1733,21 @@ void SharedStash_Init() {
         }
     }
 
+    // Hook Messenger::Notify at 0x0070640C (6 bytes: 56 8B F1 FF 46 14)
+    const BYTE kNotifyExpect[6] = { 0x56, 0x8B, 0xF1, 0xFF, 0x46, 0x14 };
+    BYTE* pNotify = (BYTE*)0x0070640C;
+    if (Readable(pNotify, 6) && memcmp(pNotify, kNotifyExpect, 6) == 0) {
+        DWORD oldProt = 0;
+        if (VirtualProtect(pNotify, 6, PAGE_EXECUTE_READWRITE, &oldProt)) {
+            pNotify[0] = 0xE9;
+            *(int32_t*)(pNotify + 1) = (int32_t)((DWORD)(void*)&Hook_Messenger_Notify - (0x0070640C + 5));
+            pNotify[5] = 0x90;
+            VirtualProtect(pNotify, 6, oldProt, &oldProt);
+            FlushInstructionCache(GetCurrentProcess(), pNotify, 6);
+            Log("SharedStash: hooked Messenger::Notify at 0x0070640C (HUD Shared Stash & Ability buttons)");
+        }
+    }
+
     Log("SharedStash: module initialized.");
 }
 
@@ -1829,6 +1871,10 @@ void SharedStash_Tick() {
 
     // 2. Client tick: complete pending open and manage stash / backpack UI state
     if (Cfg().role != Role::Server) {
+        if (g_pendingUiTriggerOpen) {
+            g_pendingUiTriggerOpen = false;
+            SharedStash_TriggerOpen();
+        }
         void* curHero = GetLocalScreenHero();
         if (curHero && Readable(curHero, 0x50)) {
             uint32_t curHeroGoid = *(uint32_t*)((char*)curHero + 0x4C);
@@ -2106,50 +2152,6 @@ bool SharedStash_TriggerOpen() {
 }
 
 bool SharedStash_FilterMouse(LPMSG msg) {
-    if (!msg || msg->message != WM_LBUTTONDOWN) return false;
-    if (s_isServerLocal() ? false : (Cfg().role == Role::Server)) return false;
-
-    void* stashBtn = eng::FindWindow("awp_stash_btn_1", "character_awp");
-    int left = 238, top = 6, right = 270, bottom = 26;
-    if (stashBtn && Readable(stashBtn, 0x80)) {
-        left   = *(int*)((char*)stashBtn + 0x60);
-        top    = *(int*)((char*)stashBtn + 0x64);
-        right  = *(int*)((char*)stashBtn + 0x68);
-        bottom = *(int*)((char*)stashBtn + 0x6C);
-    }
-
-    int minX = left - 4;
-    int minY = top - 4;
-    int maxX = right + 4;
-    int maxY = bottom + 4;
-
-    auto inBox = [minX, minY, maxX, maxY](int x, int y) {
-        return (x >= minX && x <= maxX && y >= minY && y <= maxY);
-    };
-
-    bool hit = false;
-    int lx = (short)LOWORD(msg->lParam);
-    int ly = (short)HIWORD(msg->lParam);
-    if (inBox(lx, ly)) hit = true;
-
-    HWND hwnd = g_gameHwnd ? g_gameHwnd : msg->hwnd;
-    if (!hit && hwnd) {
-        POINT pt = msg->pt;
-        if (ScreenToClient(hwnd, &pt) && inBox(pt.x, pt.y)) hit = true;
-        if (!hit) {
-            POINT cur;
-            if (GetCursorPos(&cur) && ScreenToClient(hwnd, &cur) && inBox(cur.x, cur.y)) hit = true;
-        }
-    }
-
-    if (hit) {
-        Log("SharedStash_FilterMouse: Shared Stash button clicked at (%d,%d)", lx, ly);
-        SharedStash_TriggerOpen();
-        msg->message = WM_NULL;
-        msg->wParam = 0;
-        msg->lParam = 0;
-        return true;
-    }
-
+    (void)msg;
     return false;
 }

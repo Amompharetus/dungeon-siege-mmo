@@ -10,3 +10,4 @@ bool CharacterAbilities_OnReceivePacket(bool isServer, DWORD senderDpnid, const 
 void CharacterAbilities_SetDirectPlay(void* dpClient, void* dpServer);
 void CharacterAbilities_NotifyConnect(const char* hostUrl);
 bool CharacterAbilities_IsServerSupported();
+void CharacterAbilities_QueueTrigger(int slot);
