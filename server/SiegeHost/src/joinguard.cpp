@@ -688,16 +688,6 @@ bool ScanInventory(void* pl, const Joined& j, std::string& outBadItem) {
         void* memberGo = *c;
         if (!memberGo || !MemReadable(memberGo, 0x90)) continue;
 
-        // Check starting gold on low-level/new character
-        void* inv = *(void**)((char*)memberGo + 0x2C);
-        if (inv && MemReadable(inv, 0x80)) {
-            int gold = *(int*)((char*)inv + 0x78);
-            if (j.xp <= 200 && gold > 50000) {
-                outBadItem = "hacked starting gold (" + std::to_string(gold) + ")";
-                return false;
-            }
-        }
-
         std::vector<void*> allItems;
         CollectGoItems(memberGo, allItems);
 

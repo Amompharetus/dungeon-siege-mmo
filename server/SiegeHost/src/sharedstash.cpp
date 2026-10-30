@@ -542,7 +542,7 @@ void OpenClientStashUI(void* hero, void* stashGo) {
     OpenClientInventoryForStash(hero);
 
     ZeroStashGoFootprint(heroInv, stashGo);
-    SetInventoryDbLocation(heroInv, stashGo, 0x15 /*il_main*/);
+    SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
 
     *(void**)((char*)heroInv + 0xA4) = stashGo;
     s_toggleBackpack(uiPartyMgr, 1, 0);
@@ -2138,7 +2138,7 @@ void SharedStash_Tick() {
                         g_wasInventoryOpen = true;
                         if (heroInv && Readable(heroInv, 0xB0)) {
                             ZeroStashGoFootprint(heroInv, stashGo);
-                            SetInventoryDbLocation(heroInv, stashGo, 0x15 /*il_main*/);
+                            SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
                             *(void**)((char*)heroInv + 0xA4) = stashGo;
                         }
                         if (!bpVis || activeBpGoid != g_localStashGoid) {
@@ -2157,7 +2157,7 @@ void SharedStash_Tick() {
                         CleanupClientStashUI();
                     } else if (heroInv && Readable(heroInv, 0xB0)) {
                         ZeroStashGoFootprint(heroInv, stashGo);
-                        SetInventoryDbLocation(heroInv, stashGo, 0x15 /*il_main*/);
+                        SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
                     }
                 }
             }
