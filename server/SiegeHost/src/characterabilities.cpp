@@ -1018,7 +1018,14 @@ static void UpdateAbilityUI() {
 
     void* hero = GetScreenHero(srv);
     bool inGame = (hero && Readable(hero, 0x80) && IsCharacterAliveAndConscious(hero));
-    if (!inGame) return;
+    if (!inGame) {
+        const char* const kHov[4] = { "awp_ability_hover_0", "awp_ability_hover_1", "awp_ability_hover_2", "awp_ability_hover_3" };
+        for (int i = 0; i < 4; ++i) {
+            void* h = eng::FindWindow(kHov[i], "character_awp");
+            if (h) SetWindowVisible(h, false);
+        }
+        return;
+    }
     void* actor = *(void**)((char*)hero + 0x00);
 
     void* slotsPanel = eng::FindWindow("window_slots_panel_1", "character_awp");
@@ -1026,9 +1033,11 @@ static void UpdateAbilityUI() {
     bool charVis = eng::InterfaceVisible("character");
     bool showOption1 = slotsVis && !charVis;
 
-    const char* const kAwpBtns[4] = { "awp_ability_btn_0", "awp_ability_btn_1", "awp_ability_btn_2", "awp_ability_btn_3" };
-    const char* const kAwpCds[4]  = { "awp_ability_cd_0",  "awp_ability_cd_1",  "awp_ability_cd_2",  "awp_ability_cd_3"  };
-    const char* const kAwpKeys[4] = { "awp_ability_key_0", "awp_ability_key_1", "awp_ability_key_2", "awp_ability_key_3" };
+    const char* const kAwpIcons[4]  = { "awp_ability_icon_0",  "awp_ability_icon_1",  "awp_ability_icon_2",  "awp_ability_icon_3"  };
+    const char* const kAwpBtns[4]   = { "awp_ability_btn_0",   "awp_ability_btn_1",   "awp_ability_btn_2",   "awp_ability_btn_3"   };
+    const char* const kAwpHovers[4] = { "awp_ability_hover_0", "awp_ability_hover_1", "awp_ability_hover_2", "awp_ability_hover_3" };
+    const char* const kAwpCds[4]    = { "awp_ability_cd_0",    "awp_ability_cd_1",    "awp_ability_cd_2",    "awp_ability_cd_3"    };
+    const char* const kAwpKeys[4]   = { "awp_ability_key_0",   "awp_ability_key_1",   "awp_ability_key_2",   "awp_ability_key_3"   };
 
     void* awpPanel = eng::FindWindow("awp_ability_subpanel_1", "character_awp");
     if (awpPanel) SetWindowVisible(awpPanel, showOption1);
@@ -1092,15 +1101,27 @@ static void UpdateAbilityUI() {
         }
 
         // Option 1 (Top-Left active weapon panel)
-        void* awpBtn = eng::FindWindow(kAwpBtns[i], "character_awp");
-        void* awpCd  = eng::FindWindow(kAwpCds[i], "character_awp");
-        void* awpKey = eng::FindWindow(kAwpKeys[i], "character_awp");
+        void* awpIcon  = eng::FindWindow(kAwpIcons[i], "character_awp");
+        void* awpBtn   = eng::FindWindow(kAwpBtns[i], "character_awp");
+        void* awpHover = eng::FindWindow(kAwpHovers[i], "character_awp");
+        void* awpCd    = eng::FindWindow(kAwpCds[i], "character_awp");
+        void* awpKey   = eng::FindWindow(kAwpKeys[i], "character_awp");
+        if (awpIcon) {
+            SetWindowVisible(awpIcon, showOption1);
+            if (showOption1) SetWindowAlpha(awpIcon, alpha);
+        }
         if (awpBtn) {
             SetWindowVisible(awpBtn, showOption1);
             if (showOption1) {
-                SetWindowAlpha(awpBtn, alpha);
+                SetWindowAlpha(awpBtn, awpIcon ? 1.0f : alpha);
                 EnsureButtonClickable(awpBtn);
             }
+        }
+        if (awpHover) {
+            bool isHovered = showOption1 && awpBtn && Readable(awpBtn, 0x140) &&
+                             (*(unsigned char*)((char*)awpBtn + 0x135) != 0);
+            SetWindowVisible(awpHover, isHovered);
+            if (isHovered) SetWindowAlpha(awpHover, 1.0f);
         }
         if (awpCd) {
             SetWindowVisible(awpCd, showOption1);

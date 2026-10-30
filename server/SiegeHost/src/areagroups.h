@@ -137,6 +137,18 @@ inline unsigned ForLocation(unsigned loc) {
     return loc / 100;
 }
 
+// True for the eight towns on Utraean Peninsula (groups 1..8, each town on its own group).
+inline bool IsTownGroup(unsigned group) {
+    return group >= 1 && group <= 8;
+}
+
+inline bool IsTownLocation(unsigned loc) {
+    if (!loc) return false;
+    for (int i = 0; i < kCount; ++i)
+        if (kTable[i].loc == loc) return IsTownGroup(kTable[i].group);
+    return false;
+}
+
 // How many groups the table defines, i.e. the highest group number in it.
 inline unsigned GroupCount() {
     unsigned n = 0;
