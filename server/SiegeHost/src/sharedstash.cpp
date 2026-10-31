@@ -21,6 +21,7 @@ namespace {
 const uint32_t kStashMagic    = 0x53545348; // 'STSH'
 const uint32_t kPkt_ReqOpen   = 1;
 const uint32_t kPkt_StashInfo = 2;
+const uint32_t kPkt_ReqClose  = 3;
 
 #pragma pack(push, 1)
 struct StashPacket {
@@ -316,8 +317,10 @@ void* FindHeroStashGo(void* inv) {
             if ((*((unsigned char*)child + 0x96) & 8) != 0) continue;
             const char* tmpl = s_templateName(child);
             if (tmpl && _stricmp(tmpl, "dsx_backpack_empty") == 0) {
+                void* gui = *(void**)((char*)child + 0x28);
+                int invW = (gui && Readable(gui, 0x30)) ? *(int*)((char*)gui + 0x18) : -1;
                 int loc = GetInventoryDbLocation(inv, child);
-                if (loc == 0x11 /*il_invalid*/) {
+                if (loc == 0x11 /*il_invalid*/ || invW == 0) {
                     return child;
                 }
             }
@@ -531,6 +534,8 @@ void OpenClientInventoryForStash(void* hero) {
     }
 }
 
+void SendStashPacketToServer(uint32_t heroGoid, uint32_t type);
+
 void OpenClientStashUI(void* hero, void* stashGo) {
     if (!hero || !stashGo || !Readable(hero, 0x80) || !Readable(stashGo, 0x80)) return;
     if (GetHeroUberLevel(hero) <= 30.0f) return;
@@ -546,6 +551,10 @@ void OpenClientStashUI(void* hero, void* stashGo) {
 
     *(void**)((char*)heroInv + 0xA4) = stashGo;
     s_toggleBackpack(uiPartyMgr, 1, 0);
+    void* stashInv = *(void**)((char*)stashGo + 0x2C);
+    if (stashInv && Readable(stashInv, 0x90)) {
+        *((char*)stashInv + 0x86) = 1;
+    }
     g_suppressBackpackSfx = false;
     SetStashUIText("Shared Stash");
 
@@ -563,12 +572,21 @@ void CleanupClientStashUI() {
     void* stashGo = ResolveGo(g_localStashGoid);
     void* uiPartyMgr = *(void**)0x007ACF90;
 
+    if (g_sharedStashActive && hero && Readable(hero, 0x80)) {
+        uint32_t heroGoid = *(uint32_t*)((char*)hero + 0x4C);
+        SendStashPacketToServer(heroGoid, kPkt_ReqClose);
+    }
+
     if (hero && Readable(hero, 0x80)) {
         void* heroInv = *(void**)((char*)hero + 0x2C);
         if (heroInv && Readable(heroInv, 0xB0)) {
             if (stashGo) {
                 SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
                 ZeroStashGoFootprint(heroInv, stashGo);
+                void* stashInv = *(void**)((char*)stashGo + 0x2C);
+                if (stashInv && Readable(stashInv, 0x90)) {
+                    *((char*)stashInv + 0x86) = 0;
+                }
             }
             if (*(void**)((char*)heroInv + 0xA4) == stashGo) {
                 *(void**)((char*)heroInv + 0xA4) = nullptr;
@@ -1387,6 +1405,11 @@ extern "C" char __fastcall Hook_GoInventory_XferEntry(void* inv, void* unused_ed
             if (g_localStashGoid != 0 && goid == g_localStashGoid) {
                 return 1;
             }
+            for (const auto& kv : g_serverStashes) {
+                if (kv.second.stashGoid == goid) {
+                    return 1;
+                }
+            }
             const char* tmpl = s_templateName(itemGo);
             if (tmpl && _stricmp(tmpl, "dsx_backpack_empty") == 0) {
                 void* gui = *(void**)((char*)itemGo + 0x28);
@@ -1403,13 +1426,11 @@ extern "C" char __fastcall Hook_GoInventory_XferEntry(void* inv, void* unused_ed
 // -------------------------------------------------------------------------------------------------
 // Fix Loot Collection ('Z' hotkey) while Shared Stash is open (0x0057B4AF)
 // -------------------------------------------------------------------------------------------------
-// When Shared Stash is open, stashGo is attached to heroInv at location 0x15 (il_main) so that
-// clicking and moving items works. However, GoInventory::SerializeGridboxForCollectLoot iterates all
-// items at 0x15 and serializes any open container's gridbox into the collect-loot bitstream.
-// The server keeps stashGo at 0x11 (il_invalid) and does not deserialize stashGo's gridbox,
-// causing bitstream desynchronization that breaks ground loot collection.
-// By temporarily clearing stashInv->m_isOpen during serialization, stashGo is skipped from the
-// bitstream, keeping the client and server bitstreams in sync without altering stashGo's location.
+// When Shared Stash is open, stashGo is attached to heroInv at location 0x15 (il_main) on both
+// client and server with isOpen = 1, exactly like a normal backpack.
+// GoInventory::SerializeGridboxForCollectLoot iterates all items at 0x15 and serializes any open
+// container's gridbox into the collect-loot bitstream. Symmetrical serialization on client and server
+// allows the server to evaluate loot placement in the Shared Stash when main inventory is full.
 extern "C" void __fastcall Orig_GoInventory_SerializeGridboxForCollectLoot(void* heroInv, void* unused_edx, void* bitStream);
 __asm__(
     ".text\n"
@@ -1427,21 +1448,9 @@ __asm__(
 );
 
 extern "C" void __fastcall Hook_GoInventory_SerializeGridboxForCollectLoot(void* heroInv, void* unused_edx, void* bitStream) {
-    void* stashGo = (g_localStashGoid != 0) ? ResolveGo(g_localStashGoid) : nullptr;
-    void* stashInv = (stashGo && Readable(stashGo, 0x80)) ? *(void**)((char*)stashGo + 0x2C) : nullptr;
-    char prevOpen = 0;
-    bool restored = false;
-    if (stashInv && Readable(stashInv, 0x90)) {
-        prevOpen = *((char*)stashInv + 0x86);
-        *((char*)stashInv + 0x86) = 0;
-        restored = true;
-    }
-
     Orig_GoInventory_SerializeGridboxForCollectLoot(heroInv, unused_edx, bitStream);
-
-    if (restored) {
-        *((char*)stashInv + 0x86) = prevOpen;
-        Log("SharedStash: SerializeGridboxForCollectLoot - temporarily hid stash container from bitstream");
+    if (g_sharedStashActive) {
+        Log("SharedStash: SerializeGridboxForCollectLoot - serialized stash gridbox with hero for collect loot");
     }
 }
 
@@ -2036,11 +2045,36 @@ void SharedStash_Tick() {
                         }
                         void* stashGo = GetOrCreateServerStash(account, hero);
                         if (stashGo) {
+                            void* heroInv = *(void**)((char*)hero + 0x2C);
+                            if (heroInv && Readable(heroInv, 0x90)) {
+                                ZeroStashGoFootprint(heroInv, stashGo);
+                                SetInventoryDbLocation(heroInv, stashGo, 0x15 /*il_main*/);
+                            }
+                            void* stashInv = *(void**)((char*)stashGo + 0x2C);
+                            if (stashInv && Readable(stashInv, 0x90)) {
+                                *((char*)stashInv + 0x86) = 1;
+                            }
                             uint32_t stashGoid = *(uint32_t*)((char*)stashGo + 0x4C);
                             SendStashPacketToClient(q.senderDpnid, q.pkt.heroGoid, stashGoid);
+                            Log("SharedStash: server opened stash 0x%08lX at 0x15 for hero 0x%08lX", stashGoid, q.pkt.heroGoid);
                         }
                     } else {
                         Log("SharedStash: server could not resolve hero 0x%08lX", q.pkt.heroGoid);
+                    }
+                } else if (q.pkt.type == kPkt_ReqClose) {
+                    void* hero = ResolveGo(q.pkt.heroGoid);
+                    if (hero && Readable(hero, 0x80)) {
+                        void* heroInv = *(void**)((char*)hero + 0x2C);
+                        void* stashGo = FindHeroStashGo(heroInv);
+                        if (stashGo && heroInv && Readable(heroInv, 0x90)) {
+                            SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
+                            ZeroStashGoFootprint(heroInv, stashGo);
+                            void* stashInv = *(void**)((char*)stashGo + 0x2C);
+                            if (stashInv && Readable(stashInv, 0x90)) {
+                                *((char*)stashInv + 0x86) = 0;
+                            }
+                            Log("SharedStash: server closed stash for hero 0x%08lX", q.pkt.heroGoid);
+                        }
                     }
                 }
             } else {
@@ -2175,6 +2209,10 @@ void SharedStash_Tick() {
                     CleanupClientStashUI();
                 } else if (!invOpen) {
                     // Inventory was closed (via 'I' hotkey or inventory button), but Shared Stash was not closed via X
+                    if (g_wasInventoryOpen) {
+                        uint32_t heroGoid = *(uint32_t*)((char*)hero + 0x4C);
+                        SendStashPacketToServer(heroGoid, kPkt_ReqClose);
+                    }
                     g_wasInventoryOpen = false;
                     if (bpVis) {
                         g_suppressBackpackSfx = true;
@@ -2186,6 +2224,10 @@ void SharedStash_Tick() {
                         SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
                         ZeroStashGoFootprint(heroInv, stashGo);
                     }
+                    void* stashInv = *(void**)((char*)stashGo + 0x2C);
+                    if (stashInv && Readable(stashInv, 0x90)) {
+                        *((char*)stashInv + 0x86) = 0;
+                    }
                 } else {
                     // Inventory is open
                     if (!g_wasInventoryOpen) {
@@ -2195,6 +2237,10 @@ void SharedStash_Tick() {
                             ZeroStashGoFootprint(heroInv, stashGo);
                             SetInventoryDbLocation(heroInv, stashGo, 0x15 /*il_main*/);
                             *(void**)((char*)heroInv + 0xA4) = stashGo;
+                        }
+                        void* stashInv = *(void**)((char*)stashGo + 0x2C);
+                        if (stashInv && Readable(stashInv, 0x90)) {
+                            *((char*)stashInv + 0x86) = 1;
                         }
                         if (!bpVis || activeBpGoid != g_localStashGoid) {
                             g_suppressBackpackSfx = true;
@@ -2206,6 +2252,8 @@ void SharedStash_Tick() {
                         SetStashUIText("Shared Stash");
                         g_lastTitleMode = 1;
                         g_lastTitleUpdate = now;
+                        uint32_t heroGoid = *(uint32_t*)((char*)hero + 0x4C);
+                        SendStashPacketToServer(heroGoid, kPkt_ReqOpen);
                     } else if (!bpVis) {
                         // Player clicked X on the Shared Stash while the inventory remained open
                         PlaySpellBookSfx();
@@ -2239,6 +2287,27 @@ void SharedStash_Tick() {
             void* stashGo = ResolveGo(st.stashGoid);
             if (!stashGo || !Readable(stashGo, 0x90)) continue;
             st.stashGo = stashGo;
+
+            void* hero = ResolveGo(st.heroGoid);
+            if (hero && Readable(hero, 0x80)) {
+                unsigned srvLoc = 0, srvGrp = 0;
+                if (!IsHeroInTown(hero, &srvLoc, &srvGrp)) {
+                    void* heroInv = *(void**)((char*)hero + 0x2C);
+                    if (heroInv && Readable(heroInv, 0x90)) {
+                        int loc = GetInventoryDbLocation(heroInv, stashGo);
+                        if (loc == 0x15) {
+                            SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
+                            ZeroStashGoFootprint(heroInv, stashGo);
+                            void* stashInv = *(void**)((char*)stashGo + 0x2C);
+                            if (stashInv && Readable(stashInv, 0x90)) {
+                                *((char*)stashInv + 0x86) = 0;
+                            }
+                            Log("SharedStash: server auto-closed stash for hero 0x%08lX (outside town: loc=%u group=%u)",
+                                st.heroGoid, srvLoc, srvGrp);
+                        }
+                    }
+                }
+            }
 
             // Keep server-side stashInv->m_pGridbox null on dedicated server so client UIGridbox is authoritative
             if (Cfg().role == Role::Server) {
@@ -2297,12 +2366,9 @@ bool SharedStash_FilterKey(LPMSG msg) {
                 DWORD now = GetTickCount();
                 if ((msg->lParam & 0x40000000) == 0 || (now - s_lastCollectMs >= 250)) {
                     s_lastCollectMs = now;
-                    void* uiPartyMgr = *(void**)0x007ACF90;
-                    if (uiPartyMgr && Readable(uiPartyMgr, 0x1E8)) {
-                        typedef void(__thiscall* CollectLootFn)(void*);
-                        ((CollectLootFn)0x004A8D71)(uiPartyMgr);
-                        Log("SharedStash: triggered CollectLoot via 'Z' while stash is open");
-                    }
+                    typedef void(*CollectLootFn)();
+                    ((CollectLootFn)0x004A8D71)();
+                    Log("SharedStash: triggered CollectLoot via 'Z' while stash is open");
                 }
                 s_eatNextZChar = true;
                 msg->message = WM_NULL;
