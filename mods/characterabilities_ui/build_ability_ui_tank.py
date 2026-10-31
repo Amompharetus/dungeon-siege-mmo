@@ -388,8 +388,8 @@ option1_gas = """
     common_template = ;
     consumable = true;
     draw_order = 829;
-    rect = 238,6,270,26;
-    texture = b_gui_ig_i_it_gold-pile-lg;
+    rect = 238,6,270,38;
+    texture = b_gui_ig_i_it_key-star;
     uvcoords = 0.000000,0.000000,1.000000,1.000000;
     visible = true;
     wrap_mode = clamp;
@@ -399,7 +399,24 @@ option1_gas = """
     [messages]
     {
       onbuttonpress = notify(open_shared_stash);
+      onrollover = notify(stash_rollover);
+      onrolloff = notify(stash_rolloff);
     }
+  }
+  [t:window,n:awp_stash_hover_1]
+  {
+    alpha = 1.000000;
+    common_control = false;
+    common_template = ;
+    draw_order = 6629;
+    rect = 238,6,270,38;
+    texture = b_gui_ig_mnu_awp;
+    uvcoords = 0.757813,0.710938,0.835938,0.992188;
+    visible = false;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = character_1_max;
+    dock_group = dockbar_character_1;
   }
 """
 

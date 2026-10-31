@@ -1638,16 +1638,7 @@ static RecentPutDownEntry s_recentPutDown[8] = {};
 static int s_recentPutDownIdx = 0;
 
 static void SetHoverWindowVisible(int slot, bool vis) {
-    if (slot < 0 || slot > 3) return;
-    static const char* const kHovNames[4] = {
-        "awp_ability_hover_0", "awp_ability_hover_1", "awp_ability_hover_2", "awp_ability_hover_3"
-    };
-    void* w = eng::FindWindow(kHovNames[slot], "character_awp");
-    if (!w) return;
-    typedef void (__thiscall* SetVisFn)(void*, bool);
-    static const auto s_setVis = (SetVisFn)0x0047B06E;
-    s_setVis(w, vis);
-    *(bool*)((char*)w + 0x108) = vis;
+    CharacterAbilities_SetHover(slot, vis);
 }
 } // namespace
 
@@ -1709,9 +1700,13 @@ extern "C" void __fastcall Hook_Messenger_Notify(void* messenger, void* unused_e
         } else if (strncmp(s, "use_ability_", 12) == 0 && s[12] >= '0' && s[12] <= '3' && s[13] == '\0') {
             CharacterAbilities_QueueTrigger(s[12] - '0');
         } else if (strncmp(s, "ability_rollover_", 17) == 0 && s[17] >= '0' && s[17] <= '3' && s[18] == '\0') {
-            SetHoverWindowVisible(s[17] - '0', true);
+            CharacterAbilities_SetHover(s[17] - '0', true);
         } else if (strncmp(s, "ability_rolloff_", 16) == 0 && s[16] >= '0' && s[16] <= '3' && s[17] == '\0') {
-            SetHoverWindowVisible(s[16] - '0', false);
+            CharacterAbilities_SetHover(s[16] - '0', false);
+        } else if (strcmp(s, "stash_rollover") == 0) {
+            CharacterAbilities_SetStashHover(true);
+        } else if (strcmp(s, "stash_rolloff") == 0) {
+            CharacterAbilities_SetStashHover(false);
         }
     }
     Orig_Messenger_Notify(messenger, unused_edx, msgName, uiWindow);

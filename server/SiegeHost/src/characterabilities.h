@@ -11,3 +11,5 @@ void CharacterAbilities_SetDirectPlay(void* dpClient, void* dpServer);
 void CharacterAbilities_NotifyConnect(const char* hostUrl);
 bool CharacterAbilities_IsServerSupported();
 void CharacterAbilities_QueueTrigger(int slot);
+void CharacterAbilities_SetHover(int slot, bool hovered);
+void CharacterAbilities_SetStashHover(bool hovered);
