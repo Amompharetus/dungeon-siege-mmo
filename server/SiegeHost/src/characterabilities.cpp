@@ -617,28 +617,6 @@ void BroadcastAbilityPacketToClients(uint32_t heroGoid, int slot) {
     }
 }
 
-bool IsChatActive() {
-    // 1. In-game console chat edit box
-    if (eng::WindowVisible("console_edit", "game_console_mp")) return true;
-    if (eng::WindowVisible("staging_char_name_edit_box", "staging_area_create_character")) return true;
-    if (eng::WindowVisible("staging_area_chat_editbox", "staging_area")) return true;
-    if (eng::WindowVisible("end_game_chat_editbox", "end_game_summary")) return true;
-
-    // 2. In-game UI text / chat input lock flag on WorldOptions
-    void* wo = *(void**)0x007ACFD4;
-    if (wo && Readable(wo, 0x50) && *((const unsigned char*)wo + 0x46) != 0) {
-        return true;
-    }
-
-    // 3. Single-player / dev console active flag on Game
-    void* game = *(void**)0x007ACF8C;
-    if (game && Readable(game, 0x100) && *((const unsigned char*)game + 0xFC) != 0) {
-        return true;
-    }
-
-    return false;
-}
-
 // Print feedback directly into the in-game chat window / console box
 void PrintGameChat(const char* text) {
     if (!text || !*text) return;
@@ -811,6 +789,28 @@ void ExecuteCharacterAbility(int slot, void* hero, float level, bool isServerAut
 }
 
 } // namespace
+
+bool IsChatActive() {
+    // 1. In-game console chat edit box
+    if (eng::WindowVisible("console_edit", "game_console_mp")) return true;
+    if (eng::WindowVisible("staging_char_name_edit_box", "staging_area_create_character")) return true;
+    if (eng::WindowVisible("staging_area_chat_editbox", "staging_area")) return true;
+    if (eng::WindowVisible("end_game_chat_editbox", "end_game_summary")) return true;
+
+    // 2. In-game UI text / chat input lock flag on WorldOptions
+    void* wo = *(void**)0x007ACFD4;
+    if (wo && Readable(wo, 0x50) && *((const unsigned char*)wo + 0x46) != 0) {
+        return true;
+    }
+
+    // 3. Single-player / dev console active flag on Game
+    void* game = *(void**)0x007ACF8C;
+    if (game && Readable(game, 0x100) && *((const unsigned char*)game + 0xFC) != 0) {
+        return true;
+    }
+
+    return false;
+}
 
 extern "C" void __fastcall Hook_GoDefend_ResetModifiers(void* defend) {
     Orig_GoDefend_ResetModifiers(defend);

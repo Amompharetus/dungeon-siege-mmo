@@ -13,3 +13,4 @@ bool CharacterAbilities_IsServerSupported();
 void CharacterAbilities_QueueTrigger(int slot);
 void CharacterAbilities_SetHover(int slot, bool hovered);
 void CharacterAbilities_SetStashHover(bool hovered);
+bool IsChatActive();
