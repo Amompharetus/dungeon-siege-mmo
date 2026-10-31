@@ -516,6 +516,52 @@ extern "C" void __fastcall Hook_GoDb_SMarkForDeletion(void* godb, void* unused_e
     Orig_GoDb_SMarkForDeletion(godb, unused_edx, go, p3, p4, p5);
 }
 
+// ---------------------------------------------------------------------------------------------------
+// 3. SEndGive drop-at-feet safety net (0x00579491)
+// ---------------------------------------------------------------------------------------------------
+// When an item cannot fit into hero inventory, active backpack, or any open container,
+// GoInventory::SEndGive calls GoInventory::RSRemove with bDelete=1 at 0x00579491, permanently
+// destroying the item. We intercept this call: detach with bDelete=false, then call GoMind::RSDrop
+// to safely drop the item at the hero's feet.
+static void DropItemAtHeroFeet(void* heroInv, void* itemGo) {
+    if (!heroInv || !itemGo) return;
+    void* heroGo = *(void**)((char*)heroInv + 0x04);
+    if (!heroGo || !Readable(heroGo, 0x80)) return;
+    void* placement = *(void**)((char*)heroGo + 0x40);
+    void* mind = *(void**)((char*)heroGo + 0x34);
+    if (!placement || !mind || !Readable(placement, 0x50) || !Readable(mind, 0x50)) return;
+    typedef const void* (__thiscall* GetPosFn)(void*);
+    const void* pos = ((GetPosFn)0x00540DFE)(placement);
+    if (!pos) return;
+
+    __asm__(
+        "pushl $2\n"
+        "pushl $4\n"
+        "pushl 12(%1)\n"
+        "pushl 8(%1)\n"
+        "pushl 4(%1)\n"
+        "pushl (%1)\n"
+        "pushl %0\n"
+        "movl %2, %%ecx\n"
+        "movl $0x005DE67D, %%eax\n"
+        "call *%%eax\n"
+        :
+        : "r"(itemGo), "r"(pos), "r"(mind)
+        : "eax", "ecx", "edx"
+    );
+}
+
+extern "C" void __fastcall Hook_SEndGive_RSRemove(void* heroInv, void* unused_edx, void* itemGo, bool bDelete, int unk) {
+    if (bDelete && itemGo) {
+        typedef void(__thiscall* RSRemoveFn)(void*, void*, bool, int);
+        ((RSRemoveFn)0x00575F38)(heroInv, itemGo, false /* do not delete */, unk);
+        DropItemAtHeroFeet(heroInv, itemGo);
+        Log("SEndGive: item %p could not fit into inventory or container; dropped at feet instead of destroyed.", itemGo);
+        return;
+    }
+    typedef void(__thiscall* RSRemoveFn)(void*, void*, bool, int);
+    ((RSRemoveFn)0x00575F38)(heroInv, itemGo, bDelete, unk);
+}
 
 void InvFixTick() {
     if (!g_on) return;
@@ -551,6 +597,23 @@ void InvFixInstall() {
     g_bpTrace = GetEnvironmentVariableA("SIEGEHOST_BPTRACE", e, sizeof e) != 0;  // lab only
     g_bpNoop  = GetEnvironmentVariableA("SIEGEHOST_BPNOOP", e, sizeof e) != 0;   // lab only
     bool capOff = !GetEnvironmentVariableA("SIEGEHOST_NO_BPCOUNTFIX", e, sizeof e);
+
+    // SEndGive drop-at-feet safety net (armed for both roles: server handles MP pickups, client handles SP pickups)
+    const uintptr_t kSEndGiveSite = 0x00579491;
+    const uintptr_t kSEndGiveCallee = 0x00575F38;
+    BYTE* pSEndGive = (BYTE*)kSEndGiveSite;
+    if (pSEndGive[0] == 0xE8 && (kSEndGiveSite + 5 + *(int32_t*)(pSEndGive + 1) == kSEndGiveCallee)) {
+        DWORD o;
+        if (VirtualProtect(pSEndGive, 5, PAGE_EXECUTE_READWRITE, &o)) {
+            *(int32_t*)(pSEndGive + 1) = (int32_t)((DWORD)(void*)&Hook_SEndGive_RSRemove - (kSEndGiveSite + 5));
+            VirtualProtect(pSEndGive, 5, o, &o);
+            FlushInstructionCache(GetCurrentProcess(), pSEndGive, 5);
+            g_on = true;
+            Log("InvFix: SEndGive drop-at-feet safety net armed at 0x%08lX (prevent item destruction).", kSEndGiveSite);
+        }
+    } else {
+        Log("InvFix: VERIFY FAILED at 0x%08lX for SEndGive RSRemove call", kSEndGiveSite);
+    }
 
     // A player's own machine decides left-click placement; the server decides Z. Both run the same
     // predicate, so the cap has to come off in both. Nothing else in this file applies to a client.
