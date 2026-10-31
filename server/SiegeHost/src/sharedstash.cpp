@@ -542,7 +542,7 @@ void OpenClientStashUI(void* hero, void* stashGo) {
     OpenClientInventoryForStash(hero);
 
     ZeroStashGoFootprint(heroInv, stashGo);
-    SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
+    SetInventoryDbLocation(heroInv, stashGo, 0x15 /*il_main*/);
 
     *(void**)((char*)heroInv + 0xA4) = stashGo;
     s_toggleBackpack(uiPartyMgr, 1, 0);
@@ -1401,6 +1401,50 @@ extern "C" char __fastcall Hook_GoInventory_XferEntry(void* inv, void* unused_ed
 }
 
 // -------------------------------------------------------------------------------------------------
+// Fix Loot Collection ('Z' hotkey) while Shared Stash is open (0x0057B4AF)
+// -------------------------------------------------------------------------------------------------
+// When Shared Stash is open, stashGo is attached to heroInv at location 0x15 (il_main) so that
+// clicking and moving items works. However, GoInventory::SerializeGridboxForCollectLoot iterates all
+// items at 0x15 and serializes any open container's gridbox into the collect-loot bitstream.
+// The server keeps stashGo at 0x11 (il_invalid) and does not deserialize stashGo's gridbox,
+// causing bitstream desynchronization that breaks ground loot collection.
+// By temporarily clearing stashInv->m_isOpen during serialization, stashGo is skipped from the
+// bitstream, keeping the client and server bitstreams in sync without altering stashGo's location.
+extern "C" void __fastcall Orig_GoInventory_SerializeGridboxForCollectLoot(void* heroInv, void* unused_edx, void* bitStream);
+__asm__(
+    ".text\n"
+    ".globl _Orig_GoInventory_SerializeGridboxForCollectLoot\n"
+    ".globl @Orig_GoInventory_SerializeGridboxForCollectLoot@12\n"
+    "_Orig_GoInventory_SerializeGridboxForCollectLoot:\n"
+    "@Orig_GoInventory_SerializeGridboxForCollectLoot@12:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  pushl %ecx\n"
+    "  pushl %ecx\n"
+    "  pushl %esi\n"
+    "  movl $0x0057B4B5, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" void __fastcall Hook_GoInventory_SerializeGridboxForCollectLoot(void* heroInv, void* unused_edx, void* bitStream) {
+    void* stashGo = (g_localStashGoid != 0) ? ResolveGo(g_localStashGoid) : nullptr;
+    void* stashInv = (stashGo && Readable(stashGo, 0x80)) ? *(void**)((char*)stashGo + 0x2C) : nullptr;
+    char prevOpen = 0;
+    bool restored = false;
+    if (stashInv && Readable(stashInv, 0x90)) {
+        prevOpen = *((char*)stashInv + 0x86);
+        *((char*)stashInv + 0x86) = 0;
+        restored = true;
+    }
+
+    Orig_GoInventory_SerializeGridboxForCollectLoot(heroInv, unused_edx, bitStream);
+
+    if (restored) {
+        *((char*)stashInv + 0x86) = prevOpen;
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
 // Spellbook SFX for Opening/Closing Backpack and Shared Stash (only while inventory is already open)
 // -------------------------------------------------------------------------------------------------
 extern "C" void __fastcall Orig_UIPartyManager_ToggleBackpack(void* uiPartyMgr, void* unused_edx, int open, char unk);
@@ -1778,6 +1822,21 @@ void SharedStash_Init() {
         }
     }
 
+    // Hook GoInventory::SerializeGridboxForCollectLoot at 0x0057B4AF (6 bytes: 55 8B EC 51 51 56)
+    const BYTE kSerializeExpect[6] = { 0x55, 0x8B, 0xEC, 0x51, 0x51, 0x56 };
+    BYTE* pSerialize = (BYTE*)0x0057B4AF;
+    if (Readable(pSerialize, 6) && memcmp(pSerialize, kSerializeExpect, 6) == 0) {
+        DWORD oldProt = 0;
+        if (VirtualProtect(pSerialize, 6, PAGE_EXECUTE_READWRITE, &oldProt)) {
+            pSerialize[0] = 0xE9;
+            *(int32_t*)(pSerialize + 1) = (int32_t)((DWORD)(void*)&Hook_GoInventory_SerializeGridboxForCollectLoot - (0x0057B4AF + 5));
+            pSerialize[5] = 0x90;
+            VirtualProtect(pSerialize, 6, oldProt, &oldProt);
+            FlushInstructionCache(GetCurrentProcess(), pSerialize, 6);
+            Log("SharedStash: hooked GoInventory::SerializeGridbox at 0x0057B4AF (collect loot fix)");
+        }
+    }
+
     // Hook GoGui::GetToolTipColorName at 0x00541E58 (7 bytes: F6 05 00 F4 7A 00 01)
     const BYTE kColorNameExpect[7] = { 0xF6, 0x05, 0x00, 0xF4, 0x7A, 0x00, 0x01 };
     BYTE* pColorName = (BYTE*)0x00541E58;
@@ -2133,7 +2192,7 @@ void SharedStash_Tick() {
                         g_wasInventoryOpen = true;
                         if (heroInv && Readable(heroInv, 0xB0)) {
                             ZeroStashGoFootprint(heroInv, stashGo);
-                            SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
+                            SetInventoryDbLocation(heroInv, stashGo, 0x15 /*il_main*/);
                             *(void**)((char*)heroInv + 0xA4) = stashGo;
                         }
                         if (!bpVis || activeBpGoid != g_localStashGoid) {
@@ -2152,7 +2211,7 @@ void SharedStash_Tick() {
                         CleanupClientStashUI();
                     } else if (heroInv && Readable(heroInv, 0xB0)) {
                         ZeroStashGoFootprint(heroInv, stashGo);
-                        SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
+                        SetInventoryDbLocation(heroInv, stashGo, 0x15 /*il_main*/);
                     }
                 }
             }
