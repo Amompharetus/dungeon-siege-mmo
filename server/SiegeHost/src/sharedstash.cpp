@@ -1441,6 +1441,7 @@ extern "C" void __fastcall Hook_GoInventory_SerializeGridboxForCollectLoot(void*
 
     if (restored) {
         *((char*)stashInv + 0x86) = prevOpen;
+        Log("SharedStash: SerializeGridboxForCollectLoot - temporarily hid stash container from bitstream");
     }
 }
 
@@ -2267,6 +2268,52 @@ void SharedStash_Tick() {
 // -------------------------------------------------------------------------------------------------
 bool SharedStash_FilterKey(LPMSG msg) {
     if (!msg) return false;
+
+    // Handle ground loot collection via 'Z' key while Shared Stash is open
+    static bool s_eatNextZChar = false;
+    if (g_sharedStashActive) {
+        if (msg->message == WM_CHAR && s_eatNextZChar) {
+            if (msg->wParam == 'z' || msg->wParam == 'Z') {
+                s_eatNextZChar = false;
+                msg->message = WM_NULL;
+                msg->wParam = 0;
+                msg->lParam = 0;
+                return true;
+            }
+        }
+
+        if (msg->message == WM_KEYUP && (msg->wParam == 'Z' || msg->wParam == 'z' || msg->wParam == 0x5A)) {
+            if (!IsChatActive()) {
+                msg->message = WM_NULL;
+                msg->wParam = 0;
+                msg->lParam = 0;
+                return true;
+            }
+        }
+
+        if (msg->message == WM_KEYDOWN && (msg->wParam == 'Z' || msg->wParam == 'z' || msg->wParam == 0x5A)) {
+            if (!IsChatActive() && !(GetKeyState(VK_MENU) & 0x8000) && !(GetKeyState(VK_CONTROL) & 0x8000)) {
+                static DWORD s_lastCollectMs = 0;
+                DWORD now = GetTickCount();
+                if ((msg->lParam & 0x40000000) == 0 || (now - s_lastCollectMs >= 250)) {
+                    s_lastCollectMs = now;
+                    void* uiPartyMgr = *(void**)0x007ACF90;
+                    if (uiPartyMgr && Readable(uiPartyMgr, 0x1E8)) {
+                        typedef void(__thiscall* CollectLootFn)(void*);
+                        ((CollectLootFn)0x004A8D71)(uiPartyMgr);
+                        Log("SharedStash: triggered CollectLoot via 'Z' while stash is open");
+                    }
+                }
+                s_eatNextZChar = true;
+                msg->message = WM_NULL;
+                msg->wParam = 0;
+                msg->lParam = 0;
+                return true;
+            }
+        }
+    } else {
+        s_eatNextZChar = false;
+    }
 
     if (msg->message == WM_CHAR && g_eatNextReturnChar) {
         if (msg->wParam == VK_RETURN || msg->wParam == 0x0A || msg->wParam == 0x0D) {
