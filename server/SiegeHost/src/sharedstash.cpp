@@ -1380,6 +1380,26 @@ void* GetOrCreateServerStash(const std::string& account, void* hero) {
 
 } // namespace
 
+bool SharedStash_IsStashGo(void* itemGo) {
+    if (!itemGo || !Readable(itemGo, 0x80)) return false;
+    uint32_t goid = *(uint32_t*)((char*)itemGo + 0x4C);
+    if (g_localStashGoid != 0 && goid == g_localStashGoid) return true;
+    for (const auto& kv : g_serverStashes) {
+        if (kv.second.stashGoid == goid || kv.second.stashGo == itemGo) {
+            return true;
+        }
+    }
+    const char* tmpl = s_templateName(itemGo);
+    if (tmpl && _stricmp(tmpl, "dsx_backpack_empty") == 0) {
+        void* gui = *(void**)((char*)itemGo + 0x28);
+        int invW = (gui && Readable(gui, 0x30)) ? *(int*)((char*)gui + 0x18) : -1;
+        if (invW == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // -------------------------------------------------------------------------------------------------
 // Prevent stashGo (or any il_invalid/zero-footprint dsx_backpack_empty) from being saved to .dsparty
 // -------------------------------------------------------------------------------------------------
@@ -1631,6 +1651,19 @@ extern "C" bool __fastcall Hook_GoInventory_RemoveFromDbAndPlaceInWorld(void* in
         }
     }
     return false;
+}
+
+// -------------------------------------------------------------------------------------------------
+// Prevent Shared Stash backpack from being dropped on player death (0x0057810C in DropItemsFor)
+// -------------------------------------------------------------------------------------------------
+extern "C" void __fastcall Hook_DropItemsFor_RSRemove(void* heroInv, void* unused_edx, void* itemGo, bool bDelete, int unk) {
+    if (SharedStash_IsStashGo(itemGo)) {
+        Log("DropItemsFor: intercepted death drop of shared stash %p (goid 0x%08lX) - prevented drop.",
+            itemGo, itemGo ? *(uint32_t*)((char*)itemGo + 0x4C) : 0);
+        return;
+    }
+    typedef void(__thiscall* RSRemoveFn)(void*, void*, bool, int);
+    ((RSRemoveFn)0x00575F38)(heroInv, itemGo, bDelete, unk);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -1905,6 +1938,22 @@ void SharedStash_Init() {
                 Log("SharedStash: hooked Go::PlayVoiceSound at 0x00539D77 (deduplicating put_down SFX)");
             }
         }
+    }
+
+    // Prevent Shared Stash backpack from dropping on player death (0x0057810C in GoInventory::DropItemsFor)
+    const uintptr_t kDropItemsForSite = 0x0057810C;
+    const uintptr_t kRSRemoveCallee = 0x00575F38;
+    BYTE* pDropItemsFor = (BYTE*)kDropItemsForSite;
+    if (pDropItemsFor[0] == 0xE8 && (kDropItemsForSite + 5 + *(int32_t*)(pDropItemsFor + 1) == kRSRemoveCallee)) {
+        DWORD oldProt = 0;
+        if (VirtualProtect(pDropItemsFor, 5, PAGE_EXECUTE_READWRITE, &oldProt)) {
+            *(int32_t*)(pDropItemsFor + 1) = (int32_t)((DWORD)(void*)&Hook_DropItemsFor_RSRemove - (kDropItemsForSite + 5));
+            VirtualProtect(pDropItemsFor, 5, oldProt, &oldProt);
+            FlushInstructionCache(GetCurrentProcess(), pDropItemsFor, 5);
+            Log("SharedStash: hooked GoInventory::DropItemsFor at 0x0057810C (prevent stashGo drop on death)");
+        }
+    } else {
+        Log("SharedStash: VERIFY FAILED at 0x0057810C for DropItemsFor RSRemove call");
     }
 
     Log("SharedStash: module initialized.");
@@ -2218,7 +2267,9 @@ void SharedStash_Tick() {
             void* hero = ResolveGo(st.heroGoid);
             if (hero && Readable(hero, 0x80)) {
                 unsigned srvLoc = 0, srvGrp = 0;
-                if (!IsHeroInTown(hero, &srvLoc, &srvGrp)) {
+                void* aspect = *(void**)((char*)hero + 0x04);
+                bool isDead = (aspect && Readable(aspect, 0xC0) && *(float*)((char*)aspect + 0xB0) <= 0.0f);
+                if (!IsHeroInTown(hero, &srvLoc, &srvGrp) || isDead) {
                     void* heroInv = *(void**)((char*)hero + 0x2C);
                     if (heroInv && Readable(heroInv, 0x90)) {
                         int loc = GetInventoryDbLocation(heroInv, stashGo);
@@ -2232,8 +2283,8 @@ void SharedStash_Tick() {
                             if (stashInv && Readable(stashInv, 0x90)) {
                                 *((char*)stashInv + 0x86) = 0;
                             }
-                            Log("SharedStash: server auto-closed stash for hero 0x%08lX (outside town: loc=%u group=%u)",
-                                st.heroGoid, srvLoc, srvGrp);
+                            Log("SharedStash: server auto-closed stash for hero 0x%08lX (%s)",
+                                st.heroGoid, isDead ? "hero died" : "outside town");
                         }
                     }
                 }

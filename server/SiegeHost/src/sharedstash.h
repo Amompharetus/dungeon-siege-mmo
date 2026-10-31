@@ -14,3 +14,4 @@ bool SharedStash_OnReceivePacket(bool isServer, DWORD senderDpnid, const BYTE* d
 void SharedStash_OnPlayerJoin(DWORD mach, const char* account);
 void SharedStash_OnPlayerLeave(DWORD mach);
 bool SharedStash_TriggerOpen();
+bool SharedStash_IsStashGo(void* itemGo);
