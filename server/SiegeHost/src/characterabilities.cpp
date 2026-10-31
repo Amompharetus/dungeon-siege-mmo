@@ -1006,6 +1006,19 @@ static void SetTextWindow(void* w, const char* text, DWORD color, char* cachedSt
 static char s_cachedAwpCd[4][32] = {};
 static char s_cachedAwpKey[4][32] = {};
 
+static bool s_abilityHovered[4] = { false, false, false, false };
+static bool s_stashHovered = false;
+
+void CharacterAbilities_SetHover(int slot, bool hovered) {
+    if (slot >= 0 && slot < 4) {
+        s_abilityHovered[slot] = hovered;
+    }
+}
+
+void CharacterAbilities_SetStashHover(bool hovered) {
+    s_stashHovered = hovered;
+}
+
 static void UpdateAbilityUI() {
     const char* ws = eng::CurrentWorldState();
     if (!strstr(ws, "_ingame")) return;
@@ -1023,7 +1036,11 @@ static void UpdateAbilityUI() {
         for (int i = 0; i < 4; ++i) {
             void* h = eng::FindWindow(kHov[i], "character_awp");
             if (h) SetWindowVisible(h, false);
+            s_abilityHovered[i] = false;
         }
+        void* sh = eng::FindWindow("awp_stash_hover_1", "character_awp");
+        if (sh) SetWindowVisible(sh, false);
+        s_stashHovered = false;
         return;
     }
     void* actor = *(void**)((char*)hero + 0x00);
@@ -1045,6 +1062,27 @@ static void UpdateAbilityUI() {
     if (stashBtn) {
         SetWindowVisible(stashBtn, showOption1);
         if (showOption1) EnsureButtonClickable(stashBtn);
+    }
+
+    HWND hwnd = g_gameHwnd ? g_gameHwnd : GetActiveWindow();
+    POINT mousePt = { -9999, -9999 };
+    if (hwnd && GetCursorPos(&mousePt)) {
+        ScreenToClient(hwnd, &mousePt);
+    }
+
+    void* stashHover = eng::FindWindow("awp_stash_hover_1", "character_awp");
+    if (stashHover) {
+        bool mouseInStash = false;
+        if (showOption1 && stashBtn && Readable(stashBtn, 0x80)) {
+            int left   = *(int*)((char*)stashBtn + 0x60);
+            int top    = *(int*)((char*)stashBtn + 0x64);
+            int right  = *(int*)((char*)stashBtn + 0x68);
+            int bottom = *(int*)((char*)stashBtn + 0x6C);
+            mouseInStash = (mousePt.x >= left && mousePt.x <= right && mousePt.y >= top && mousePt.y <= bottom);
+        }
+        bool isStashHovered = showOption1 && (s_stashHovered || mouseInStash);
+        SetWindowVisible(stashHover, isStashHovered);
+        if (isStashHovered) SetWindowAlpha(stashHover, 1.0f);
     }
 
     static void* s_lastFirstBtn = nullptr;
@@ -1118,8 +1156,15 @@ static void UpdateAbilityUI() {
             }
         }
         if (awpHover) {
-            bool isHovered = showOption1 && awpBtn && Readable(awpBtn, 0x140) &&
-                             (*(unsigned char*)((char*)awpBtn + 0x135) != 0);
+            bool mouseInBtn = false;
+            if (showOption1 && awpBtn && Readable(awpBtn, 0x80)) {
+                int left   = *(int*)((char*)awpBtn + 0x60);
+                int top    = *(int*)((char*)awpBtn + 0x64);
+                int right  = *(int*)((char*)awpBtn + 0x68);
+                int bottom = *(int*)((char*)awpBtn + 0x6C);
+                mouseInBtn = (mousePt.x >= left && mousePt.x <= right && mousePt.y >= top && mousePt.y <= bottom);
+            }
+            bool isHovered = showOption1 && (s_abilityHovered[i] || mouseInBtn);
             SetWindowVisible(awpHover, isHovered);
             if (isHovered) SetWindowAlpha(awpHover, 1.0f);
         }
