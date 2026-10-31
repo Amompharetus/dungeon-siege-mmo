@@ -68,6 +68,7 @@
 
 #include "siegehost.h"
 #include "engine.h"
+#include "sharedstash.h"
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -343,7 +344,10 @@ int GetDropInvOptionForGo(void* go) {
     return defOpt;  // normal drop everywhere else in the wild
 }
 
-extern "C" int __cdecl SiegeHost_DropInvOptionGoInv(void* goInv) {
+extern "C" int __cdecl SiegeHost_DropInvOptionGoInv(void* goInv, void* itemGo, void* retAddr) {
+    if (retAddr == (void*)0x00578041 && itemGo && SharedStash_IsStashGo(itemGo)) {
+        return 1;  // dio_nothing inside item drop loop for stashGo (skips drop at 0x0057803C)
+    }
     void* go = (goInv && Readable(goInv, 8)) ? *(void**)((char*)goInv + 4) : nullptr;
     return GetDropInvOptionForGo(go);
 }
@@ -368,9 +372,11 @@ __asm__(
     "_SiegeHost_DropInvGoInvStub:\n"
     "  pushl %ecx\n"
     "  pushl %edx\n"
+    "  pushl 8(%esp)\n"
+    "  pushl %edi\n"
     "  pushl %esi\n"
     "  call _SiegeHost_DropInvOptionGoInv\n"
-    "  addl $4, %esp\n"
+    "  addl $12, %esp\n"
     "  popl %edx\n"
     "  popl %ecx\n"
     "  ret\n"
