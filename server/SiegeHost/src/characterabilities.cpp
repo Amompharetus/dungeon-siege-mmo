@@ -1030,7 +1030,7 @@ static void UpdateAbilityUI() {
     if (!srv || !Readable(srv, 0x20)) return;
 
     void* hero = GetScreenHero(srv);
-    bool inGame = (hero && Readable(hero, 0x80) && IsCharacterAliveAndConscious(hero));
+    bool inGame = (hero && Readable(hero, 0x80));
     if (!inGame) {
         const char* const kHov[4] = { "awp_ability_hover_0", "awp_ability_hover_1", "awp_ability_hover_2", "awp_ability_hover_3" };
         for (int i = 0; i < 4; ++i) {
