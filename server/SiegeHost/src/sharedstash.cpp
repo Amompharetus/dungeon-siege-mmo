@@ -2500,7 +2500,7 @@ bool SharedStash_TriggerOpen() {
         g_localStashGoid = 0;
         s_playVoice(hero, "order_out_of_mana", false);
         char buf[128];
-        snprintf(buf, sizeof(buf), "Shared Stash requires Uber level above 30 (Current: %.1f).", uberLevel);
+        snprintf(buf, sizeof(buf), "Shared Stash requires Uber level 30 (Current: %.1f).", uberLevel);
         PrintGameChat(buf);
         return true;
     }

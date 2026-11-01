@@ -1206,7 +1206,7 @@ static bool TriggerAbility(int slot) {
     if (level < g_powers[slot].reqLevel) {
         Go_PlayVoiceSound(hero, "order_out_of_mana", false);
         char buf[128];
-        snprintf(buf, sizeof(buf), "%s requires %s level %.1f (Current: %.1f).",
+        snprintf(buf, sizeof(buf), "%s requires %s level %.0f (Current: %.1f).",
                  g_powers[slot].name, g_powers[slot].statDisplay, g_powers[slot].reqLevel, level);
         PrintThrottled(g_lastReqMsg, buf);
         return false;
