@@ -1463,14 +1463,51 @@ __asm__(
 
 extern "C" void __fastcall Hook_UIPartyManager_ToggleBackpack(void* uiPartyMgr, void* unused_edx, int open, char unk) {
     void* retAddr = __builtin_return_address(0);
+
+    // When Shared Stash is active, closing or toggling the character inventory must NOT close Shared Stash.
+    if (g_sharedStashActive) {
+        if (open == 0) {
+            // 0x0049BDF9: closing character inventory via HUD inventory button / 'C' in OpenCharacterInterface
+            // 0x0049C1FC: refreshing backpack state when opening/switching character interface in OpenCharacterInterface
+            if (retAddr == (void*)0x0049BDF9 || retAddr == (void*)0x0049C1FC) {
+                return;
+            }
+            // 0x004A12D8: inside CloseAllCharacterMenus (0x004A11D7)
+            if (retAddr == (void*)0x004A12D8) {
+                void* framePtr = __builtin_frame_address(0);
+                char* ebp_4A11D7 = (framePtr && Readable(framePtr, 8)) ? *(char**)framePtr : nullptr;
+                void* callerRetAddr = (ebp_4A11D7 && Readable(ebp_4A11D7, 8)) ? *(void**)(ebp_4A11D7 + 4) : nullptr;
+                // 0x004A4728: 'I' / party selection closing character inventory
+                // 0x004A49E8 / 0x0050D496 (when no store open): 'X' close button on character window (character_exit)
+                // 0x0049BFCF: opening/switching character interface in OpenCharacterInterface
+                // 0x004A1AB5 / 0x004A1AC5 / 0x004A24A3 / 0x004A2CB0: multi-inventory / packmule toggle
+                if (callerRetAddr == (void*)0x004A4728 ||
+                    callerRetAddr == (void*)0x004A49E8 ||
+                    (callerRetAddr == (void*)0x0050D496 && !eng::InterfaceVisible("store")) ||
+                    callerRetAddr == (void*)0x0049BFCF ||
+                    callerRetAddr == (void*)0x004A1AB5 ||
+                    callerRetAddr == (void*)0x004A1AC5 ||
+                    callerRetAddr == (void*)0x004A24A3 ||
+                    callerRetAddr == (void*)0x004A2CB0) {
+                    if (uiPartyMgr && Readable(uiPartyMgr, 0x60) && !eng::InterfaceVisible("character")) {
+                        *((char*)uiPartyMgr + 0x5F) = 0;
+                    }
+                    return;
+                }
+            }
+        }
+    }
+
     bool wasInvOpen = IsInventoryOpen();
+    bool wasStashOpen = g_sharedStashActive && eng::InterfaceVisible("DSX_backpack_ui");
     bool suppress = g_suppressBackpackSfx || 
                     (open == 0 && unk == 0) || 
-                    (retAddr == (void*)0x0049CC17);
+                    (retAddr == (void*)0x0049CC17) ||
+                    (retAddr == (void*)0x0049C1FC && wasStashOpen);
 
     Orig_UIPartyManager_ToggleBackpack(uiPartyMgr, unused_edx, open, unk);
 
-    if (wasInvOpen && !suppress && IsInventoryOpen()) {
+    if (!suppress && ((wasInvOpen && IsInventoryOpen()) || (wasStashOpen && open == 0))) {
         PlaySpellBookSfx();
     }
 }
@@ -2173,7 +2210,6 @@ void SharedStash_Tick() {
             : invalidGoid;
 
         bool bpVis = eng::InterfaceVisible("DSX_backpack_ui");
-        bool charVis = eng::InterfaceVisible("character");
         bool spellVis = eng::InterfaceVisible("spell");
 
         // Automatically close Shared Stash instantly upon leaving a town area
@@ -2187,16 +2223,13 @@ void SharedStash_Tick() {
                 }
                 if (g_sharedStashActive) {
                     bool stashWindowDisplayed = bpVis && (activeBpGoid == g_localStashGoid || activeBpGoid == 0 || activeBpGoid == invalidGoid);
-                    bool wasInvOpen = IsInventoryOpen();
                     if (stashWindowDisplayed && uiPartyMgr && Readable(uiPartyMgr, 0x1E8)) {
                         g_suppressBackpackSfx = true;
                         s_toggleBackpack(uiPartyMgr, 0, 0);
                         g_suppressBackpackSfx = false;
                         bpVis = false;
                         activeBpGoid = invalidGoid;
-                        if (wasInvOpen) {
-                            PlaySpellBookSfx();
-                        }
+                        PlaySpellBookSfx();
                     }
                     CleanupClientStashUI();
                     Log("SharedStash: auto-closed stash upon leaving town (loc=%u group=%u)", curLoc, curGrp);
@@ -2237,6 +2270,19 @@ void SharedStash_Tick() {
                     void* stashInv = *(void**)((char*)stashGo + 0x2C);
                     if (stashInv && Readable(stashInv, 0x90)) {
                         *((char*)stashInv + 0x86) = 1;
+                    }
+                    if (partySlot && Readable(partySlot, 0x10)) {
+                        *((char*)partySlot + 2) = 1;
+                    }
+                    if (eng::InterfaceVisible("compass_hotpoints")) {
+                        void* uiCompass = *(void**)0x007ACF80;
+                        if (uiCompass && Readable(uiCompass, 0x48)) {
+                            void* sub = *(void**)((char*)uiCompass + 0x40);
+                            if (sub && Readable(sub, 0x50)) {
+                                *((char*)sub + 0x4C) = 0;
+                            }
+                        }
+                        eng::HideInterface("compass_hotpoints");
                     }
                 }
             }
