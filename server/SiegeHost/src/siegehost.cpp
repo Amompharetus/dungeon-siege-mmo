@@ -639,15 +639,191 @@ static DWORD g_mainThread = 0;
 
 static WNDPROC g_origWndProc = nullptr;
 HWND g_gameHwnd = nullptr;
+static HKL g_lastSafeHkl = nullptr;
+static bool g_mainThreadImmDisabled = false;
+
+typedef BOOL (WINAPI *PFN_ImmDisableIME)(DWORD);
+typedef BOOL (WINAPI *PFN_ImmDisableTextFrameService)(DWORD);
+typedef HIMC (WINAPI *PFN_ImmAssociateContext)(HWND, HIMC);
+typedef HIMC (WINAPI *PFN_ImmGetContext)(HWND);
+typedef BOOL (WINAPI *PFN_ImmReleaseContext)(HWND, HIMC);
+typedef BOOL (WINAPI *PFN_ImmIsIME)(HKL);
+
+static PFN_ImmDisableIME g_pfnImmDisableIME = nullptr;
+static PFN_ImmDisableTextFrameService g_pfnImmDisableTFS = nullptr;
+static PFN_ImmAssociateContext g_pfnImmAssociateContext = nullptr;
+static PFN_ImmGetContext g_pfnImmGetContext = nullptr;
+static PFN_ImmReleaseContext g_pfnImmReleaseContext = nullptr;
+static PFN_ImmIsIME g_pfnImmIsIME = nullptr;
+
+static void InitImmFunctions() {
+    static bool s_init = false;
+    if (s_init) return;
+    s_init = true;
+    HMODULE hImm = GetModuleHandleA("imm32.dll");
+    if (!hImm) hImm = LoadLibraryA("imm32.dll");
+    if (hImm) {
+        g_pfnImmDisableIME = (PFN_ImmDisableIME)GetProcAddress(hImm, "ImmDisableIME");
+        g_pfnImmDisableTFS = (PFN_ImmDisableTextFrameService)GetProcAddress(hImm, "ImmDisableTextFrameService");
+        g_pfnImmAssociateContext = (PFN_ImmAssociateContext)GetProcAddress(hImm, "ImmAssociateContext");
+        g_pfnImmGetContext = (PFN_ImmGetContext)GetProcAddress(hImm, "ImmGetContext");
+        g_pfnImmReleaseContext = (PFN_ImmReleaseContext)GetProcAddress(hImm, "ImmReleaseContext");
+        g_pfnImmIsIME = (PFN_ImmIsIME)GetProcAddress(hImm, "ImmIsIME");
+    }
+}
+
+static bool IsCjkOrImeLayout(HKL hkl) {
+    if (!hkl) return false;
+    WORD langId = LOWORD((DWORD_PTR)hkl);
+    WORD prim = (WORD)(langId & 0x03FF);
+    // LANG_CHINESE (0x04), LANG_JAPANESE (0x11), LANG_KOREAN (0x12)
+    if (prim == 0x11 || prim == 0x04 || prim == 0x12) return true;
+    // Legacy IME HKL high-word marker (0xE000..0xEFFF)
+    WORD hi = HIWORD((DWORD_PTR)hkl);
+    if ((hi & 0xF000) == 0xE000) return true;
+    InitImmFunctions();
+    if (g_pfnImmIsIME && g_pfnImmIsIME(hkl)) return true;
+    return false;
+}
+
+static HKL FindNextSafeKeyboardLayout(HKL blockedHkl) {
+    HKL list[32];
+    int n = GetKeyboardLayoutList(32, list);
+    if (n > 0) {
+        int startIdx = 0;
+        for (int i = 0; i < n; ++i) {
+            if (list[i] == blockedHkl || LOWORD((DWORD_PTR)list[i]) == LOWORD((DWORD_PTR)blockedHkl)) {
+                startIdx = i;
+                break;
+            }
+        }
+        // Pass 1: find the next non-CJK layout that differs from g_lastSafeHkl so cycling rus -> en -> jp steps to rus
+        if (g_lastSafeHkl) {
+            for (int step = 1; step <= n; ++step) {
+                HKL cand = list[(startIdx + step) % n];
+                if (!IsCjkOrImeLayout(cand) && LOWORD((DWORD_PTR)cand) != LOWORD((DWORD_PTR)g_lastSafeHkl)) {
+                    return cand;
+                }
+            }
+        }
+        // Pass 2: any non-CJK layout in the user's installed list
+        for (int step = 1; step <= n; ++step) {
+            HKL cand = list[(startIdx + step) % n];
+            if (!IsCjkOrImeLayout(cand)) {
+                return cand;
+            }
+        }
+    }
+    if (g_lastSafeHkl && !IsCjkOrImeLayout(g_lastSafeHkl)) return g_lastSafeHkl;
+    return LoadKeyboardLayoutA("00000409", KLF_ACTIVATE);
+}
+
+static void DetachWindowImeContext(HWND hwnd) {
+    if (!hwnd || !IsWindow(hwnd)) return;
+    InitImmFunctions();
+    if (g_pfnImmAssociateContext) {
+        g_pfnImmAssociateContext(hwnd, NULL);
+    }
+}
+
+static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+static void EnsureGameWindowSubclassed(HWND candidateHwnd) {
+    // Also check AppModule singleton (*0x007ACFC8 + 0x70) for DSLOA's main window handle
+    HWND appHwnd = nullptr;
+    uintptr_t appMod = *(uintptr_t*)0x007ACFC8;
+    if (appMod && !IsBadReadPtr((const void*)(appMod + 0x70), sizeof(HWND))) {
+        appHwnd = *(HWND*)(appMod + 0x70);
+    }
+    HWND targets[2] = { appHwnd, candidateHwnd ? GetAncestor(candidateHwnd, GA_ROOT) : nullptr };
+    for (int i = 0; i < 2; ++i) {
+        HWND root = targets[i];
+        if (!root || !IsWindow(root)) continue;
+        WNDPROC curProc = (WNDPROC)GetWindowLongPtrA(root, GWLP_WNDPROC);
+        // 0x00414F9E is DSLOA.exe's main window procedure
+        if (curProc == (WNDPROC)0x00414F9E) {
+            g_gameHwnd = root;
+            g_origWndProc = (WNDPROC)SetWindowLongPtrA(root, GWLP_WNDPROC, (LONG_PTR)HookedWndProc);
+            DetachWindowImeContext(root);
+            Log("Subclassed DSLOA main HWND %p (orig WndProc=%p): IME & CJK layout shield active.", root, g_origWndProc);
+            break;
+        }
+    }
+    if (g_gameHwnd && IsWindow(g_gameHwnd)) {
+        InitImmFunctions();
+        if (g_pfnImmGetContext && g_pfnImmAssociateContext) {
+            HIMC himc = g_pfnImmGetContext(g_gameHwnd);
+            if (himc) {
+                if (g_pfnImmReleaseContext) g_pfnImmReleaseContext(g_gameHwnd, himc);
+                g_pfnImmAssociateContext(g_gameHwnd, NULL);
+            }
+        }
+    }
+}
+
+static void EnforceSafeKeyboardAndIme() {
+    HKL curHkl = GetKeyboardLayout(0);
+    if (IsCjkOrImeLayout(curHkl)) {
+        HKL safeHkl = FindNextSafeKeyboardLayout(curHkl);
+        if (safeHkl && safeHkl != curHkl) {
+            ActivateKeyboardLayout(safeHkl, 0);
+            g_lastSafeHkl = safeHkl;
+            Log("Skipped CJK/IME keyboard layout %p -> activated safe layout %p.", curHkl, safeHkl);
+        }
+    } else if (curHkl) {
+        g_lastSafeHkl = curHkl;
+    }
+}
+
+static void ImeDisableInstall() {
+    // On non-1252 systems (e.g. Russian Windows where GetACP() == 1251), DSLOA's UIShell::InitIme (0x006EDA14)
+    // assumes a CJK locale and passes disableIme = 0 to ImeUi_Initialize (0x00638B50), which enables DSLOA's
+    // legacy Win98/XP CJK IME UI and re-associates HIMC every time the chat box opens (0x00638B0E).
+    // Force UIShell::InitIme at 0x006EDA25 to always set disableIme = 1 (mov [ebp-4], bl; nop),
+    // and neutralize all ImeUi entry points so they can never re-enable HIMC, lock IMC, or call CoUninitialize.
+    const BYTE patchInitIme[4] = { 0x88, 0x5D, 0xFC, 0x90 }; // mov byte ptr [ebp-4], bl; nop
+    WriteCode(0x006EDA25, patchInitIme, sizeof(patchInitIme));
+
+    const BYTE patchRet[1] = { 0xC3 };                       // ret
+    const BYTE patchXorEaxRet[3] = { 0x33, 0xC0, 0xC3 };     // xor eax, eax; ret
+    const BYTE patchXorAlRet[3] = { 0x32, 0xC0, 0xC3 };      // xor al, al; ret
+
+    WriteCode(0x00638B0E, patchRet, sizeof(patchRet));             // ImeUi_EnableIme
+    WriteCode(0x00638251, patchXorEaxRet, sizeof(patchXorEaxRet)); // ImeUi_ProcessMessage
+    WriteCode(0x006392F6, patchXorAlRet, sizeof(patchXorAlRet));   // ImeUi_IgnoreHotKey
+    WriteCode(0x006389D5, patchRet, sizeof(patchRet));             // ImeUi_SetState
+    WriteCode(0x0063793D, patchRet, sizeof(patchRet));             // ImeUi_Render
+    WriteCode(0x0063956A, patchRet, sizeof(patchRet));             // ImeUi_CheckToggleState
+    WriteCode(0x00639BDC, patchRet, sizeof(patchRet));             // ImeUi TSF CoUninitialize helper
+    Log("ImeDisableInstall: DSLOA internal ImeUi disabled for all codepages.");
+}
 
 static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    if (msg == WM_INPUTLANGCHANGEREQUEST || msg == WM_INPUTLANGCHANGE) {
-        // Prevent Windows from changing keyboard input locale or sending language change events to DSLOA.
-        // Returning 0 on WM_INPUTLANGCHANGEREQUEST instructs DefWindowProc/Windows to reject the change.
+    if (msg == WM_INPUTLANGCHANGEREQUEST) {
+        HKL targetHkl = (HKL)lParam;
+        if (IsCjkOrImeLayout(targetHkl)) {
+            HKL safeHkl = FindNextSafeKeyboardLayout(targetHkl);
+            if (safeHkl) {
+                ActivateKeyboardLayout(safeHkl, 0);
+                g_lastSafeHkl = safeHkl;
+                return DefWindowProcA(hwnd, msg, wParam, (LPARAM)safeHkl);
+            }
+            return 0;
+        }
+        g_lastSafeHkl = targetHkl;
+        return DefWindowProcA(hwnd, msg, wParam, lParam);
+    }
+    if (msg == WM_INPUTLANGCHANGE) {
+        DetachWindowImeContext(hwnd);
+        EnforceSafeKeyboardAndIme();
         return 0;
     }
     // Shield against IME (e.g. Japanese, Chinese, Korean) messages causing DirectX fullscreen disruptions
     if ((msg >= 0x0280 && msg <= 0x029F) || (msg >= 0x010D && msg <= 0x010F)) {
+        DetachWindowImeContext(hwnd);
+        return 0;
+    }
+    if ((msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) && wParam == VK_PROCESSKEY) {
         return 0;
     }
     if (msg == WM_DESTROY && hwnd == g_gameHwnd) {
@@ -666,6 +842,14 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         Log("Main loop detected on thread %lu (PeekMessageA).", g_mainThread);
     }
     if (GetCurrentThreadId() == g_mainThread) {
+        if (!g_mainThreadImmDisabled) {
+            g_mainThreadImmDisabled = true;
+            InitImmFunctions();
+            if (g_pfnImmDisableTFS) g_pfnImmDisableTFS((DWORD)-1);
+            if (g_pfnImmDisableIME) g_pfnImmDisableIME((DWORD)-1);
+        }
+        EnsureGameWindowSubclassed(wnd);
+        EnforceSafeKeyboardAndIme();
         NR_PumpTick();
         JG_JipTick();  // both roles: the join freeze is a per-machine thing (src/jipguard.h)
         CharacterAbilities_Tick();
@@ -675,32 +859,32 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
     }
     BOOL res = g_origPeek(msg, wnd, fmin, fmax, remove);
     if (res && msg) {
-        // Shield against Alt+Shift / language change and IME crashes: neutralize messages in queue
-        if (msg->message == WM_INPUTLANGCHANGEREQUEST || msg->message == WM_INPUTLANGCHANGE ||
-            (msg->message >= 0x0280 && msg->message <= 0x029F) ||
-            (msg->message >= 0x010D && msg->message <= 0x010F)) {
+        EnsureGameWindowSubclassed(msg->hwnd);
+
+        if (msg->message == WM_INPUTLANGCHANGEREQUEST) {
+            HKL targetHkl = (HKL)msg->lParam;
+            if (IsCjkOrImeLayout(targetHkl)) {
+                HKL safeHkl = FindNextSafeKeyboardLayout(targetHkl);
+                if (safeHkl) {
+                    ActivateKeyboardLayout(safeHkl, 0);
+                    g_lastSafeHkl = safeHkl;
+                    msg->lParam = (LPARAM)safeHkl;
+                } else {
+                    msg->message = WM_NULL;
+                    msg->wParam = 0;
+                    msg->lParam = 0;
+                }
+            } else {
+                g_lastSafeHkl = targetHkl;
+            }
+        } else if (msg->message == WM_INPUTLANGCHANGE ||
+                   (msg->message >= 0x0280 && msg->message <= 0x029F) ||
+                   (msg->message >= 0x010D && msg->message <= 0x010F) ||
+                   ((msg->message == WM_KEYDOWN || msg->message == WM_SYSKEYDOWN) && msg->wParam == VK_PROCESSKEY)) {
+            EnforceSafeKeyboardAndIme();
             msg->message = WM_NULL;
             msg->wParam = 0;
             msg->lParam = 0;
-        }
-
-        // Subclass the top-level game window procedure to also intercept direct/sent messages
-        if (!g_origWndProc && msg->hwnd) {
-            HWND root = GetAncestor(msg->hwnd, GA_ROOT);
-            if (!root) root = msg->hwnd;
-            g_gameHwnd = root;
-            g_origWndProc = (WNDPROC)SetWindowLongPtrA(root, GWLP_WNDPROC, (LONG_PTR)HookedWndProc);
-            if (g_origWndProc) {
-                Log("Subclassed game HWND %p: Alt+Shift language-switch and IME crash shield active.", root);
-            }
-            HMODULE hImmMod = GetModuleHandleA("imm32.dll");
-            if (hImmMod) {
-                typedef HIMC (WINAPI *PFN_ImmAssociateContext)(HWND, HIMC);
-                PFN_ImmAssociateContext pfnAssoc = (PFN_ImmAssociateContext)GetProcAddress(hImmMod, "ImmAssociateContext");
-                if (pfnAssoc) {
-                    pfnAssoc(root, NULL);
-                }
-            }
         }
 
         if (remove & PM_REMOVE) {
@@ -819,20 +1003,22 @@ static void Startup() {
     JG_Init();
 
     // Disable Windows IME text services early so East Asian layout switching cannot disrupt DirectX fullscreen
-    HMODULE hImm = LoadLibraryA("imm32.dll");
-    if (hImm) {
-        typedef BOOL (WINAPI *PFN_ImmDisableIME)(DWORD);
-        PFN_ImmDisableIME pfnDisable = (PFN_ImmDisableIME)GetProcAddress(hImm, "ImmDisableIME");
-        if (pfnDisable) {
-            BOOL res = pfnDisable((DWORD)-1);
-            Log("ImmDisableIME(-1) called (result: %d).", res);
-        }
+    InitImmFunctions();
+    if (g_pfnImmDisableTFS) {
+        BOOL res = g_pfnImmDisableTFS((DWORD)-1);
+        Log("ImmDisableTextFrameService(-1) called (result: %d).", res);
+    }
+    if (g_pfnImmDisableIME) {
+        BOOL res = g_pfnImmDisableIME((DWORD)-1);
+        Log("ImmDisableIME(-1) called (result: %d).", res);
     }
 
     if (!g_cfg.enabled) { Log("Disabled by config. Acting as plain version.dll proxy."); return; }
 
     HMODULE exe = GetModuleHandleA(nullptr);
     if (!IdentifyTarget(exe)) { Log("Unknown executable build. Patches NOT applied (safety)."); return; }
+
+    ImeDisableInstall();
 
     std::vector<Patch> patches;
     if (g_cfg.maxSlots != 9) BuildSlotPatches(patches);
