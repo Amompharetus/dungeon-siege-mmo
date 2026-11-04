@@ -508,6 +508,10 @@ void OpenClientInventoryForStash(void* hero) {
     if (partySlot && Readable(partySlot, 0x90)) {
         *((char*)partySlot + 0) = 1; // inventory grid open
         *((char*)partySlot + 3) = 1; // character paperdoll open
+        *((char*)partySlot + 1) = 0; // spellbook closed
+        if (!g_sharedStashActive) {
+            *((char*)partySlot + 2) = 0; // regular backpack closed
+        }
     }
 
     // 1. Open character + inventory panel if not already open
@@ -549,16 +553,16 @@ void OpenClientStashUI(void* hero, void* stashGo) {
     ZeroStashGoFootprint(heroInv, stashGo);
     SetInventoryDbLocation(heroInv, stashGo, 0x15 /*il_main*/);
 
-    *(void**)((char*)heroInv + 0xA4) = stashGo;
-    s_toggleBackpack(uiPartyMgr, 1, 0);
     void* stashInv = *(void**)((char*)stashGo + 0x2C);
     if (stashInv && Readable(stashInv, 0x90)) {
         *((char*)stashInv + 0x86) = 1;
     }
+    *(void**)((char*)heroInv + 0xA4) = stashGo;
+    g_sharedStashActive = true;
+    s_toggleBackpack(uiPartyMgr, 1, 0);
     g_suppressBackpackSfx = false;
     SetStashUIText("Shared Stash");
 
-    g_sharedStashActive = true;
     g_wasInventoryOpen = true;
     g_pendingOpenStash = false;
     g_pendingUiTriggerOpen = false;
@@ -1464,48 +1468,72 @@ __asm__(
 extern "C" void __fastcall Hook_UIPartyManager_ToggleBackpack(void* uiPartyMgr, void* unused_edx, int open, char unk) {
     void* retAddr = __builtin_return_address(0);
 
-    // When Shared Stash is active, closing or toggling the character inventory must NOT close Shared Stash.
+    bool wasInvOpen = IsInventoryOpen();
+    bool wasStashOpen = g_sharedStashActive && eng::InterfaceVisible("DSX_backpack_ui");
+
     if (g_sharedStashActive) {
-        if (open == 0) {
-            // 0x0049BDF9: closing character inventory via HUD inventory button / 'C' in OpenCharacterInterface
-            // 0x0049C1FC: refreshing backpack state when opening/switching character interface in OpenCharacterInterface
-            if (retAddr == (void*)0x0049BDF9 || retAddr == (void*)0x0049C1FC) {
-                return;
-            }
-            // 0x004A12D8: inside CloseAllCharacterMenus (0x004A11D7)
-            if (retAddr == (void*)0x004A12D8) {
-                void* framePtr = __builtin_frame_address(0);
-                char* ebp_4A11D7 = (framePtr && Readable(framePtr, 8)) ? *(char**)framePtr : nullptr;
-                void* callerRetAddr = (ebp_4A11D7 && Readable(ebp_4A11D7, 8)) ? *(void**)(ebp_4A11D7 + 4) : nullptr;
-                // 0x004A4728: 'I' / party selection closing character inventory
-                // 0x004A49E8 / 0x0050D496 (when no store open): 'X' close button on character window (character_exit)
-                // 0x0049BFCF: opening/switching character interface in OpenCharacterInterface
-                // 0x004A1AB5 / 0x004A1AC5 / 0x004A24A3 / 0x004A2CB0: multi-inventory / packmule toggle
-                if (callerRetAddr == (void*)0x004A4728 ||
-                    callerRetAddr == (void*)0x004A49E8 ||
-                    (callerRetAddr == (void*)0x0050D496 && !eng::InterfaceVisible("store")) ||
-                    callerRetAddr == (void*)0x0049BFCF ||
-                    callerRetAddr == (void*)0x004A1AB5 ||
-                    callerRetAddr == (void*)0x004A1AC5 ||
-                    callerRetAddr == (void*)0x004A24A3 ||
-                    callerRetAddr == (void*)0x004A2CB0) {
-                    if (uiPartyMgr && Readable(uiPartyMgr, 0x60) && !eng::InterfaceVisible("character")) {
-                        *((char*)uiPartyMgr + 0x5F) = 0;
-                    }
-                    return;
+        void* hero = GetLocalScreenHero();
+        void* stashGo = ResolveGo(g_localStashGoid);
+        void* heroInv = (hero && Readable(hero, 0x80)) ? *(void**)((char*)hero + 0x2C) : nullptr;
+        void* selectedBpGo = (heroInv && Readable(heroInv, 0xB0)) ? *(void**)((char*)heroInv + 0xA4) : nullptr;
+
+        if (open != 0) {
+            if (stashGo && heroInv && selectedBpGo == stashGo) {
+                // Ensure stash container state is ready before reopening DSX_backpack_ui (e.g. alongside Character Inventory at 0x0049C1FC)
+                ZeroStashGoFootprint(heroInv, stashGo);
+                SetInventoryDbLocation(heroInv, stashGo, 0x15 /*il_main*/);
+                void* stashInv = *(void**)((char*)stashGo + 0x2C);
+                if (stashInv && Readable(stashInv, 0x90)) {
+                    *((char*)stashInv + 0x86) = 1;
                 }
+            } else if (selectedBpGo != stashGo) {
+                // Player opened a regular backpack instead of Shared Stash
+                CleanupClientStashUI();
             }
         }
     }
 
-    bool wasInvOpen = IsInventoryOpen();
-    bool wasStashOpen = g_sharedStashActive && eng::InterfaceVisible("DSX_backpack_ui");
     bool suppress = g_suppressBackpackSfx || 
                     (open == 0 && unk == 0) || 
                     (retAddr == (void*)0x0049CC17) ||
-                    (retAddr == (void*)0x0049C1FC && wasStashOpen);
+                    (retAddr == (void*)0x0049C1FC);
 
     Orig_UIPartyManager_ToggleBackpack(uiPartyMgr, unused_edx, open, unk);
+
+    if (g_sharedStashActive) {
+        if (open != 0) {
+            SetStashUIText("Shared Stash");
+            g_lastTitleMode = 1;
+            g_lastTitleUpdate = GetTickCount();
+        } else if (unk != 0) {
+            // Explicitly closed Shared Stash window (e.g. 'X' button on DSX_backpack_ui, or replaced by Spell Book / Backpack)
+            if (!suppress && wasStashOpen) {
+                PlaySpellBookSfx();
+            }
+            CleanupClientStashUI();
+            return;
+        } else {
+            // Closed alongside Character Inventory (open == 0 && unk == 0):
+            // Keep Shared Stash active internally so it reopens next time Character Inventory is opened.
+            void* hero = GetLocalScreenHero();
+            void* stashGo = ResolveGo(g_localStashGoid);
+            if (hero && stashGo && Readable(hero, 0x80)) {
+                void* heroInv = *(void**)((char*)hero + 0x2C);
+                if (heroInv && Readable(heroInv, 0xB0)) {
+                    *(void**)((char*)heroInv + 0xA4) = stashGo;
+                }
+            }
+            if (uiPartyMgr && Readable(uiPartyMgr, 0x60)) {
+                int slotIdx = *(int*)((char*)uiPartyMgr + 0x50);
+                if (slotIdx >= 0 && slotIdx < 8) {
+                    void* partySlot = *(void**)((char*)uiPartyMgr + slotIdx * 4);
+                    if (partySlot && Readable(partySlot, 0x10)) {
+                        *((char*)partySlot + 2) = 1;
+                    }
+                }
+            }
+        }
+    }
 
     if (!suppress && ((wasInvOpen && IsInventoryOpen()) || (wasStashOpen && open == 0))) {
         PlaySpellBookSfx();
@@ -2248,20 +2276,24 @@ void SharedStash_Tick() {
                 int slotIdx = *(int*)((char*)uiPartyMgr + 0x50);
                 void* partySlot = (slotIdx >= 0 && slotIdx < 8) ? *(void**)((char*)uiPartyMgr + slotIdx * 4) : nullptr;
                 char spellbookFlag = (partySlot && Readable(partySlot, 0x10)) ? *((char*)partySlot + 1) : 0;
+                char bpOpenFlag = (partySlot && Readable(partySlot, 0x10)) ? *((char*)partySlot + 2) : 0;
+                bool charVis = eng::InterfaceVisible("character");
+                bool storeVis = eng::InterfaceVisible("store");
 
-                // Did the player replace the Shared Stash with the Spell Book or a regular Backpack, or close it?
-                bool replaced = (selectedBpGo != stashGo && selectedBpGo != nullptr) ||
+                // Did the player replace the Shared Stash with the Spell Book or a regular Backpack, or explicitly close it?
+                bool replaced = (selectedBpGo != stashGo) ||
+                                (bpOpenFlag == 0) ||
                                 spellVis ||
                                 (spellbookFlag != 0) ||
                                 (bpVis && activeBpGoid != 0 && activeBpGoid != invalidGoid && activeBpGoid != g_localStashGoid);
 
-                if (replaced || !bpVis) {
+                if (replaced || (charVis && !bpVis && !storeVis)) {
                     if (!replaced && !bpVis) {
                         PlaySpellBookSfx();
                     }
                     CleanupClientStashUI();
                 } else {
-                    // Stash is open on screen! Maintain stash connection at 0x15, active container pointer, and open flag
+                    // Maintain stash connection at 0x15, active container pointer, and open flag (both when visible and when dormant alongside closed inventory)
                     if (heroInv && Readable(heroInv, 0xB0)) {
                         ZeroStashGoFootprint(heroInv, stashGo);
                         SetInventoryDbLocation(heroInv, stashGo, 0x15 /*il_main*/);
@@ -2274,7 +2306,7 @@ void SharedStash_Tick() {
                     if (partySlot && Readable(partySlot, 0x10)) {
                         *((char*)partySlot + 2) = 1;
                     }
-                    if (eng::InterfaceVisible("compass_hotpoints")) {
+                    if (bpVis && eng::InterfaceVisible("compass_hotpoints")) {
                         void* uiCompass = *(void**)0x007ACF80;
                         if (uiCompass && Readable(uiCompass, 0x48)) {
                             void* sub = *(void**)((char*)uiCompass + 0x40);
