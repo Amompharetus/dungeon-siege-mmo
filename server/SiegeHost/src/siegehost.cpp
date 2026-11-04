@@ -646,6 +646,10 @@ static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
         // Returning 0 on WM_INPUTLANGCHANGEREQUEST instructs DefWindowProc/Windows to reject the change.
         return 0;
     }
+    // Shield against IME (e.g. Japanese, Chinese, Korean) messages causing DirectX fullscreen disruptions
+    if ((msg >= 0x0280 && msg <= 0x029F) || (msg >= 0x010D && msg <= 0x010F)) {
+        return 0;
+    }
     if (msg == WM_DESTROY && hwnd == g_gameHwnd) {
         WNDPROC orig = g_origWndProc;
         g_origWndProc = nullptr;
@@ -671,8 +675,10 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
     }
     BOOL res = g_origPeek(msg, wnd, fmin, fmax, remove);
     if (res && msg) {
-        // Shield against Alt+Shift / language change crash: neutralize layout switch messages in queue
-        if (msg->message == WM_INPUTLANGCHANGEREQUEST || msg->message == WM_INPUTLANGCHANGE) {
+        // Shield against Alt+Shift / language change and IME crashes: neutralize messages in queue
+        if (msg->message == WM_INPUTLANGCHANGEREQUEST || msg->message == WM_INPUTLANGCHANGE ||
+            (msg->message >= 0x0280 && msg->message <= 0x029F) ||
+            (msg->message >= 0x010D && msg->message <= 0x010F)) {
             msg->message = WM_NULL;
             msg->wParam = 0;
             msg->lParam = 0;
@@ -685,7 +691,15 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
             g_gameHwnd = root;
             g_origWndProc = (WNDPROC)SetWindowLongPtrA(root, GWLP_WNDPROC, (LONG_PTR)HookedWndProc);
             if (g_origWndProc) {
-                Log("Subclassed game HWND %p: Alt+Shift language-switch crash shield active.", root);
+                Log("Subclassed game HWND %p: Alt+Shift language-switch and IME crash shield active.", root);
+            }
+            HMODULE hImmMod = GetModuleHandleA("imm32.dll");
+            if (hImmMod) {
+                typedef HIMC (WINAPI *PFN_ImmAssociateContext)(HWND, HIMC);
+                PFN_ImmAssociateContext pfnAssoc = (PFN_ImmAssociateContext)GetProcAddress(hImmMod, "ImmAssociateContext");
+                if (pfnAssoc) {
+                    pfnAssoc(root, NULL);
+                }
             }
         }
 
@@ -803,6 +817,17 @@ static void Startup() {
         g_cfg.maxSlots, g_cfg.dpMaxPlayers, g_cfg.patchTeams, g_cfg.logDirectPlay, g_cfg.snapshots);
     SetUnhandledExceptionFilter(CrashFilter);
     JG_Init();
+
+    // Disable Windows IME text services early so East Asian layout switching cannot disrupt DirectX fullscreen
+    HMODULE hImm = LoadLibraryA("imm32.dll");
+    if (hImm) {
+        typedef BOOL (WINAPI *PFN_ImmDisableIME)(DWORD);
+        PFN_ImmDisableIME pfnDisable = (PFN_ImmDisableIME)GetProcAddress(hImm, "ImmDisableIME");
+        if (pfnDisable) {
+            BOOL res = pfnDisable((DWORD)-1);
+            Log("ImmDisableIME(-1) called (result: %d).", res);
+        }
+    }
 
     if (!g_cfg.enabled) { Log("Disabled by config. Acting as plain version.dll proxy."); return; }
 
