@@ -137,10 +137,42 @@ extern "C" char __cdecl SiegeHost_JipAtWaitForBegin(void* player) {
 
 // The shared tail call. Only the "world leaves the join state" case is held; everything else that
 // reaches this call site is passed straight through.
+namespace {
+bool AnyoneLoading() {
+    void* srv = *(void**)0x007ACF70;
+    if (!srv) return false;
+    void** b = *(void***)((char*)srv + 4);
+    void** e = *(void***)((char*)srv + 8);
+    for (void** it = b; it && it != e; ++it) {
+        void* p = *it;
+        if (!p || !eng::Player_IsValid(p)) continue;
+        int ws = *(int*)((char*)p + kPlayerWs);
+        if (IsJoiner(p) && ws >= 9 && ws <= 11) return true;
+    }
+    return false;
+}
+// 1.5.16: while the join state is held for someone on the character screen, the engine's session
+// stays locked (NetPipeSession+0xC6) and refuses every ENUM_HOSTS_QUERY ("no games were found").
+void UnlockSessionIfIdle() {
+    if (AnyoneLoading()) return;
+    typedef int* (__attribute__((thiscall)) *GetFn)(void*, void*);
+    typedef void (__attribute__((thiscall)) *SetFn)(void*, char);
+    void* np = *(void**)0x007ACF64;
+    if (!np) return;
+    void* out[2] = { nullptr, nullptr };
+    ((GetFn)0x0071D5DF)(np, out);
+    if (out[1] && *(BYTE*)((char*)out[1] + 0xC6) != 0) {
+        ((SetFn)0x004888CA)(out[1], 0);
+    }
+    if (out[0]) LeaveCriticalSection((LPCRITICAL_SECTION)((char*)out[0] + 0x5C));
+}
+}  // namespace
+
 extern "C" char __cdecl SiegeHost_JipTailAllowed(int from, int to) {
     if (!g_on) return 1;
     if (!(from == 0x29 && to == 0x28)) return 1;
     if (!AnyoneStillChoosing()) return 1;
+    UnlockSessionIfIdle();
     ++g_sweepHeld;
     return 0;
 }
@@ -149,6 +181,7 @@ extern "C" char __cdecl SiegeHost_JipTailAllowed(int from, int to) {
 extern "C" char __cdecl SiegeHost_JipMayEndEpisode() {
     if (!g_on) return 1;
     if (!AnyoneStillChoosing()) return 1;
+    UnlockSessionIfIdle();
     ++g_sweepHeld;
     return 0;
 }
@@ -262,6 +295,7 @@ __asm__(
 // ---------------------------------------------------------------------------------------------
 void JipQueueTick() {
     if (!g_on) return;
+    if (AnyoneStillChoosing()) UnlockSessionIfIdle();
     DWORD now = GetTickCount();
     if (!g_lastSummary) g_lastSummary = now;
     if (now - g_lastSummary < 60000) return;

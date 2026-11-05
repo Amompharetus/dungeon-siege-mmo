@@ -640,17 +640,16 @@ static DWORD g_mainThread = 0;
 static WNDPROC g_origWndProc = nullptr;
 HWND g_gameHwnd = nullptr;
 static HKL g_lastSafeHkl = nullptr;
-static bool g_mainThreadImmDisabled = false;
+static HKL g_lastRedirectTo = nullptr;
+static DWORD g_lastRedirectTick = 0;
+static HHOOK g_getMsgHook = nullptr;
+static HHOOK g_callWndHook = nullptr;
 
-typedef BOOL (WINAPI *PFN_ImmDisableIME)(DWORD);
-typedef BOOL (WINAPI *PFN_ImmDisableTextFrameService)(DWORD);
 typedef HIMC (WINAPI *PFN_ImmAssociateContext)(HWND, HIMC);
 typedef HIMC (WINAPI *PFN_ImmGetContext)(HWND);
 typedef BOOL (WINAPI *PFN_ImmReleaseContext)(HWND, HIMC);
 typedef BOOL (WINAPI *PFN_ImmIsIME)(HKL);
 
-static PFN_ImmDisableIME g_pfnImmDisableIME = nullptr;
-static PFN_ImmDisableTextFrameService g_pfnImmDisableTFS = nullptr;
 static PFN_ImmAssociateContext g_pfnImmAssociateContext = nullptr;
 static PFN_ImmGetContext g_pfnImmGetContext = nullptr;
 static PFN_ImmReleaseContext g_pfnImmReleaseContext = nullptr;
@@ -663,8 +662,6 @@ static void InitImmFunctions() {
     HMODULE hImm = GetModuleHandleA("imm32.dll");
     if (!hImm) hImm = LoadLibraryA("imm32.dll");
     if (hImm) {
-        g_pfnImmDisableIME = (PFN_ImmDisableIME)GetProcAddress(hImm, "ImmDisableIME");
-        g_pfnImmDisableTFS = (PFN_ImmDisableTextFrameService)GetProcAddress(hImm, "ImmDisableTextFrameService");
         g_pfnImmAssociateContext = (PFN_ImmAssociateContext)GetProcAddress(hImm, "ImmAssociateContext");
         g_pfnImmGetContext = (PFN_ImmGetContext)GetProcAddress(hImm, "ImmGetContext");
         g_pfnImmReleaseContext = (PFN_ImmReleaseContext)GetProcAddress(hImm, "ImmReleaseContext");
@@ -718,6 +715,25 @@ static HKL FindNextSafeKeyboardLayout(HKL blockedHkl) {
     return LoadKeyboardLayoutA("00000409", KLF_ACTIVATE);
 }
 
+static HKL RedirectCjkKeyboardLayout(HKL blockedHkl) {
+    DWORD now = GetTickCount();
+    if (g_lastRedirectTo && !IsCjkOrImeLayout(g_lastRedirectTo) && (now - g_lastRedirectTick) < 250) {
+        if (GetKeyboardLayout(0) != g_lastRedirectTo) {
+            ActivateKeyboardLayout(g_lastRedirectTo, 0);
+        }
+        return g_lastRedirectTo;
+    }
+    HKL safeHkl = FindNextSafeKeyboardLayout(blockedHkl);
+    if (safeHkl && safeHkl != blockedHkl) {
+        g_lastRedirectTick = now;
+        g_lastRedirectTo = safeHkl;
+        g_lastSafeHkl = safeHkl;
+        ActivateKeyboardLayout(safeHkl, 0);
+        Log("Skipped CJK/IME keyboard layout %p -> activated safe layout %p.", blockedHkl, safeHkl);
+    }
+    return safeHkl;
+}
+
 static void DetachWindowImeContext(HWND hwnd) {
     if (!hwnd || !IsWindow(hwnd)) return;
     InitImmFunctions();
@@ -728,7 +744,72 @@ static void DetachWindowImeContext(HWND hwnd) {
 
 static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+static LRESULT CALLBACK GetMsgHookProc(int code, WPARAM wParam, LPARAM lParam) {
+    if (code >= 0 && lParam) {
+        MSG* m = (MSG*)lParam;
+        if (m->message == WM_INPUTLANGCHANGEREQUEST) {
+            HKL targetHkl = (HKL)m->lParam;
+            if (IsCjkOrImeLayout(targetHkl)) {
+                RedirectCjkKeyboardLayout(targetHkl);
+                m->message = WM_NULL;
+                m->wParam = 0;
+                m->lParam = 0;
+                return 0;
+            } else if (targetHkl) {
+                g_lastSafeHkl = targetHkl;
+            }
+        } else if (m->message == WM_INPUTLANGCHANGE ||
+                   (m->message >= 0x0280 && m->message <= 0x029F) ||
+                   (m->message >= 0x010D && m->message <= 0x010F) ||
+                   ((m->message == WM_KEYDOWN || m->message == WM_SYSKEYDOWN) && m->wParam == VK_PROCESSKEY)) {
+            if (m->hwnd) DetachWindowImeContext(m->hwnd);
+            HKL curHkl = GetKeyboardLayout(0);
+            if (IsCjkOrImeLayout(curHkl)) RedirectCjkKeyboardLayout(curHkl);
+            m->message = WM_NULL;
+            m->wParam = 0;
+            m->lParam = 0;
+            return 0;
+        }
+    }
+    return CallNextHookEx(g_getMsgHook, code, wParam, lParam);
+}
+
+static LRESULT CALLBACK CallWndHookProc(int code, WPARAM wParam, LPARAM lParam) {
+    if (code >= 0 && lParam) {
+        CWPSTRUCT* cwp = (CWPSTRUCT*)lParam;
+        if (cwp->message == WM_INPUTLANGCHANGEREQUEST) {
+            HKL targetHkl = (HKL)cwp->lParam;
+            if (IsCjkOrImeLayout(targetHkl)) {
+                RedirectCjkKeyboardLayout(targetHkl);
+            } else if (targetHkl) {
+                g_lastSafeHkl = targetHkl;
+            }
+        } else if (cwp->message == WM_INPUTLANGCHANGE ||
+                   (cwp->message >= 0x0280 && cwp->message <= 0x029F)) {
+            if (cwp->hwnd) DetachWindowImeContext(cwp->hwnd);
+            HKL curHkl = GetKeyboardLayout(0);
+            if (IsCjkOrImeLayout(curHkl)) RedirectCjkKeyboardLayout(curHkl);
+        }
+    }
+    return CallNextHookEx(g_callWndHook, code, wParam, lParam);
+}
+
+static void EnsureThreadMessageHooksInstalled(bool forceFront) {
+    if (!g_mainThread || GetCurrentThreadId() != g_mainThread) return;
+    if (forceFront) {
+        if (g_getMsgHook) { UnhookWindowsHookEx(g_getMsgHook); g_getMsgHook = nullptr; }
+        if (g_callWndHook) { UnhookWindowsHookEx(g_callWndHook); g_callWndHook = nullptr; }
+    }
+    if (!g_getMsgHook) {
+        g_getMsgHook = SetWindowsHookExA(WH_GETMESSAGE, GetMsgHookProc, nullptr, g_mainThread);
+    }
+    if (!g_callWndHook) {
+        g_callWndHook = SetWindowsHookExA(WH_CALLWNDPROC, CallWndHookProc, nullptr, g_mainThread);
+    }
+}
+
 static void EnsureGameWindowSubclassed(HWND candidateHwnd) {
+    EnsureThreadMessageHooksInstalled(false);
     // Also check AppModule singleton (*0x007ACFC8 + 0x70) for DSLOA's main window handle
     HWND appHwnd = nullptr;
     uintptr_t appMod = *(uintptr_t*)0x007ACFC8;
@@ -739,12 +820,16 @@ static void EnsureGameWindowSubclassed(HWND candidateHwnd) {
     for (int i = 0; i < 2; ++i) {
         HWND root = targets[i];
         if (!root || !IsWindow(root)) continue;
+        // Only subclass DSLOA's own main window (appHwnd, or a window belonging to this thread)
+        if (appHwnd && root != appHwnd) continue;
+        if (GetWindowThreadProcessId(root, nullptr) != g_mainThread) continue;
         WNDPROC curProc = (WNDPROC)GetWindowLongPtrA(root, GWLP_WNDPROC);
-        // 0x00414F9E is DSLOA.exe's main window procedure
-        if (curProc == (WNDPROC)0x00414F9E) {
+        // 1.5.16: ddraw/shims may already have subclassed the window, so accept any proc but ours.
+        if (curProc && curProc != (WNDPROC)HookedWndProc && !g_gameHwnd) {
             g_gameHwnd = root;
             g_origWndProc = (WNDPROC)SetWindowLongPtrA(root, GWLP_WNDPROC, (LONG_PTR)HookedWndProc);
             DetachWindowImeContext(root);
+            EnsureThreadMessageHooksInstalled(true); // re-seat at head of WH_GETMESSAGE chain ahead of msctf
             Log("Subclassed DSLOA main HWND %p (orig WndProc=%p): IME & CJK layout shield active.", root, g_origWndProc);
             break;
         }
@@ -764,30 +849,53 @@ static void EnsureGameWindowSubclassed(HWND candidateHwnd) {
 static void EnforceSafeKeyboardAndIme() {
     HKL curHkl = GetKeyboardLayout(0);
     if (IsCjkOrImeLayout(curHkl)) {
-        HKL safeHkl = FindNextSafeKeyboardLayout(curHkl);
-        if (safeHkl && safeHkl != curHkl) {
-            ActivateKeyboardLayout(safeHkl, 0);
-            g_lastSafeHkl = safeHkl;
-            Log("Skipped CJK/IME keyboard layout %p -> activated safe layout %p.", curHkl, safeHkl);
-        }
+        RedirectCjkKeyboardLayout(curHkl);
     } else if (curHkl) {
         g_lastSafeHkl = curHkl;
     }
 }
 
-static void ImeDisableInstall() {
-    // On non-1252 systems (e.g. Russian Windows where GetACP() == 1251), DSLOA's UIShell::InitIme (0x006EDA14)
-    // assumes a CJK locale and passes disableIme = 0 to ImeUi_Initialize (0x00638B50), which enables DSLOA's
-    // legacy Win98/XP CJK IME UI and re-associates HIMC every time the chat box opens (0x00638B0E).
-    // Force UIShell::InitIme at 0x006EDA25 to always set disableIme = 1 (mov [ebp-4], bl; nop),
-    // and neutralize all ImeUi entry points so they can never re-enable HIMC, lock IMC, or call CoUninitialize.
-    const BYTE patchInitIme[4] = { 0x88, 0x5D, 0xFC, 0x90 }; // mov byte ptr [ebp-4], bl; nop
-    WriteCode(0x006EDA25, patchInitIme, sizeof(patchInitIme));
+// Intercept AppModule::PrivateWndProc (0x00414FE4) called from StaticWndProc (0x00414FD1) so even if
+// DirectDraw re-subclasses GWLP_WNDPROC after us, IME/CJK messages never reach DSLOA or DefWindowProcA.
+typedef LRESULT (__attribute__((thiscall)) *PrivateWndProcFn)(void* self, HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+static PrivateWndProcFn g_origPrivateWndProc = (PrivateWndProcFn)0x00414FE4;
 
+static LRESULT __attribute__((thiscall)) HookPrivateWndProc(void* self, HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    if (msg == WM_INPUTLANGCHANGEREQUEST) {
+        HKL targetHkl = (HKL)lParam;
+        if (IsCjkOrImeLayout(targetHkl)) {
+            RedirectCjkKeyboardLayout(targetHkl);
+            return 0;
+        }
+        if (targetHkl) g_lastSafeHkl = targetHkl;
+        return DefWindowProcA(hwnd, msg, wParam, lParam);
+    }
+    if (msg == WM_INPUTLANGCHANGE) {
+        DetachWindowImeContext(hwnd);
+        EnforceSafeKeyboardAndIme();
+        return 0;
+    }
+    if ((msg >= 0x0280 && msg <= 0x029F) || (msg >= 0x010D && msg <= 0x010F)) {
+        DetachWindowImeContext(hwnd);
+        return 0;
+    }
+    if ((msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) && wParam == VK_PROCESSKEY) {
+        return 0;
+    }
+    return g_origPrivateWndProc(self, hwnd, msg, wParam, lParam);
+}
+
+static void ImeDisableInstall() {
+    // Completely stub UIShell::InitIme (0x006ED98F) and ImeUi_Initialize (0x00638B50) so DSLOA never
+    // calls ImmDisableTextFrameService(0xffffffff) (0x00638D48), which crashes Windows 10/11's modern
+    // TSF-only Japanese IME (imjptip.dll / msctf.dll) when the user cycles keyboard layouts.
     const BYTE patchRet[1] = { 0xC3 };                       // ret
+    const BYTE patchMovAl1Ret[3] = { 0xB0, 0x01, 0xC3 };     // mov al, 1; ret
     const BYTE patchXorEaxRet[3] = { 0x33, 0xC0, 0xC3 };     // xor eax, eax; ret
     const BYTE patchXorAlRet[3] = { 0x32, 0xC0, 0xC3 };      // xor al, al; ret
 
+    WriteCode(0x006ED98F, patchRet, sizeof(patchRet));             // UIShell::InitIme
+    WriteCode(0x00638B50, patchMovAl1Ret, sizeof(patchMovAl1Ret)); // ImeUi_Initialize
     WriteCode(0x00638B0E, patchRet, sizeof(patchRet));             // ImeUi_EnableIme
     WriteCode(0x00638251, patchXorEaxRet, sizeof(patchXorEaxRet)); // ImeUi_ProcessMessage
     WriteCode(0x006392F6, patchXorAlRet, sizeof(patchXorAlRet));   // ImeUi_IgnoreHotKey
@@ -795,22 +903,20 @@ static void ImeDisableInstall() {
     WriteCode(0x0063793D, patchRet, sizeof(patchRet));             // ImeUi_Render
     WriteCode(0x0063956A, patchRet, sizeof(patchRet));             // ImeUi_CheckToggleState
     WriteCode(0x00639BDC, patchRet, sizeof(patchRet));             // ImeUi TSF CoUninitialize helper
-    Log("ImeDisableInstall: DSLOA internal ImeUi disabled for all codepages.");
+
+    // Hook StaticWndProc -> PrivateWndProc call at 0x00414FD1
+    PatchCall(0x00414FD1, (void*)HookPrivateWndProc);
+    Log("ImeDisableInstall: DSLOA internal ImeUi disabled and StaticWndProc hooked.");
 }
 
 static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if (msg == WM_INPUTLANGCHANGEREQUEST) {
         HKL targetHkl = (HKL)lParam;
         if (IsCjkOrImeLayout(targetHkl)) {
-            HKL safeHkl = FindNextSafeKeyboardLayout(targetHkl);
-            if (safeHkl) {
-                ActivateKeyboardLayout(safeHkl, 0);
-                g_lastSafeHkl = safeHkl;
-                return DefWindowProcA(hwnd, msg, wParam, (LPARAM)safeHkl);
-            }
+            RedirectCjkKeyboardLayout(targetHkl);
             return 0;
         }
-        g_lastSafeHkl = targetHkl;
+        if (targetHkl) g_lastSafeHkl = targetHkl;
         return DefWindowProcA(hwnd, msg, wParam, lParam);
     }
     if (msg == WM_INPUTLANGCHANGE) {
@@ -839,15 +945,10 @@ static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, UINT remove) {
     if (!g_mainThread) {
         g_mainThread = GetCurrentThreadId();
+        EnsureThreadMessageHooksInstalled(false);
         Log("Main loop detected on thread %lu (PeekMessageA).", g_mainThread);
     }
     if (GetCurrentThreadId() == g_mainThread) {
-        if (!g_mainThreadImmDisabled) {
-            g_mainThreadImmDisabled = true;
-            InitImmFunctions();
-            if (g_pfnImmDisableTFS) g_pfnImmDisableTFS((DWORD)-1);
-            if (g_pfnImmDisableIME) g_pfnImmDisableIME((DWORD)-1);
-        }
         EnsureGameWindowSubclassed(wnd);
         EnforceSafeKeyboardAndIme();
         NR_PumpTick();
@@ -864,17 +965,11 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         if (msg->message == WM_INPUTLANGCHANGEREQUEST) {
             HKL targetHkl = (HKL)msg->lParam;
             if (IsCjkOrImeLayout(targetHkl)) {
-                HKL safeHkl = FindNextSafeKeyboardLayout(targetHkl);
-                if (safeHkl) {
-                    ActivateKeyboardLayout(safeHkl, 0);
-                    g_lastSafeHkl = safeHkl;
-                    msg->lParam = (LPARAM)safeHkl;
-                } else {
-                    msg->message = WM_NULL;
-                    msg->wParam = 0;
-                    msg->lParam = 0;
-                }
-            } else {
+                RedirectCjkKeyboardLayout(targetHkl);
+                msg->message = WM_NULL;   // never dispatch the CJK request
+                msg->wParam = 0;
+                msg->lParam = 0;
+            } else if (targetHkl) {
                 g_lastSafeHkl = targetHkl;
             }
         } else if (msg->message == WM_INPUTLANGCHANGE ||
@@ -1003,15 +1098,7 @@ static void Startup() {
     JG_Init();
 
     // Disable Windows IME text services early so East Asian layout switching cannot disrupt DirectX fullscreen
-    InitImmFunctions();
-    if (g_pfnImmDisableTFS) {
-        BOOL res = g_pfnImmDisableTFS((DWORD)-1);
-        Log("ImmDisableTextFrameService(-1) called (result: %d).", res);
-    }
-    if (g_pfnImmDisableIME) {
-        BOOL res = g_pfnImmDisableIME((DWORD)-1);
-        Log("ImmDisableIME(-1) called (result: %d).", res);
-    }
+    // 1.5.16: no Imm* calls inside DllMain (loader lock); the main thread does it in HookPeekMessageA.
 
     if (!g_cfg.enabled) { Log("Disabled by config. Acting as plain version.dll proxy."); return; }
 
