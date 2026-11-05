@@ -640,8 +640,7 @@ static DWORD g_mainThread = 0;
 static WNDPROC g_origWndProc = nullptr;
 HWND g_gameHwnd = nullptr;
 static HKL g_lastSafeHkl = nullptr;
-static HKL g_lastRedirectTo = nullptr;
-static DWORD g_lastRedirectTick = 0;
+static volatile HKL g_pendingCjkHkl = nullptr;
 static HHOOK g_getMsgHook = nullptr;
 static HHOOK g_callWndHook = nullptr;
 
@@ -718,16 +717,10 @@ static HKL FindNextSafeKeyboardLayout(HKL blockedHkl) {
 #endif
 
 static HKL RedirectCjkKeyboardLayout(HKL blockedHkl) {
-    DWORD now = GetTickCount();
-    if (g_lastRedirectTo && !IsCjkOrImeLayout(g_lastRedirectTo) && (now - g_lastRedirectTick) < 250) {
-        return g_lastRedirectTo;
-    }
     HKL safeHkl = FindNextSafeKeyboardLayout(blockedHkl);
     if (safeHkl && safeHkl != blockedHkl) {
-        g_lastRedirectTick = now;
-        g_lastRedirectTo = safeHkl;
         g_lastSafeHkl = safeHkl;
-        ActivateKeyboardLayout(safeHkl, KLF_SETFORPROCESS);
+        ActivateKeyboardLayout(safeHkl, 0);
         Log("Skipped CJK/IME keyboard layout %p -> activated safe layout %p.", blockedHkl, safeHkl);
     }
     return safeHkl ? safeHkl : ((g_lastSafeHkl && !IsCjkOrImeLayout(g_lastSafeHkl)) ? g_lastSafeHkl : (HKL)0x04090409);
@@ -749,23 +742,24 @@ static LRESULT CALLBACK GetMsgHookProc(int code, WPARAM wParam, LPARAM lParam) {
         if (m->message == WM_INPUTLANGCHANGEREQUEST) {
             HKL targetHkl = (HKL)m->lParam;
             if (IsCjkOrImeLayout(targetHkl)) {
-                HKL safeHkl = RedirectCjkKeyboardLayout(targetHkl);
+                HKL safeHkl = FindNextSafeKeyboardLayout(targetHkl);
+                g_lastSafeHkl = safeHkl;
                 m->lParam = (LPARAM)safeHkl;
             } else if (targetHkl) {
                 g_lastSafeHkl = targetHkl;
             }
         } else if (m->message == WM_INPUTLANGCHANGE) {
             HKL newHkl = (HKL)m->lParam;
+            if (m->hwnd) DetachWindowImeContext(m->hwnd);
             if (IsCjkOrImeLayout(newHkl)) {
-                RedirectCjkKeyboardLayout(newHkl);
-                if (m->hwnd) DetachWindowImeContext(m->hwnd);
-                m->message = WM_NULL;
-                m->wParam = 0;
-                m->lParam = 0;
-                return 0;
+                g_pendingCjkHkl = newHkl;
             } else if (newHkl) {
                 g_lastSafeHkl = newHkl;
             }
+            m->message = WM_NULL;
+            m->wParam = 0;
+            m->lParam = 0;
+            return 0;
         } else if ((m->message >= 0x0280 && m->message <= 0x029F) ||
                    (m->message >= 0x010D && m->message <= 0x010F) ||
                    ((m->message == WM_KEYDOWN || m->message == WM_SYSKEYDOWN) && m->wParam == VK_PROCESSKEY)) {
@@ -785,7 +779,8 @@ static LRESULT CALLBACK CallWndHookProc(int code, WPARAM wParam, LPARAM lParam) 
         if (cwp->message == WM_INPUTLANGCHANGEREQUEST) {
             HKL targetHkl = (HKL)cwp->lParam;
             if (IsCjkOrImeLayout(targetHkl)) {
-                HKL safeHkl = RedirectCjkKeyboardLayout(targetHkl);
+                HKL safeHkl = FindNextSafeKeyboardLayout(targetHkl);
+                g_lastSafeHkl = safeHkl;
                 cwp->lParam = (LPARAM)safeHkl;
             } else if (targetHkl) {
                 g_lastSafeHkl = targetHkl;
@@ -794,7 +789,7 @@ static LRESULT CALLBACK CallWndHookProc(int code, WPARAM wParam, LPARAM lParam) 
             if (cwp->hwnd) DetachWindowImeContext(cwp->hwnd);
             HKL newHkl = (HKL)cwp->lParam;
             if (IsCjkOrImeLayout(newHkl)) {
-                RedirectCjkKeyboardLayout(newHkl);
+                g_pendingCjkHkl = newHkl;
             } else if (newHkl) {
                 g_lastSafeHkl = newHkl;
             }
@@ -855,7 +850,8 @@ static LRESULT __attribute__((thiscall)) HookPrivateWndProc(void* self, HWND hwn
     if (msg == WM_INPUTLANGCHANGEREQUEST) {
         HKL targetHkl = (HKL)lParam;
         if (IsCjkOrImeLayout(targetHkl)) {
-            HKL safeHkl = RedirectCjkKeyboardLayout(targetHkl);
+            HKL safeHkl = FindNextSafeKeyboardLayout(targetHkl);
+            g_lastSafeHkl = safeHkl;
             return DefWindowProcA(hwnd, msg, wParam, (LPARAM)safeHkl);
         }
         if (targetHkl) g_lastSafeHkl = targetHkl;
@@ -865,11 +861,11 @@ static LRESULT __attribute__((thiscall)) HookPrivateWndProc(void* self, HWND hwn
         DetachWindowImeContext(hwnd);
         HKL newHkl = (HKL)lParam;
         if (IsCjkOrImeLayout(newHkl)) {
-            RedirectCjkKeyboardLayout(newHkl);
+            g_pendingCjkHkl = newHkl;
             return 0;
         }
         if (newHkl) g_lastSafeHkl = newHkl;
-        return DefWindowProcA(hwnd, msg, wParam, lParam);
+        return 0;
     }
     if ((msg >= 0x0280 && msg <= 0x029F) || (msg >= 0x010D && msg <= 0x010F)) {
         DetachWindowImeContext(hwnd);
@@ -887,17 +883,14 @@ static LRESULT __attribute__((thiscall)) HookPrivateWndProc(void* self, HWND hwn
 // window is being created (imm32!ImmSetActiveContext in WM_NCCREATE) recurses until the stack overflows (0xC0000005
 // in msctf.dll). With idThread != 0 user32 returns the kernel HKL directly and never enters msctf, and for the
 // current thread the result is identical, so always pass the real thread id.
-// 1.5.18: if the kernel layout is CJK/IME, mask it and return the last safe layout so DSLOA never sees CJK.
+// 1.5.20: NEVER mask the returned HKL here — msctf.dll+0x2C3C1 calls GetKeyboardLayout(0) after ActivateKeyboardLayout
+// and compares it against the target HKL (0x2C3CD: cmp edx, ecx); returning a different HKL causes infinite recursion
+// in msctf.dll (0x2C3DA -> 0xB3E64 -> 0x3A3FC -> 0x2C260) ending in STATUS_STACK_OVERFLOW (0xC00000FD).
 typedef HKL (WINAPI *GetKeyboardLayoutFn)(DWORD);
 static GetKeyboardLayoutFn g_origGetKeyboardLayout = nullptr;
 
 static HKL WINAPI HookGetKeyboardLayout(DWORD idThread) {
-    if (idThread == 0) idThread = GetCurrentThreadId();
-    HKL hkl = g_origGetKeyboardLayout(idThread);
-    if (idThread == GetCurrentThreadId() && IsCjkOrImeLayout(hkl)) {
-        return (g_lastSafeHkl && !IsCjkOrImeLayout(g_lastSafeHkl)) ? g_lastSafeHkl : (HKL)0x04090409;
-    }
-    return hkl;
+    return g_origGetKeyboardLayout(idThread ? idThread : GetCurrentThreadId());
 }
 
 static void InstallGetKeyboardLayoutHook() {
@@ -926,7 +919,6 @@ static void ImeDisableInstall() {
     // TSF-only Japanese IME (imjptip.dll / msctf.dll) when the user cycles keyboard layouts.
     const BYTE patchRet[1] = { 0xC3 };                       // ret
     const BYTE patchMovAl1Ret[3] = { 0xB0, 0x01, 0xC3 };     // mov al, 1; ret
-    const BYTE patchXorEaxRet[3] = { 0x33, 0xC0, 0xC3 };     // xor eax, eax; ret
     const BYTE patchXorAlRet[3] = { 0x32, 0xC0, 0xC3 };      // xor al, al; ret
 
     WriteCode(0x006ED98F, patchRet, sizeof(patchRet));             // UIShell::InitIme
@@ -950,7 +942,8 @@ static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
     if (msg == WM_INPUTLANGCHANGEREQUEST) {
         HKL targetHkl = (HKL)lParam;
         if (IsCjkOrImeLayout(targetHkl)) {
-            HKL safeHkl = RedirectCjkKeyboardLayout(targetHkl);
+            HKL safeHkl = FindNextSafeKeyboardLayout(targetHkl);
+            g_lastSafeHkl = safeHkl;
             return DefWindowProcA(hwnd, msg, wParam, (LPARAM)safeHkl);
         }
         if (targetHkl) g_lastSafeHkl = targetHkl;
@@ -960,12 +953,11 @@ static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
         DetachWindowImeContext(hwnd);
         HKL newHkl = (HKL)lParam;
         if (IsCjkOrImeLayout(newHkl)) {
-            RedirectCjkKeyboardLayout(newHkl);
+            g_pendingCjkHkl = newHkl;
             return 0;
         }
         if (newHkl) g_lastSafeHkl = newHkl;
-        return g_origWndProc ? CallWindowProcA(g_origWndProc, hwnd, msg, wParam, lParam)
-                             : DefWindowProcA(hwnd, msg, wParam, lParam);
+        return 0;
     }
     // Shield against IME (e.g. Japanese, Chinese, Korean) messages causing DirectX fullscreen disruptions
     if ((msg >= 0x0280 && msg <= 0x029F) || (msg >= 0x010D && msg <= 0x010F)) {
@@ -993,6 +985,11 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
     }
     if (GetCurrentThreadId() == g_mainThread) {
         EnsureGameWindowSubclassed(wnd);
+        HKL pending = g_pendingCjkHkl;
+        if (pending) {
+            g_pendingCjkHkl = nullptr;
+            RedirectCjkKeyboardLayout(pending);
+        }
         NR_PumpTick();
         JG_JipTick();  // both roles: the join freeze is a per-machine thing (src/jipguard.h)
         CharacterAbilities_Tick();
@@ -1001,28 +998,37 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         else if (g_cfg.role == Role::Client) { AutoJoinTick(); InvFixTick(); QuestModeTick(); ShopStockClientTick(); ChatFixTick(); ChatHistoryTick(); PartyPanelTick(); PanelFilterTick(); ChatDiagTick(); PartyPanelDiagTick(); }
     }
     BOOL res = g_origPeek(msg, wnd, fmin, fmax, remove);
+    if (GetCurrentThreadId() == g_mainThread && g_gameHwnd) {
+        HKL curHkl = g_origGetKeyboardLayout ? g_origGetKeyboardLayout(g_mainThread) : GetKeyboardLayout(g_mainThread);
+        if (g_pendingCjkHkl || IsCjkOrImeLayout(curHkl)) {
+            HKL blocked = g_pendingCjkHkl ? g_pendingCjkHkl : curHkl;
+            g_pendingCjkHkl = nullptr;
+            RedirectCjkKeyboardLayout(blocked);
+        }
+    }
     if (res && msg) {
         EnsureGameWindowSubclassed(msg->hwnd);
 
         if (msg->message == WM_INPUTLANGCHANGEREQUEST) {
             HKL targetHkl = (HKL)msg->lParam;
             if (IsCjkOrImeLayout(targetHkl)) {
-                HKL safeHkl = RedirectCjkKeyboardLayout(targetHkl);
+                HKL safeHkl = FindNextSafeKeyboardLayout(targetHkl);
+                g_lastSafeHkl = safeHkl;
                 msg->lParam = (LPARAM)safeHkl;
             } else if (targetHkl) {
                 g_lastSafeHkl = targetHkl;
             }
         } else if (msg->message == WM_INPUTLANGCHANGE) {
             HKL newHkl = (HKL)msg->lParam;
+            if (msg->hwnd) DetachWindowImeContext(msg->hwnd);
             if (IsCjkOrImeLayout(newHkl)) {
-                RedirectCjkKeyboardLayout(newHkl);
-                if (msg->hwnd) DetachWindowImeContext(msg->hwnd);
-                msg->message = WM_NULL;
-                msg->wParam = 0;
-                msg->lParam = 0;
+                g_pendingCjkHkl = newHkl;
             } else if (newHkl) {
                 g_lastSafeHkl = newHkl;
             }
+            msg->message = WM_NULL;
+            msg->wParam = 0;
+            msg->lParam = 0;
         } else if ((msg->message >= 0x0280 && msg->message <= 0x029F) ||
                    (msg->message >= 0x010D && msg->message <= 0x010F) ||
                    ((msg->message == WM_KEYDOWN || msg->message == WM_SYSKEYDOWN) && msg->wParam == VK_PROCESSKEY)) {
@@ -1083,25 +1089,67 @@ static void WINAPI HookExitProcess(UINT code) {
     for (;;) Sleep(1000);
 }
 
-static LONG WINAPI CrashFilter(EXCEPTION_POINTERS* ep) {
+static EXCEPTION_POINTERS* g_crashEp = nullptr;
+static BYTE g_crashStack[65536] __attribute__((aligned(16)));
+
+static void __attribute__((noinline)) CrashFilterWorker() {
+    EXCEPTION_POINTERS* ep = g_crashEp;
     auto* er = ep->ExceptionRecord;
     auto* cx = ep->ContextRecord;
-    char mod[MAX_PATH] = "?";
+    static char mod[MAX_PATH];
+    strcpy(mod, "?");
     HMODULE hm = nullptr;
     if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                            (LPCSTR)er->ExceptionAddress, &hm))
         GetModuleFileNameA(hm, mod, MAX_PATH);
-    Log("!!! CRASH code=0x%08lX addr=%p module=%s (+0x%lX)", er->ExceptionCode, er->ExceptionAddress, mod,
-        hm ? (DWORD)((BYTE*)er->ExceptionAddress - (BYTE*)hm) : 0);
+    Log("!!! CRASH code=0x%08lX addr=%p module=%s (+0x%lX) info0=%lu info1=0x%08lX", er->ExceptionCode, er->ExceptionAddress, mod,
+        hm ? (DWORD)((BYTE*)er->ExceptionAddress - (BYTE*)hm) : 0,
+        er->NumberParameters > 0 ? (DWORD)er->ExceptionInformation[0] : 0,
+        er->NumberParameters > 1 ? (DWORD)er->ExceptionInformation[1] : 0);
     Log("    eax=%08lX ebx=%08lX ecx=%08lX edx=%08lX esi=%08lX edi=%08lX ebp=%08lX esp=%08lX", cx->Eax, cx->Ebx, cx->Ecx,
         cx->Edx, cx->Esi, cx->Edi, cx->Ebp, cx->Esp);
+    DWORD* fp = (DWORD*)cx->Ebp;
+    for (int f = 0; f < 40 && fp && !IsBadReadPtr(fp, 8); ++f) {
+        DWORD ret = fp[1];
+        HMODULE fm = nullptr;
+        static char fmod[MAX_PATH];
+        fmod[0] = '\0';
+        if (ret >= 0x00400000 &&
+            GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                               (LPCSTR)ret, &fm)) {
+            GetModuleFileNameA(fm, fmod, MAX_PATH);
+            const char* base = strrchr(fmod, '\\');
+            base = base ? base + 1 : fmod;
+            Log("    [frame %02d] ebp=%p ret=%08lX (%s + 0x%lX)", f, fp, ret, base, (DWORD)(ret - (DWORD)fm));
+        } else {
+            Log("    [frame %02d] ebp=%p ret=%08lX", f, fp, ret);
+        }
+        DWORD* nextFp = (DWORD*)fp[0];
+        if (nextFp <= fp || (DWORD)nextFp - (DWORD)fp > 0x100000) break;
+        fp = nextFp;
+    }
     DWORD* sp = (DWORD*)cx->Esp;
-    for (int i = 0; i < 16 && !IsBadReadPtr(sp + i, 4); ++i) Log("    [esp+%02X] %08lX", i * 4, sp[i]);
+    for (int i = 0; i < 64 && !IsBadReadPtr(sp + i, 4); ++i) {
+        DWORD val = sp[i];
+        HMODULE sm = nullptr;
+        static char smod[MAX_PATH];
+        smod[0] = '\0';
+        if (val >= 0x00400000 &&
+            GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                               (LPCSTR)val, &sm)) {
+            GetModuleFileNameA(sm, smod, MAX_PATH);
+            const char* base = strrchr(smod, '\\');
+            base = base ? base + 1 : smod;
+            Log("    [esp+%02X] %08lX (%s + 0x%lX)", i * 4, val, base, (DWORD)(val - (DWORD)sm));
+        } else {
+            Log("    [esp+%02X] %08lX", i * 4, val);
+        }
+    }
     if (HMODULE dbg = LoadLibraryA("dbghelp.dll")) {
         typedef BOOL(WINAPI * MDW)(HANDLE, DWORD, HANDLE, int, PVOID, PVOID, PVOID);
         struct MINIDUMP_EXCEPTION_INFORMATION_ { DWORD ThreadId; EXCEPTION_POINTERS* ExceptionPointers; BOOL ClientPointers; };
         if (auto fn = (MDW)GetProcAddress(dbg, "MiniDumpWriteDump")) {
-            char path[64];
+            static char path[64];
             sprintf(path, "crash_%lu.dmp", GetCurrentProcessId());
             HANDLE f = CreateFileA((LogDir() + path).c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
             if (f != INVALID_HANDLE_VALUE) {
@@ -1113,20 +1161,44 @@ static LONG WINAPI CrashFilter(EXCEPTION_POINTERS* ep) {
         }
     }
     if (g_log) fflush(g_log);
+}
+
+static LONG WINAPI CrashFilter(EXCEPTION_POINTERS* ep) {
+    g_crashEp = ep;
+    DWORD oldEsp;
+    DWORD newEsp = (DWORD)(g_crashStack + sizeof(g_crashStack) - 64);
+    __asm__ volatile(
+        "movl %%esp, %0\n\t"
+        "movl %1, %%esp\n\t"
+        "call %P2\n\t"
+        "movl %0, %%esp\n\t"
+        : "=&r"(oldEsp)
+        : "r"(newEsp), "i"(CrashFilterWorker)
+        : "memory", "cc", "eax", "ecx", "edx"
+    );
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
 static LONG WINAPI VectoredCrashHandler(EXCEPTION_POINTERS* ep) {
     if (!ep || !ep->ExceptionRecord) return EXCEPTION_CONTINUE_SEARCH;
-    DWORD code = ep->ExceptionRecord->ExceptionCode;
+    auto* er = ep->ExceptionRecord;
+    DWORD code = er->ExceptionCode;
     if (code == EXCEPTION_ACCESS_VIOLATION ||
         code == EXCEPTION_ILLEGAL_INSTRUCTION ||
         code == EXCEPTION_STACK_OVERFLOW ||
         code == EXCEPTION_PRIV_INSTRUCTION ||
         code == EXCEPTION_IN_PAGE_ERROR) {
+        // Ignore DSLOA's handled demand-paging tank page faults (DSLOA code reading tank view >= 0x03000000)
+        if (code == EXCEPTION_ACCESS_VIOLATION && er->NumberParameters >= 2 &&
+            er->ExceptionInformation[0] == 0 &&
+            (DWORD)er->ExceptionAddress >= 0x00400000 && (DWORD)er->ExceptionAddress < 0x00700000 &&
+            er->ExceptionInformation[1] >= 0x03000000 && er->ExceptionInformation[1] < 0x60000000) {
+            return EXCEPTION_CONTINUE_SEARCH;
+        }
         static volatile LONG s_inVectored = 0;
         if (InterlockedCompareExchange(&s_inVectored, 1, 0) == 0) {
             CrashFilter(ep);
+            InterlockedExchange(&s_inVectored, 0);
         }
     }
     return EXCEPTION_CONTINUE_SEARCH;
