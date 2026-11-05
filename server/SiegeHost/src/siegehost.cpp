@@ -1181,24 +1181,10 @@ static LONG WINAPI CrashFilter(EXCEPTION_POINTERS* ep) {
 
 static LONG WINAPI VectoredCrashHandler(EXCEPTION_POINTERS* ep) {
     if (!ep || !ep->ExceptionRecord) return EXCEPTION_CONTINUE_SEARCH;
-    auto* er = ep->ExceptionRecord;
-    DWORD code = er->ExceptionCode;
-    if (code == EXCEPTION_ACCESS_VIOLATION ||
-        code == EXCEPTION_ILLEGAL_INSTRUCTION ||
-        code == EXCEPTION_STACK_OVERFLOW ||
-        code == EXCEPTION_PRIV_INSTRUCTION ||
-        code == EXCEPTION_IN_PAGE_ERROR) {
-        // Ignore DSLOA's handled demand-paging tank page faults (DSLOA code reading tank view >= 0x03000000)
-        if (code == EXCEPTION_ACCESS_VIOLATION && er->NumberParameters >= 2 &&
-            er->ExceptionInformation[0] == 0 &&
-            (DWORD)er->ExceptionAddress >= 0x00400000 && (DWORD)er->ExceptionAddress < 0x00700000 &&
-            er->ExceptionInformation[1] >= 0x03000000 && er->ExceptionInformation[1] < 0x60000000) {
-            return EXCEPTION_CONTINUE_SEARCH;
-        }
+    if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_STACK_OVERFLOW) {
         static volatile LONG s_inVectored = 0;
         if (InterlockedCompareExchange(&s_inVectored, 1, 0) == 0) {
             CrashFilter(ep);
-            InterlockedExchange(&s_inVectored, 0);
         }
     }
     return EXCEPTION_CONTINUE_SEARCH;
