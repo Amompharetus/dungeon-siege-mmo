@@ -713,9 +713,13 @@ static HKL FindNextSafeKeyboardLayout(HKL blockedHkl) {
     return LoadKeyboardLayoutA("00000409", KLF_ACTIVATE);
 }
 
+#ifndef KLF_SETFORPROCESS
+#define KLF_SETFORPROCESS 0x00000100
+#endif
+
 static HKL RedirectCjkKeyboardLayout(HKL blockedHkl) {
     DWORD now = GetTickCount();
-    if (g_lastRedirectTo && !IsCjkOrImeLayout(g_lastRedirectTo) && (now - g_lastRedirectTick) < 500) {
+    if (g_lastRedirectTo && !IsCjkOrImeLayout(g_lastRedirectTo) && (now - g_lastRedirectTick) < 250) {
         return g_lastRedirectTo;
     }
     HKL safeHkl = FindNextSafeKeyboardLayout(blockedHkl);
@@ -723,7 +727,7 @@ static HKL RedirectCjkKeyboardLayout(HKL blockedHkl) {
         g_lastRedirectTick = now;
         g_lastRedirectTo = safeHkl;
         g_lastSafeHkl = safeHkl;
-        ActivateKeyboardLayout(safeHkl, 0);
+        ActivateKeyboardLayout(safeHkl, KLF_SETFORPROCESS);
         Log("Skipped CJK/IME keyboard layout %p -> activated safe layout %p.", blockedHkl, safeHkl);
     }
     return safeHkl ? safeHkl : ((g_lastSafeHkl && !IsCjkOrImeLayout(g_lastSafeHkl)) ? g_lastSafeHkl : (HKL)0x04090409);
@@ -749,6 +753,18 @@ static LRESULT CALLBACK GetMsgHookProc(int code, WPARAM wParam, LPARAM lParam) {
                 m->lParam = (LPARAM)safeHkl;
             } else if (targetHkl) {
                 g_lastSafeHkl = targetHkl;
+            }
+        } else if (m->message == WM_INPUTLANGCHANGE) {
+            HKL newHkl = (HKL)m->lParam;
+            if (IsCjkOrImeLayout(newHkl)) {
+                RedirectCjkKeyboardLayout(newHkl);
+                if (m->hwnd) DetachWindowImeContext(m->hwnd);
+                m->message = WM_NULL;
+                m->wParam = 0;
+                m->lParam = 0;
+                return 0;
+            } else if (newHkl) {
+                g_lastSafeHkl = newHkl;
             }
         } else if ((m->message >= 0x0280 && m->message <= 0x029F) ||
                    (m->message >= 0x010D && m->message <= 0x010F) ||
@@ -777,7 +793,9 @@ static LRESULT CALLBACK CallWndHookProc(int code, WPARAM wParam, LPARAM lParam) 
         } else if (cwp->message == WM_INPUTLANGCHANGE) {
             if (cwp->hwnd) DetachWindowImeContext(cwp->hwnd);
             HKL newHkl = (HKL)cwp->lParam;
-            if (!IsCjkOrImeLayout(newHkl) && newHkl) {
+            if (IsCjkOrImeLayout(newHkl)) {
+                RedirectCjkKeyboardLayout(newHkl);
+            } else if (newHkl) {
                 g_lastSafeHkl = newHkl;
             }
         }
@@ -846,9 +864,11 @@ static LRESULT __attribute__((thiscall)) HookPrivateWndProc(void* self, HWND hwn
     if (msg == WM_INPUTLANGCHANGE) {
         DetachWindowImeContext(hwnd);
         HKL newHkl = (HKL)lParam;
-        if (!IsCjkOrImeLayout(newHkl) && newHkl) {
-            g_lastSafeHkl = newHkl;
+        if (IsCjkOrImeLayout(newHkl)) {
+            RedirectCjkKeyboardLayout(newHkl);
+            return 0;
         }
+        if (newHkl) g_lastSafeHkl = newHkl;
         return DefWindowProcA(hwnd, msg, wParam, lParam);
     }
     if ((msg >= 0x0280 && msg <= 0x029F) || (msg >= 0x010D && msg <= 0x010F)) {
@@ -939,10 +959,13 @@ static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
     if (msg == WM_INPUTLANGCHANGE) {
         DetachWindowImeContext(hwnd);
         HKL newHkl = (HKL)lParam;
-        if (!IsCjkOrImeLayout(newHkl) && newHkl) {
-            g_lastSafeHkl = newHkl;
+        if (IsCjkOrImeLayout(newHkl)) {
+            RedirectCjkKeyboardLayout(newHkl);
+            return 0;
         }
-        return DefWindowProcA(hwnd, msg, wParam, lParam);
+        if (newHkl) g_lastSafeHkl = newHkl;
+        return g_origWndProc ? CallWindowProcA(g_origWndProc, hwnd, msg, wParam, lParam)
+                             : DefWindowProcA(hwnd, msg, wParam, lParam);
     }
     // Shield against IME (e.g. Japanese, Chinese, Korean) messages causing DirectX fullscreen disruptions
     if ((msg >= 0x0280 && msg <= 0x029F) || (msg >= 0x010D && msg <= 0x010F)) {
@@ -988,6 +1011,17 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
                 msg->lParam = (LPARAM)safeHkl;
             } else if (targetHkl) {
                 g_lastSafeHkl = targetHkl;
+            }
+        } else if (msg->message == WM_INPUTLANGCHANGE) {
+            HKL newHkl = (HKL)msg->lParam;
+            if (IsCjkOrImeLayout(newHkl)) {
+                RedirectCjkKeyboardLayout(newHkl);
+                if (msg->hwnd) DetachWindowImeContext(msg->hwnd);
+                msg->message = WM_NULL;
+                msg->wParam = 0;
+                msg->lParam = 0;
+            } else if (newHkl) {
+                g_lastSafeHkl = newHkl;
             }
         } else if ((msg->message >= 0x0280 && msg->message <= 0x029F) ||
                    (msg->message >= 0x010D && msg->message <= 0x010F) ||
@@ -1082,6 +1116,22 @@ static LONG WINAPI CrashFilter(EXCEPTION_POINTERS* ep) {
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
+static LONG WINAPI VectoredCrashHandler(EXCEPTION_POINTERS* ep) {
+    if (!ep || !ep->ExceptionRecord) return EXCEPTION_CONTINUE_SEARCH;
+    DWORD code = ep->ExceptionRecord->ExceptionCode;
+    if (code == EXCEPTION_ACCESS_VIOLATION ||
+        code == EXCEPTION_ILLEGAL_INSTRUCTION ||
+        code == EXCEPTION_STACK_OVERFLOW ||
+        code == EXCEPTION_PRIV_INSTRUCTION ||
+        code == EXCEPTION_IN_PAGE_ERROR) {
+        static volatile LONG s_inVectored = 0;
+        if (InterlockedCompareExchange(&s_inVectored, 1, 0) == 0) {
+            CrashFilter(ep);
+        }
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
 // ----------------------------------------------------------------------------------------------
 // Startup
 // ----------------------------------------------------------------------------------------------
@@ -1110,6 +1160,7 @@ static void Startup() {
         g_cfg.enabled, g_cfg.role == Role::Server ? "server" : g_cfg.role == Role::Client ? "client" : "none", g_cfg.maxPlayers,
         g_cfg.maxSlots, g_cfg.dpMaxPlayers, g_cfg.patchTeams, g_cfg.logDirectPlay, g_cfg.snapshots);
     SetUnhandledExceptionFilter(CrashFilter);
+    AddVectoredExceptionHandler(1, VectoredCrashHandler);
     InstallGetKeyboardLayoutHook();
     JG_Init();
 
