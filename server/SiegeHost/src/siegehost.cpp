@@ -715,10 +715,7 @@ static HKL FindNextSafeKeyboardLayout(HKL blockedHkl) {
 
 static HKL RedirectCjkKeyboardLayout(HKL blockedHkl) {
     DWORD now = GetTickCount();
-    if (g_lastRedirectTo && !IsCjkOrImeLayout(g_lastRedirectTo) && (now - g_lastRedirectTick) < 250) {
-        if (GetKeyboardLayout(0) != g_lastRedirectTo) {
-            ActivateKeyboardLayout(g_lastRedirectTo, 0);
-        }
+    if (g_lastRedirectTo && !IsCjkOrImeLayout(g_lastRedirectTo) && (now - g_lastRedirectTick) < 500) {
         return g_lastRedirectTo;
     }
     HKL safeHkl = FindNextSafeKeyboardLayout(blockedHkl);
@@ -729,7 +726,7 @@ static HKL RedirectCjkKeyboardLayout(HKL blockedHkl) {
         ActivateKeyboardLayout(safeHkl, 0);
         Log("Skipped CJK/IME keyboard layout %p -> activated safe layout %p.", blockedHkl, safeHkl);
     }
-    return safeHkl;
+    return safeHkl ? safeHkl : ((g_lastSafeHkl && !IsCjkOrImeLayout(g_lastSafeHkl)) ? g_lastSafeHkl : (HKL)0x04090409);
 }
 
 static void DetachWindowImeContext(HWND hwnd) {
@@ -748,21 +745,15 @@ static LRESULT CALLBACK GetMsgHookProc(int code, WPARAM wParam, LPARAM lParam) {
         if (m->message == WM_INPUTLANGCHANGEREQUEST) {
             HKL targetHkl = (HKL)m->lParam;
             if (IsCjkOrImeLayout(targetHkl)) {
-                RedirectCjkKeyboardLayout(targetHkl);
-                m->message = WM_NULL;
-                m->wParam = 0;
-                m->lParam = 0;
-                return 0;
+                HKL safeHkl = RedirectCjkKeyboardLayout(targetHkl);
+                m->lParam = (LPARAM)safeHkl;
             } else if (targetHkl) {
                 g_lastSafeHkl = targetHkl;
             }
-        } else if (m->message == WM_INPUTLANGCHANGE ||
-                   (m->message >= 0x0280 && m->message <= 0x029F) ||
+        } else if ((m->message >= 0x0280 && m->message <= 0x029F) ||
                    (m->message >= 0x010D && m->message <= 0x010F) ||
                    ((m->message == WM_KEYDOWN || m->message == WM_SYSKEYDOWN) && m->wParam == VK_PROCESSKEY)) {
             if (m->hwnd) DetachWindowImeContext(m->hwnd);
-            HKL curHkl = GetKeyboardLayout(0);
-            if (IsCjkOrImeLayout(curHkl)) RedirectCjkKeyboardLayout(curHkl);
             m->message = WM_NULL;
             m->wParam = 0;
             m->lParam = 0;
@@ -778,15 +769,17 @@ static LRESULT CALLBACK CallWndHookProc(int code, WPARAM wParam, LPARAM lParam) 
         if (cwp->message == WM_INPUTLANGCHANGEREQUEST) {
             HKL targetHkl = (HKL)cwp->lParam;
             if (IsCjkOrImeLayout(targetHkl)) {
-                RedirectCjkKeyboardLayout(targetHkl);
+                HKL safeHkl = RedirectCjkKeyboardLayout(targetHkl);
+                cwp->lParam = (LPARAM)safeHkl;
             } else if (targetHkl) {
                 g_lastSafeHkl = targetHkl;
             }
-        } else if (cwp->message == WM_INPUTLANGCHANGE ||
-                   (cwp->message >= 0x0280 && cwp->message <= 0x029F)) {
+        } else if (cwp->message == WM_INPUTLANGCHANGE) {
             if (cwp->hwnd) DetachWindowImeContext(cwp->hwnd);
-            HKL curHkl = GetKeyboardLayout(0);
-            if (IsCjkOrImeLayout(curHkl)) RedirectCjkKeyboardLayout(curHkl);
+            HKL newHkl = (HKL)cwp->lParam;
+            if (!IsCjkOrImeLayout(newHkl) && newHkl) {
+                g_lastSafeHkl = newHkl;
+            }
         }
     }
     return CallNextHookEx(g_callWndHook, code, wParam, lParam);
@@ -832,26 +825,8 @@ static void EnsureGameWindowSubclassed(HWND candidateHwnd) {
             break;
         }
     }
-    if (g_gameHwnd && IsWindow(g_gameHwnd)) {
-        InitImmFunctions();
-        if (g_pfnImmGetContext && g_pfnImmAssociateContext) {
-            HIMC himc = g_pfnImmGetContext(g_gameHwnd);
-            if (himc) {
-                if (g_pfnImmReleaseContext) g_pfnImmReleaseContext(g_gameHwnd, himc);
-                g_pfnImmAssociateContext(g_gameHwnd, NULL);
-            }
-        }
-    }
 }
 
-static void EnforceSafeKeyboardAndIme() {
-    HKL curHkl = GetKeyboardLayout(0);
-    if (IsCjkOrImeLayout(curHkl)) {
-        RedirectCjkKeyboardLayout(curHkl);
-    } else if (curHkl) {
-        g_lastSafeHkl = curHkl;
-    }
-}
 
 // Intercept AppModule::PrivateWndProc (0x00414FE4) called from StaticWndProc (0x00414FD1) so even if
 // DirectDraw re-subclasses GWLP_WNDPROC after us, IME/CJK messages never reach DSLOA or DefWindowProcA.
@@ -862,16 +837,19 @@ static LRESULT __attribute__((thiscall)) HookPrivateWndProc(void* self, HWND hwn
     if (msg == WM_INPUTLANGCHANGEREQUEST) {
         HKL targetHkl = (HKL)lParam;
         if (IsCjkOrImeLayout(targetHkl)) {
-            RedirectCjkKeyboardLayout(targetHkl);
-            return 0;
+            HKL safeHkl = RedirectCjkKeyboardLayout(targetHkl);
+            return DefWindowProcA(hwnd, msg, wParam, (LPARAM)safeHkl);
         }
         if (targetHkl) g_lastSafeHkl = targetHkl;
         return DefWindowProcA(hwnd, msg, wParam, lParam);
     }
     if (msg == WM_INPUTLANGCHANGE) {
         DetachWindowImeContext(hwnd);
-        EnforceSafeKeyboardAndIme();
-        return 0;
+        HKL newHkl = (HKL)lParam;
+        if (!IsCjkOrImeLayout(newHkl) && newHkl) {
+            g_lastSafeHkl = newHkl;
+        }
+        return DefWindowProcA(hwnd, msg, wParam, lParam);
     }
     if ((msg >= 0x0280 && msg <= 0x029F) || (msg >= 0x010D && msg <= 0x010F)) {
         DetachWindowImeContext(hwnd);
@@ -889,12 +867,17 @@ static LRESULT __attribute__((thiscall)) HookPrivateWndProc(void* self, HWND hwn
 // window is being created (imm32!ImmSetActiveContext in WM_NCCREATE) recurses until the stack overflows (0xC0000005
 // in msctf.dll). With idThread != 0 user32 returns the kernel HKL directly and never enters msctf, and for the
 // current thread the result is identical, so always pass the real thread id.
+// 1.5.18: if the kernel layout is CJK/IME, mask it and return the last safe layout so DSLOA never sees CJK.
 typedef HKL (WINAPI *GetKeyboardLayoutFn)(DWORD);
 static GetKeyboardLayoutFn g_origGetKeyboardLayout = nullptr;
 
 static HKL WINAPI HookGetKeyboardLayout(DWORD idThread) {
     if (idThread == 0) idThread = GetCurrentThreadId();
-    return g_origGetKeyboardLayout(idThread);
+    HKL hkl = g_origGetKeyboardLayout(idThread);
+    if (idThread == GetCurrentThreadId() && IsCjkOrImeLayout(hkl)) {
+        return (g_lastSafeHkl && !IsCjkOrImeLayout(g_lastSafeHkl)) ? g_lastSafeHkl : (HKL)0x04090409;
+    }
+    return hkl;
 }
 
 static void InstallGetKeyboardLayoutHook() {
@@ -947,16 +930,19 @@ static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
     if (msg == WM_INPUTLANGCHANGEREQUEST) {
         HKL targetHkl = (HKL)lParam;
         if (IsCjkOrImeLayout(targetHkl)) {
-            RedirectCjkKeyboardLayout(targetHkl);
-            return 0;
+            HKL safeHkl = RedirectCjkKeyboardLayout(targetHkl);
+            return DefWindowProcA(hwnd, msg, wParam, (LPARAM)safeHkl);
         }
         if (targetHkl) g_lastSafeHkl = targetHkl;
         return DefWindowProcA(hwnd, msg, wParam, lParam);
     }
     if (msg == WM_INPUTLANGCHANGE) {
         DetachWindowImeContext(hwnd);
-        EnforceSafeKeyboardAndIme();
-        return 0;
+        HKL newHkl = (HKL)lParam;
+        if (!IsCjkOrImeLayout(newHkl) && newHkl) {
+            g_lastSafeHkl = newHkl;
+        }
+        return DefWindowProcA(hwnd, msg, wParam, lParam);
     }
     // Shield against IME (e.g. Japanese, Chinese, Korean) messages causing DirectX fullscreen disruptions
     if ((msg >= 0x0280 && msg <= 0x029F) || (msg >= 0x010D && msg <= 0x010F)) {
@@ -984,7 +970,6 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
     }
     if (GetCurrentThreadId() == g_mainThread) {
         EnsureGameWindowSubclassed(wnd);
-        EnforceSafeKeyboardAndIme();
         NR_PumpTick();
         JG_JipTick();  // both roles: the join freeze is a per-machine thing (src/jipguard.h)
         CharacterAbilities_Tick();
@@ -999,18 +984,14 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         if (msg->message == WM_INPUTLANGCHANGEREQUEST) {
             HKL targetHkl = (HKL)msg->lParam;
             if (IsCjkOrImeLayout(targetHkl)) {
-                RedirectCjkKeyboardLayout(targetHkl);
-                msg->message = WM_NULL;   // never dispatch the CJK request
-                msg->wParam = 0;
-                msg->lParam = 0;
+                HKL safeHkl = RedirectCjkKeyboardLayout(targetHkl);
+                msg->lParam = (LPARAM)safeHkl;
             } else if (targetHkl) {
                 g_lastSafeHkl = targetHkl;
             }
-        } else if (msg->message == WM_INPUTLANGCHANGE ||
-                   (msg->message >= 0x0280 && msg->message <= 0x029F) ||
+        } else if ((msg->message >= 0x0280 && msg->message <= 0x029F) ||
                    (msg->message >= 0x010D && msg->message <= 0x010F) ||
                    ((msg->message == WM_KEYDOWN || msg->message == WM_SYSKEYDOWN) && msg->wParam == VK_PROCESSKEY)) {
-            EnforceSafeKeyboardAndIme();
             msg->message = WM_NULL;
             msg->wParam = 0;
             msg->lParam = 0;
