@@ -678,8 +678,6 @@ static bool IsCjkOrImeLayout(HKL hkl) {
     // Legacy IME HKL high-word marker (0xE000..0xEFFF)
     WORD hi = HIWORD((DWORD_PTR)hkl);
     if ((hi & 0xF000) == 0xE000) return true;
-    InitImmFunctions();
-    if (g_pfnImmIsIME && g_pfnImmIsIME(hkl)) return true;
     return false;
 }
 
@@ -885,6 +883,40 @@ static LRESULT __attribute__((thiscall)) HookPrivateWndProc(void* self, HWND hwn
     return g_origPrivateWndProc(self, hwnd, msg, wParam, lParam);
 }
 
+// 1.5.17: user32!GetKeyboardLayout(0) calls back into msctf.dll (TSF) whenever a TSF text service such as the
+// Windows 10/11 Japanese IME is installed. msctf's per-thread init (0x3A05F) stores its SYSTHREAD pointer only AFTER
+// its constructor returns, and that constructor itself calls GetKeyboardLayout(0), so the first call made while the
+// window is being created (imm32!ImmSetActiveContext in WM_NCCREATE) recurses until the stack overflows (0xC0000005
+// in msctf.dll). With idThread != 0 user32 returns the kernel HKL directly and never enters msctf, and for the
+// current thread the result is identical, so always pass the real thread id.
+typedef HKL (WINAPI *GetKeyboardLayoutFn)(DWORD);
+static GetKeyboardLayoutFn g_origGetKeyboardLayout = nullptr;
+
+static HKL WINAPI HookGetKeyboardLayout(DWORD idThread) {
+    if (idThread == 0) idThread = GetCurrentThreadId();
+    return g_origGetKeyboardLayout(idThread);
+}
+
+static void InstallGetKeyboardLayoutHook() {
+    HMODULE u32 = GetModuleHandleA("user32.dll");
+    BYTE* fn = u32 ? (BYTE*)GetProcAddress(u32, "GetKeyboardLayout") : nullptr;
+    static const BYTE prologue[5] = { 0x8B, 0xFF, 0x55, 0x8B, 0xEC };
+    if (!fn || memcmp(fn, prologue, 5) != 0) { Log("GetKeyboardLayout hook: unexpected prologue, NOT installed."); return; }
+    BYTE* tramp = (BYTE*)VirtualAlloc(nullptr, 16, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!tramp) { Log("GetKeyboardLayout hook: VirtualAlloc failed."); return; }
+    memcpy(tramp, fn, 5);
+    tramp[5] = 0xE9;
+    *(DWORD*)(tramp + 6) = (DWORD)((fn + 5) - (tramp + 10));
+    g_origGetKeyboardLayout = (GetKeyboardLayoutFn)tramp;
+    DWORD old;
+    if (!VirtualProtect(fn, 5, PAGE_EXECUTE_READWRITE, &old)) { Log("GetKeyboardLayout hook: VirtualProtect failed."); return; }
+    fn[0] = 0xE9;
+    *(DWORD*)(fn + 1) = (DWORD)((BYTE*)HookGetKeyboardLayout - (fn + 5));
+    VirtualProtect(fn, 5, old, &old);
+    FlushInstructionCache(GetCurrentProcess(), fn, 5);
+    Log("Hooked user32!GetKeyboardLayout (TSF recursion guard).");
+}
+
 static void ImeDisableInstall() {
     // Completely stub UIShell::InitIme (0x006ED98F) and ImeUi_Initialize (0x00638B50) so DSLOA never
     // calls ImmDisableTextFrameService(0xffffffff) (0x00638D48), which crashes Windows 10/11's modern
@@ -897,7 +929,9 @@ static void ImeDisableInstall() {
     WriteCode(0x006ED98F, patchRet, sizeof(patchRet));             // UIShell::InitIme
     WriteCode(0x00638B50, patchMovAl1Ret, sizeof(patchMovAl1Ret)); // ImeUi_Initialize
     WriteCode(0x00638B0E, patchRet, sizeof(patchRet));             // ImeUi_EnableIme
-    WriteCode(0x00638251, patchXorEaxRet, sizeof(patchXorEaxRet)); // ImeUi_ProcessMessage
+    // ImeUi_ProcessMessage: caller does not initialise *bHandled (5th arg), so clear it before returning 0.
+    const BYTE patchProcessMsg[10] = { 0x8B, 0x44, 0x24, 0x14, 0xC6, 0x00, 0x00, 0x33, 0xC0, 0xC3 };
+    WriteCode(0x00638251, patchProcessMsg, sizeof(patchProcessMsg)); // ImeUi_ProcessMessage
     WriteCode(0x006392F6, patchXorAlRet, sizeof(patchXorAlRet));   // ImeUi_IgnoreHotKey
     WriteCode(0x006389D5, patchRet, sizeof(patchRet));             // ImeUi_SetState
     WriteCode(0x0063793D, patchRet, sizeof(patchRet));             // ImeUi_Render
@@ -1095,6 +1129,7 @@ static void Startup() {
         g_cfg.enabled, g_cfg.role == Role::Server ? "server" : g_cfg.role == Role::Client ? "client" : "none", g_cfg.maxPlayers,
         g_cfg.maxSlots, g_cfg.dpMaxPlayers, g_cfg.patchTeams, g_cfg.logDirectPlay, g_cfg.snapshots);
     SetUnhandledExceptionFilter(CrashFilter);
+    InstallGetKeyboardLayoutHook();
     JG_Init();
 
     // Disable Windows IME text services early so East Asian layout switching cannot disrupt DirectX fullscreen
