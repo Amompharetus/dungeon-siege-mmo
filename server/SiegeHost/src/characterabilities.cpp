@@ -874,10 +874,11 @@ void CharacterAbilities_Init() {
 bool CharacterAbilities_OnReceivePacket(bool isServer, DWORD /*senderDpnid*/, const BYTE* data, DWORD size) {
     if (!data || size != sizeof(AbilityPacket)) return false;
     const AbilityPacket* pkt = (const AbilityPacket*)data;
-    if (pkt->magic != kAbilityMagic || pkt->slot > 3) return false;
+    if (pkt->magic != kAbilityMagic) return false;
+    if (pkt->slot > 3) return true; // Consume to avoid native dispatcher crash!
     if (!CharacterAbilities_IsServerSupported()) return true; // Consume to avoid native dispatcher crash!
-    if (isServer && pkt->isBroadcast != 0) return false;
-    if (!isServer && pkt->isBroadcast == 0) return false;
+    if (isServer && pkt->isBroadcast != 0) return true; // Consume and ignore: server ignores broadcast packets
+    if (!isServer && pkt->isBroadcast == 0) return true; // Consume and ignore: client ignores request packets
 
     if (isServer) {
         Log("Ability packet received on server. Hero=0x%08lX slot=%d.", pkt->heroGoid, (int)pkt->slot);
