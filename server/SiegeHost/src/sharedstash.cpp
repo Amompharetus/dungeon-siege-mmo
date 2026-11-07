@@ -1871,9 +1871,14 @@ extern "C" void __fastcall Hook_GoInventory_SerializeGridboxes(void* inv, void* 
     Orig_GoInventory_SerializeGridboxes(inv, unused_edx, packer);
 }
 
+extern "C" void Entry_AIAction_RSCollectLootMp();
 extern "C" uint32_t __fastcall Orig_AIAction_RSCollectLootMp(void* aiAction, void* unused_edx, uint32_t goid, const void* data, uint32_t len);
 __asm__(
     ".text\n"
+    ".globl _Entry_AIAction_RSCollectLootMp\n"
+    "_Entry_AIAction_RSCollectLootMp:\n"
+    "  popl %ebp\n"
+    "  jmp  @Hook_AIAction_RSCollectLootMp@20\n"
     ".globl _Orig_AIAction_RSCollectLootMp\n"
     ".globl @Orig_AIAction_RSCollectLootMp@20\n"
     "_Orig_AIAction_RSCollectLootMp:\n"
@@ -1881,7 +1886,9 @@ __asm__(
     "  pushl %ebp\n"
     "  movl %esp, %ebp\n"
     "  subl $0x64, %esp\n"
-    "  movl $0x005F34E1, %eax\n"
+    "  pushl %esi\n"
+    "  movl %ecx, -0x60(%ebp)\n"
+    "  movl $0x005F34F4, %eax\n"
     "  jmp *%eax\n"
 );
 
@@ -2278,13 +2285,21 @@ void SharedStash_Init() {
     };
 
     const BYTE kSerializeExpect[6]   = { 0x55, 0x8B, 0xEC, 0x51, 0x51, 0x56 };
-    const BYTE kRSCollectMpExpect[6] = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x64 };
+    const BYTE kRSCollectMpHead[3]   = { 0x55, 0x8B, 0xEC };
+    const BYTE kRSCollectMpExpect[7] = { 0x83, 0xEC, 0x64, 0x56, 0x89, 0x4D, 0xA0 };
     const BYTE kCollectLootExpect[9] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x68, 0x01, 0x00, 0x00 };
     const BYTE kSAutoGiveExpect[6]   = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x2C };
     const BYTE kAddExpect[6]         = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x48 };
 
     installJmpHook(0x0057B4AF, kSerializeExpect,   6, (void*)&Hook_GoInventory_SerializeGridboxes, "GoInventory::SerializeGridboxesToBitPacker");
-    installJmpHook(0x005F34DB, kRSCollectMpExpect, 6, (void*)&Hook_AIAction_RSCollectLootMp,       "AIAction::RSCollectLootMp");
+    // Hook at +3 (0x005F34DE) so byte +0 of PE export 0x005F34DB stays 0x55 (!= 0xE9);
+    // otherwise FuBi::SysExports::ImportBindings (0x004522F9) unthunks 0xE9 into Mss32.dll
+    // and breaks FUBI_RPC_CALL's address-based FunctionSpec lookup at 0x005F3534.
+    if (Readable((void*)0x005F34DB, 3) && memcmp((void*)0x005F34DB, kRSCollectMpHead, 3) == 0) {
+        installJmpHook(0x005F34DE, kRSCollectMpExpect, 7, (void*)&Entry_AIAction_RSCollectLootMp, "AIAction::RSCollectLootMp(+3)");
+    } else {
+        Log("SharedStash: VERIFY FAILED at 0x005F34DB for AIAction::RSCollectLootMp prologue");
+    }
     installJmpHook(0x005F386D, kCollectLootExpect, 9, (void*)&Hook_AIAction_CollectLoot,           "AIAction::CollectLoot");
     installJmpHook(0x00578DDA, kSAutoGiveExpect,   6, (void*)&Hook_GoInventory_SAutoGive,          "GoInventory::SAutoGive");
     installJmpHook(0x005756C2, kAddExpect,         6, (void*)&Hook_GoInventory_Add,                "GoInventory::Add");
