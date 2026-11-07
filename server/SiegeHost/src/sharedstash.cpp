@@ -418,6 +418,7 @@ bool IsHeroInTown(void* hero, unsigned* outLoc = nullptr, unsigned* outGroup = n
 
 void PrintGameChat(const char* text) {
     if (!text || !*text) return;
+    if (!ChatFix_AllowGameMessage(text)) return;
     void* uiMp = *(void**)0x007ACF94;
     if (!uiMp || !Readable(uiMp, 0x20)) return;
 
@@ -1732,6 +1733,232 @@ extern "C" void __fastcall Hook_DropItemsFor_RSRemove(void* heroInv, void* unuse
 }
 
 // -------------------------------------------------------------------------------------------------
+// Ground Loot Collection ('Z' & Ground Pickup) Stash Exclusion Hooks
+// Excludes stashGo from SerializeGridboxesToBitPacker (0x0057B4AF), RSCollectLootMp (0x005F34DB),
+// CollectLoot (0x005F386D), SAutoGive (0x00578DDA), and GoInventory::Add backpack overflow (0x005756C2)
+// so client/server backpack BitPacker streams never desync and ground loot goes only to inventory/real backpack.
+// -------------------------------------------------------------------------------------------------
+namespace {
+struct HiddenStashEntry {
+    void* heroInv;
+    void* stashGo;
+    void* stashInv;
+    int   prevLoc;
+    char  prevIsBp;
+};
+static int s_hideStashDepth = 0;
+static HiddenStashEntry s_hiddenStashes[40] = {};
+static int s_hiddenStashCount = 0;
+
+static void HideSingleStashForLoot(void* heroInv, void* stashGo) {
+    if (!heroInv || !stashGo || s_hiddenStashCount >= 40) return;
+    if (!Readable(heroInv, 0x90) || !Readable(stashGo, 0x98)) return;
+    if ((*((unsigned char*)stashGo + 0x96) & 8) != 0) return; // marked for deletion
+
+    for (int i = 0; i < s_hiddenStashCount; ++i) {
+        if (s_hiddenStashes[i].heroInv == heroInv && s_hiddenStashes[i].stashGo == stashGo) {
+            return;
+        }
+    }
+
+    int prevLoc = GetInventoryDbLocation(heroInv, stashGo);
+    void* stashInv = *(void**)((char*)stashGo + 0x2C);
+    char prevIsBp = (stashInv && Readable(stashInv, 0x90)) ? *((char*)stashInv + 0x86) : 0;
+    if (prevLoc == 0x11 /*il_invalid*/ && prevIsBp == 0) return;
+
+    s_hiddenStashes[s_hiddenStashCount++] = { heroInv, stashGo, stashInv, prevLoc, prevIsBp };
+    if (prevLoc != 0x11) {
+        SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
+    }
+    if (prevIsBp != 0 && stashInv && Readable(stashInv, 0x90)) {
+        *((char*)stashInv + 0x86) = 0;
+    }
+}
+
+struct ScopedHideStashesForLoot {
+    bool enabled;
+    explicit ScopedHideStashesForLoot(void* extraInv = nullptr, bool enable = true) : enabled(enable) {
+        if (!enabled) return;
+        if (s_hideStashDepth++ == 0) {
+            s_hiddenStashCount = 0;
+
+            if (g_localStashGoid != 0) {
+                void* stashGo = ResolveGo(g_localStashGoid);
+                if (stashGo && Readable(stashGo, 0x80)) {
+                    void* hero = GetLocalScreenHero();
+                    if (hero && Readable(hero, 0x80)) {
+                        HideSingleStashForLoot(*(void**)((char*)hero + 0x2C), stashGo);
+                    }
+                    void* parentGo = *(void**)((char*)stashGo + 0x60);
+                    if (parentGo && Readable(parentGo, 0x80)) {
+                        HideSingleStashForLoot(*(void**)((char*)parentGo + 0x2C), stashGo);
+                    }
+                }
+            }
+
+            for (const auto& kv : g_serverStashes) {
+                void* stashGo = ResolveGo(kv.second.stashGoid);
+                if (stashGo && Readable(stashGo, 0x80)) {
+                    void* hero = ResolveGo(kv.second.heroGoid);
+                    if (hero && Readable(hero, 0x80)) {
+                        HideSingleStashForLoot(*(void**)((char*)hero + 0x2C), stashGo);
+                    }
+                    void* parentGo = *(void**)((char*)stashGo + 0x60);
+                    if (parentGo && Readable(parentGo, 0x80)) {
+                        HideSingleStashForLoot(*(void**)((char*)parentGo + 0x2C), stashGo);
+                    }
+                }
+            }
+
+            if (extraInv && Readable(extraInv, 0x90)) {
+                void* extraStash = FindHeroStashGo(extraInv);
+                if (extraStash) {
+                    HideSingleStashForLoot(extraInv, extraStash);
+                }
+            }
+        }
+    }
+
+    ~ScopedHideStashesForLoot() {
+        if (!enabled) return;
+        if (--s_hideStashDepth == 0) {
+            for (int i = s_hiddenStashCount - 1; i >= 0; --i) {
+                const HiddenStashEntry& e = s_hiddenStashes[i];
+                if (e.heroInv && e.stashGo && Readable(e.heroInv, 0x90) && Readable(e.stashGo, 0x98) &&
+                    (*((unsigned char*)e.stashGo + 0x96) & 8) == 0) {
+                    if (e.prevLoc != 0x11) {
+                        SetInventoryDbLocation(e.heroInv, e.stashGo, e.prevLoc);
+                    }
+                    if (e.prevIsBp != 0 && e.stashInv && Readable(e.stashInv, 0x90)) {
+                        *((char*)e.stashInv + 0x86) = e.prevIsBp;
+                    }
+                }
+            }
+            s_hiddenStashCount = 0;
+        }
+    }
+};
+} // namespace
+
+extern "C" void __fastcall Orig_GoInventory_SerializeGridboxes(void* inv, void* unused_edx, void* packer);
+__asm__(
+    ".text\n"
+    ".globl _Orig_GoInventory_SerializeGridboxes\n"
+    ".globl @Orig_GoInventory_SerializeGridboxes@12\n"
+    "_Orig_GoInventory_SerializeGridboxes:\n"
+    "@Orig_GoInventory_SerializeGridboxes@12:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  pushl %ecx\n"
+    "  pushl %ecx\n"
+    "  pushl %esi\n"
+    "  movl $0x0057B4B5, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" void __fastcall Hook_GoInventory_SerializeGridboxes(void* inv, void* unused_edx, void* packer) {
+    ScopedHideStashesForLoot guard(inv);
+    Orig_GoInventory_SerializeGridboxes(inv, unused_edx, packer);
+}
+
+extern "C" uint32_t __fastcall Orig_AIAction_RSCollectLootMp(void* aiAction, void* unused_edx, uint32_t goid, const void* data, uint32_t len);
+__asm__(
+    ".text\n"
+    ".globl _Orig_AIAction_RSCollectLootMp\n"
+    ".globl @Orig_AIAction_RSCollectLootMp@20\n"
+    "_Orig_AIAction_RSCollectLootMp:\n"
+    "@Orig_AIAction_RSCollectLootMp@20:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  subl $0x64, %esp\n"
+    "  movl $0x005F34E1, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" uint32_t __fastcall Hook_AIAction_RSCollectLootMp(void* aiAction, void* unused_edx, uint32_t goid, const void* data, uint32_t len) {
+    void* hero = ResolveGo(goid);
+    if (IsActorDrinkingPotion(hero)) {
+        return 0;
+    }
+    void* heroInv = (hero && Readable(hero, 0x80)) ? *(void**)((char*)hero + 0x2C) : nullptr;
+    ScopedHideStashesForLoot guard(heroInv);
+    return Orig_AIAction_RSCollectLootMp(aiAction, unused_edx, goid, data, len);
+}
+
+extern "C" uint32_t __fastcall Orig_AIAction_CollectLoot(void* aiAction, void* unused_edx, void* goidColl);
+__asm__(
+    ".text\n"
+    ".globl _Orig_AIAction_CollectLoot\n"
+    ".globl @Orig_AIAction_CollectLoot@12\n"
+    "_Orig_AIAction_CollectLoot:\n"
+    "@Orig_AIAction_CollectLoot@12:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  subl $0x168, %esp\n"
+    "  movl $0x005F3876, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" uint32_t __fastcall Hook_AIAction_CollectLoot(void* aiAction, void* unused_edx, void* goidColl) {
+    if (IsActorDrinkingPotion(GetLocalScreenHero())) {
+        return 0;
+    }
+    if (goidColl && Readable(goidColl, 8)) {
+        uint32_t* b = *(uint32_t**)goidColl;
+        uint32_t* e = *((uint32_t**)goidColl + 1);
+        if (b && e && e >= b && (e - b) <= 64 && Readable(b, (size_t)(e - b) * sizeof(uint32_t))) {
+            for (uint32_t* p = b; p < e; ++p) {
+                if (IsActorDrinkingPotion(ResolveGo(*p))) {
+                    return 0;
+                }
+            }
+        }
+    }
+    ScopedHideStashesForLoot guard;
+    return Orig_AIAction_CollectLoot(aiAction, unused_edx, goidColl);
+}
+
+extern "C" char __fastcall Orig_GoInventory_SAutoGive(void* inv, void* unused_edx, uint32_t actorGoid, uint32_t itemGoid, int autoPlace);
+__asm__(
+    ".text\n"
+    ".globl _Orig_GoInventory_SAutoGive\n"
+    ".globl @Orig_GoInventory_SAutoGive@20\n"
+    "_Orig_GoInventory_SAutoGive:\n"
+    "@Orig_GoInventory_SAutoGive@20:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  subl $0x2C, %esp\n"
+    "  movl $0x00578DE0, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" char __fastcall Hook_GoInventory_SAutoGive(void* inv, void* unused_edx, uint32_t actorGoid, uint32_t itemGoid, int autoPlace) {
+    ScopedHideStashesForLoot guard(inv);
+    return Orig_GoInventory_SAutoGive(inv, unused_edx, actorGoid, itemGoid, autoPlace);
+}
+
+extern "C" char __fastcall Orig_GoInventory_Add(void* inv, void* unused_edx, void* itemGo, int loc, int origin, int autoPlace, int tryBackpacks, int unk);
+__asm__(
+    ".text\n"
+    ".globl _Orig_GoInventory_Add\n"
+    ".globl @Orig_GoInventory_Add@32\n"
+    "_Orig_GoInventory_Add:\n"
+    "@Orig_GoInventory_Add@32:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  subl $0x48, %esp\n"
+    "  movl $0x005756C8, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" char __fastcall Hook_GoInventory_Add(void* inv, void* unused_edx, void* itemGo, int loc, int origin, int autoPlace, int tryBackpacks, int unk) {
+    void* ownerGo = (inv && Readable(inv, 0x10)) ? *(void**)((char*)inv + 0x04) : nullptr;
+    bool hideStash = (tryBackpacks != 0) && !SharedStash_IsStashGo(ownerGo) && !SharedStash_IsStashGo(itemGo);
+    ScopedHideStashesForLoot guard(inv, hideStash);
+    return Orig_GoInventory_Add(inv, unused_edx, itemGo, loc, origin, autoPlace, tryBackpacks, unk);
+}
+
+// -------------------------------------------------------------------------------------------------
 // Go::PlayVoiceSound Hook (0x00539D77)
 // Deduplicates double "put_down" SFX when placing items in Backpack, Shared Stash, or Inventory:
 // UIGridbox::SetItem (0x004FE734) plays "put_down" immediately on click and sends RSTransfer;
@@ -2021,6 +2248,36 @@ void SharedStash_Init() {
         Log("SharedStash: VERIFY FAILED at 0x0057810C for DropItemsFor RSRemove call");
     }
 
+    // Hook ground loot collection & backpack overflow paths so Shared Stash never breaks 'Z' pickup
+    auto installJmpHook = [](uintptr_t addr, const BYTE* expect, size_t len, void* target, const char* label) {
+        BYTE* p = (BYTE*)addr;
+        if (Readable(p, len) && memcmp(p, expect, len) == 0) {
+            DWORD oldProt = 0;
+            if (VirtualProtect(p, len, PAGE_EXECUTE_READWRITE, &oldProt)) {
+                p[0] = 0xE9;
+                *(int32_t*)(p + 1) = (int32_t)((DWORD)target - (DWORD)(addr + 5));
+                for (size_t i = 5; i < len; ++i) p[i] = 0x90;
+                VirtualProtect(p, len, oldProt, &oldProt);
+                FlushInstructionCache(GetCurrentProcess(), p, len);
+                Log("SharedStash: hooked %s at 0x%08lX", label, (DWORD)addr);
+            }
+        } else {
+            Log("SharedStash: VERIFY FAILED at 0x%08lX for %s", (DWORD)addr, label);
+        }
+    };
+
+    const BYTE kSerializeExpect[6]   = { 0x55, 0x8B, 0xEC, 0x51, 0x51, 0x56 };
+    const BYTE kRSCollectMpExpect[6] = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x64 };
+    const BYTE kCollectLootExpect[9] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x68, 0x01, 0x00, 0x00 };
+    const BYTE kSAutoGiveExpect[6]   = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x2C };
+    const BYTE kAddExpect[6]         = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x48 };
+
+    installJmpHook(0x0057B4AF, kSerializeExpect,   6, (void*)&Hook_GoInventory_SerializeGridboxes, "GoInventory::SerializeGridboxesToBitPacker");
+    installJmpHook(0x005F34DB, kRSCollectMpExpect, 6, (void*)&Hook_AIAction_RSCollectLootMp,       "AIAction::RSCollectLootMp");
+    installJmpHook(0x005F386D, kCollectLootExpect, 9, (void*)&Hook_AIAction_CollectLoot,           "AIAction::CollectLoot");
+    installJmpHook(0x00578DDA, kSAutoGiveExpect,   6, (void*)&Hook_GoInventory_SAutoGive,          "GoInventory::SAutoGive");
+    installJmpHook(0x005756C2, kAddExpect,         6, (void*)&Hook_GoInventory_Add,                "GoInventory::Add");
+
     Log("SharedStash: module initialized.");
 }
 
@@ -2184,12 +2441,14 @@ void SharedStash_Tick() {
                             continue;
                         }
                     }
-                    void* stashGo = ResolveGo(g_localStashGoid);
-                    if (hero && stashGo) {
-                        OpenClientStashUI(hero, stashGo);
-                    } else {
-                        Log("SharedStash: stashGo 0x%08lX not resolved yet on client, pending open", g_localStashGoid);
-                        g_pendingOpenStash = true;
+                    if (g_pendingOpenStash) {
+                        void* stashGo = ResolveGo(g_localStashGoid);
+                        if (hero && stashGo) {
+                            OpenClientStashUI(hero, stashGo);
+                        } else {
+                            Log("SharedStash: stashGo 0x%08lX not resolved yet on client, pending open", g_localStashGoid);
+                            g_pendingOpenStash = true;
+                        }
                     }
                 }
             }
@@ -2419,9 +2678,43 @@ bool SharedStash_FilterKey(LPMSG msg) {
                     s_lastCollectMs = now;
                     void* uiPartyMgr = *(void**)0x007ACF90;
                     if (uiPartyMgr && Readable(uiPartyMgr, 0x1E8)) {
-                        typedef void(__thiscall* CollectLootFn)(void*);
-                        ((CollectLootFn)0x004A8D71)(uiPartyMgr);
-                        Log("SharedStash: triggered CollectLoot via 'Z' while stash is open");
+                        bool hasSelectedPartyMember = false;
+                        void* godb = *(void**)0x007ACF4C;
+                        if (godb && Readable(godb, 0x10)) {
+                            void** selBegin = *(void***)godb;
+                            void** selEnd   = *((void***)godb + 1);
+                            if (selBegin && selEnd && selEnd > selBegin && (size_t)(selEnd - selBegin) <= 64) {
+                                typedef bool(__thiscall* IsScreenPartyFn)(void*);
+                                for (void** it = selBegin; it != selEnd; ++it) {
+                                    if (*it && Readable(*it, 0x80) && ((IsScreenPartyFn)0x00539711)(*it)) {
+                                        hasSelectedPartyMember = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (hasSelectedPartyMember) {
+                            typedef char(__thiscall* CollectLootFn)(void*);
+                            ((CollectLootFn)0x004A8D71)(uiPartyMgr);
+                        } else {
+                            void* hero = GetLocalScreenHero();
+                            void* ws = *(void**)0x007ACF44;
+                            void* aiAction = *(void**)0x007ACF3C;
+                            if (hero && Readable(hero, 0x80) && aiAction && Readable(aiAction, 0x10) &&
+                                (!ws || !Readable(ws, 0x24) || *(int*)((char*)ws + 0x20) != 0x29)) {
+                                uint32_t heroGoid = *(uint32_t*)((char*)hero + 0x4C);
+                                if (heroGoid != 0) {
+                                    ((void(__cdecl*)())0x004A8D2D)();
+                                    struct GoidSpan {
+                                        uint32_t* begin;
+                                        uint32_t* end;
+                                    } coll = { &heroGoid, &heroGoid + 1 };
+                                    ((void(__thiscall*)(void*, void*))0x005F3348)(aiAction, &coll);
+                                }
+                            }
+                        }
+                        Log("SharedStash: triggered CollectLoot via 'Z' while stash is active");
                     }
                 }
                 s_eatNextZChar = true;
@@ -2559,6 +2852,9 @@ bool SharedStash_TriggerOpen() {
     if (g_localStashGoid != 0) {
         void* stashGo = ResolveGo(g_localStashGoid);
         if (stashGo) {
+            if (!s_isServerLocal()) {
+                SendStashPacketToServer(heroGoid, kPkt_ReqOpen);
+            }
             OpenClientStashUI(hero, stashGo);
             return true;
         } else {

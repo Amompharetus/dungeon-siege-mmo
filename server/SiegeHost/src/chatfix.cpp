@@ -41,9 +41,158 @@ const DWORD kManaCooldownMs = 3000;
 const DWORD kLeaveHisVa = 0x007916D8;
 const char kLeaveHisExpect[] = "$MSG$Player %S has left the game with all his worldly possessions.\n";
 const char kLeaveTheirNew[]  = "$MSG$Player %S has left the game with all their worldly possessions.\n";
+
+// 1.5.23: Universal 3-second cooldown per unique gameplay chat message at 0x0050E295 (UIGameConsole::Print / gpscreen sink).
+// All $MSG$ / RCPrintScreen / gameplay warnings ("can only control one creature at a time", "has no more room for items",
+// backpack rejection, stat requirement, out of mana, etc.) pass through 0x0050E295 before playing "s_gui_console_message"
+// and forwarding to UIMultiplayer::PrintChat (0x0048D2AA). Player-typed multiplayer chat (0x0048D49B -> 0x0048D58B) never calls 0x0050E295.
+const DWORD kPrintScreenVa = 0x0050E295;
+const BYTE kPrintScreenExpect[10] = { 0x55, 0x8B, 0xEC, 0x51, 0x8B, 0x0D, 0xE4, 0xCF, 0x7A, 0x00 };
+const DWORD kGameMsgCooldownMs = 3000;
+bool g_screenMsgHookOn = false;
+
+struct RecentGameMsg {
+    std::wstring text;
+    DWORD lastTick;
+};
+CRITICAL_SECTION g_gameMsgCs;
+volatile LONG g_gameMsgCsState = 0; // 0 = uninit, 1 = initializing, 2 = ready
+std::vector<RecentGameMsg> g_recentGameMsgs;
+
+void EnsureGameMsgCs() {
+    if (g_gameMsgCsState == 2) return;
+    if (InterlockedCompareExchange(&g_gameMsgCsState, 1, 0) == 0) {
+        InitializeCriticalSection(&g_gameMsgCs);
+        InterlockedExchange(&g_gameMsgCsState, 2);
+    } else {
+        while (g_gameMsgCsState != 2) Sleep(0);
+    }
+}
+
+bool ReadableMsgPtr(const void* p, size_t n) {
+    if (!p) return false;
+    MEMORY_BASIC_INFORMATION mbi;
+    if (!VirtualQuery(p, &mbi, sizeof mbi)) return false;
+    if (mbi.State != MEM_COMMIT) return false;
+    const DWORD ok = PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY |
+                     PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
+    if (!(mbi.Protect & ok)) return false;
+    if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) return false;
+    return (const char*)p + n <= (const char*)mbi.BaseAddress + mbi.RegionSize;
+}
+}
+
+bool ChatFix_AllowGameMessageWide(const wchar_t* text) {
+    if (!text || !ReadableMsgPtr(text, sizeof(wchar_t)) || !*text) return true;
+
+    const wchar_t* start = text;
+    while (*start == L' ' || *start == L'\t' || *start == L'\r' || *start == L'\n') {
+        ++start;
+    }
+    if (!*start) return true;
+
+    size_t len = 0;
+    while (len < 1024 && ReadableMsgPtr(start + len, sizeof(wchar_t)) && start[len] != L'\0') {
+        ++len;
+    }
+    while (len > 0 && (start[len - 1] == L' ' || start[len - 1] == L'\t' || start[len - 1] == L'\r' || start[len - 1] == L'\n')) {
+        --len;
+    }
+    if (len == 0) return true;
+
+    std::wstring key(start, len);
+    EnsureGameMsgCs();
+
+    DWORD now = GetTickCount();
+    if (now == 0) now = 1;
+
+    bool allow = true;
+    EnterCriticalSection(&g_gameMsgCs);
+    for (size_t i = 0; i < g_recentGameMsgs.size(); ) {
+        if ((DWORD)(now - g_recentGameMsgs[i].lastTick) >= kGameMsgCooldownMs) {
+            g_recentGameMsgs.erase(g_recentGameMsgs.begin() + i);
+        } else {
+            if (g_recentGameMsgs[i].text == key) {
+                allow = false;
+            }
+            ++i;
+        }
+    }
+    if (allow) {
+        if (g_recentGameMsgs.size() < 64) {
+            g_recentGameMsgs.push_back({ std::move(key), now });
+        } else {
+            g_recentGameMsgs[0] = { std::move(key), now };
+        }
+    }
+    LeaveCriticalSection(&g_gameMsgCs);
+    return allow;
+}
+
+bool ChatFix_AllowGameMessage(const char* text) {
+    if (!text || !*text) return true;
+    int wlen = MultiByteToWideChar(CP_ACP, 0, text, -1, nullptr, 0);
+    if (wlen <= 1) return true;
+    std::wstring ws(wlen, L'\0');
+    MultiByteToWideChar(CP_ACP, 0, text, -1, &ws[0], wlen);
+    return ChatFix_AllowGameMessageWide(ws.c_str());
+}
+
+extern "C" void __fastcall Orig_PrintScreenMessage(void* self, void* unused_edx, const void* gpwstr);
+__asm__(
+    ".text\n"
+    ".globl _Orig_PrintScreenMessage\n"
+    ".globl @Orig_PrintScreenMessage@12\n"
+    "_Orig_PrintScreenMessage:\n"
+    "@Orig_PrintScreenMessage@12:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  pushl %ecx\n"
+    "  movl 0x007ACFE4, %ecx\n"
+    "  movl $0x0050E29F, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" void __fastcall Hook_PrintScreenMessage(void* self, void* unused_edx, const void* gpwstr) {
+    if (gpwstr && ReadableMsgPtr(gpwstr, sizeof(void*))) {
+        const wchar_t* ws = *(const wchar_t* const*)gpwstr;
+        if (ws && !ChatFix_AllowGameMessageWide(ws)) {
+            return;
+        }
+    }
+    Orig_PrintScreenMessage(self, unused_edx, gpwstr);
+}
+
+void ChatFixGameMsgCooldownInstall() {
+    static bool s_attempted = false;
+    if (s_attempted) return;
+    s_attempted = true;
+    EnsureGameMsgCs();
+
+    BYTE* p = (BYTE*)kPrintScreenVa;
+    if (memcmp(p, kPrintScreenExpect, sizeof kPrintScreenExpect) != 0) {
+        Log("ChatFix: VERIFY FAILED at 0x%08lX - global gameplay chat cooldown not installed.", kPrintScreenVa);
+        return;
+    }
+    DWORD o;
+    if (!VirtualProtect(p, sizeof kPrintScreenExpect, PAGE_EXECUTE_READWRITE, &o)) {
+        Log("ChatFix: VirtualProtect failed at 0x%08lX (error %lu).", kPrintScreenVa, GetLastError());
+        return;
+    }
+    p[0] = 0xE9;
+    *(int32_t*)(p + 1) = (int32_t)((DWORD)(void*)&Hook_PrintScreenMessage - (kPrintScreenVa + 5));
+    for (size_t i = 5; i < sizeof kPrintScreenExpect; ++i) {
+        p[i] = 0x90;
+    }
+    VirtualProtect(p, sizeof kPrintScreenExpect, o, &o);
+    FlushInstructionCache(GetCurrentProcess(), p, sizeof kPrintScreenExpect);
+    g_screenMsgHookOn = true;
+    Log("ChatFix: armed %lu ms per-message cooldown on all gameplay chat messages (patched 0x%08lX).",
+        kGameMsgCooldownMs, kPrintScreenVa);
 }
 
 extern "C" char __cdecl SiegeHost_ManaMsgAllowed() {
+    if (g_screenMsgHookOn) return 1; // Handled uniformly by Hook_PrintScreenMessage at 0x0050E295
     static DWORD last = 0;
     DWORD now = GetTickCount();
     if (last && now - last < kManaCooldownMs) return 0;
@@ -70,6 +219,7 @@ __asm__(
     "  jmp *%eax\n");
 
 void ChatFixInstall() {
+    ChatFixGameMsgCooldownInstall();
     // 1.5.5: update "his worldly possessions" -> "their worldly possessions" at 0x007916D8
     if (memcmp((void*)kLeaveHisVa, kLeaveHisExpect, sizeof kLeaveHisExpect) == 0) {
         DWORD o;

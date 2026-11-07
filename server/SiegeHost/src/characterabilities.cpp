@@ -28,6 +28,49 @@ __asm__(
     "  jmp *%eax\n"
 );
 
+extern "C" bool __fastcall Orig_GoMind_Validate(void* thisMind, void* unused_edx, const void* jobReq);
+__asm__(
+    ".text\n"
+    ".globl _Orig_GoMind_Validate\n"
+    ".globl @Orig_GoMind_Validate@12\n"
+    "_Orig_GoMind_Validate:\n"
+    "@Orig_GoMind_Validate@12:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  subl $0x14, %esp\n"
+    "  movl $0x005DAE91, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" bool __fastcall Orig_UIPartyManager_IsPlayerPartyMemberBusy(void* thisMgr, void* unused_edx, void* go, uint32_t bIgnoreCharWin);
+__asm__(
+    ".text\n"
+    ".globl _Orig_UIPartyManager_IsPlayerPartyMemberBusy\n"
+    ".globl @Orig_UIPartyManager_IsPlayerPartyMemberBusy@16\n"
+    "_Orig_UIPartyManager_IsPlayerPartyMemberBusy:\n"
+    "@Orig_UIPartyManager_IsPlayerPartyMemberBusy@16:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  pushl %ecx\n"
+    "  pushl %ecx\n"
+    "  movl $0x004A68E7, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" void __fastcall Orig_GoActor_AddGenericState(void* thisActor, void* unused_edx, const char* sName, const char* sDescription, uint32_t expireLo, uint32_t expireHi, uint32_t casterGoid, uint32_t spellGoid, float spellLevel);
+__asm__(
+    ".text\n"
+    ".globl _Orig_GoActor_AddGenericState\n"
+    ".globl @Orig_GoActor_AddGenericState@36\n"
+    "_Orig_GoActor_AddGenericState:\n"
+    "@Orig_GoActor_AddGenericState@36:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  subl $0xA0, %esp\n"
+    "  movl $0x005BD32A, %eax\n"
+    "  jmp *%eax\n"
+);
+
 namespace {
 
 struct SiegePos {
@@ -55,11 +98,11 @@ struct AnimReq {
 
 #pragma pack(push, 1)
 struct AbilityPacket {
-    uint32_t magic;       // 0x41435344 ('DSCA')
-    uint32_t heroGoid;    // Goid of the hero activating the ability
-    uint8_t  slot;        // 0 = Q, 1 = W, 2 = E, 3 = R
-    uint8_t  isBroadcast; // 0 = Client -> Server request, 1 = Server -> Client broadcast
-    uint16_t reserved;    // 0
+    uint32_t magic;            // 0x41435344 ('DSCA')
+    uint32_t heroGoid;         // Goid of the hero activating the ability
+    uint8_t  slot;             // 0 = Q, 1 = W, 2 = E, 3 = R
+    uint8_t  isBroadcast;      // 0 = Client -> Server request, 1 = Server -> Client broadcast
+    uint16_t skillLevelTenths; // Server-authoritative skill level * 10 on broadcast (0 on client request)
 };
 #pragma pack(pop)
 
@@ -79,12 +122,12 @@ const auto GoBody_SAnimate             = (void(__thiscall*)(void* body, const An
 const auto WorldFx_RunScript           = (void*(__thiscall*)(void* wfx, const char* script, uint32_t target, uint32_t source, const char* bone, uint32_t other, int event))0x00472F79;
 const auto Rules_CalculateDamage       = (float(__thiscall*)(void* rules, uint32_t attacker, uint32_t weapon, uint32_t victim, float minDmg, float maxDmg, float totalDef, bool bPiercing))0x005B4678;
 const auto Rules_DamageGo              = (bool(__thiscall*)(void* rules, uint32_t victim, uint32_t attacker, uint32_t weapon, float damage, bool piercing, bool canExplode))0x0047BE87;
-const auto Rules_CalculateExperience   = (float(__thiscall*)(void* rules, const uint32_t* attacker, const uint32_t* weapon, const uint32_t* victim, float damage))0x005B6728;
-const auto Rules_RCAwardPrimaryExperience = (void(__thiscall*)(void* rules, const uint32_t* goid, const char* skill, double xp, bool share))0x005B7194;
-const auto Rules_RCPlayLevelUpSoundAndText = (void(__thiscall*)(void* rules, const uint32_t* goid, const char* skill))0x005B69A3;
-const auto Rules_SetPackMemberStats    = (void(__thiscall*)(void* rules, const uint32_t* goid))0x005B7B57;
-const auto Rules_ChangeLife            = (void(__thiscall*)(void* rules, const uint32_t* goid, float delta, unsigned long rpcId))0x005B802D;
-const auto Rules_ChangeMana            = (void(__thiscall*)(void* rules, const uint32_t* goid, float delta, unsigned long rpcId))0x005B82EA;
+const auto Rules_CalculateExperience   = (float(__thiscall*)(void* rules, uint32_t attacker, uint32_t weapon, uint32_t victim, float damage))0x005B6728;
+const auto Rules_RCAwardPrimaryExperience = (void(__thiscall*)(void* rules, uint32_t goid, const char* skill, double xp, bool share))0x005B7194;
+const auto Rules_RCPlayLevelUpSoundAndText = (void(__thiscall*)(void* rules, uint32_t goid, const char* skill))0x005B69A3;
+const auto Rules_SetPackMemberStats    = (void(__thiscall*)(void* rules, uint32_t goid))0x005B7B57;
+const auto Rules_ChangeLife            = (void(__thiscall*)(void* rules, uint32_t goid, float delta, unsigned long rpcId))0x005B802D;
+const auto Rules_ChangeMana            = (void(__thiscall*)(void* rules, uint32_t goid, float delta, unsigned long rpcId))0x005B82EA;
 const auto GoAspect_SSetNaturalMaxLife = (void(__thiscall*)(void* aspect, float maxLife))0x00534B1A;
 const auto GoAspect_SSetNaturalMaxMana = (void(__thiscall*)(void* aspect, float maxMana))0x00534FD8;
 const auto Aspect_SetCurrentLifeLocal  = (void(__thiscall*)(void* aspect, float life))0x005349D6;
@@ -107,7 +150,7 @@ struct PowerDef {
 PowerDef g_powers[4] = {
     { 'Q', "Whirling Cleave",  "melee",        "Melee",        30.0f, 30000, 0 },
     { 'W', "Shrapnel Blast",   "ranged",       "Ranged",       30.0f, 30000, 0 },
-    { 'E', "Aegis of Renewal", "nature magic", "Nature Magic", 30.0f, 40000, 0 },
+    { 'E', "Aegis of Renewal", "nature magic", "Nature Magic", 30.0f, 30000, 0 },
     { 'R', "Flame Nova",       "combat magic", "Combat Magic", 30.0f, 30000, 0 }
 };
 
@@ -124,34 +167,37 @@ bool Readable(const void* p, size_t n) {
     return (mbi.Protect & ok) != 0;
 }
 
-// ---- Active Aegis of Renewal Armor Rating Buffs (per Goid, works on both Client & Server) ----
+// ---- Active Aegis of Renewal Armor Rating Buffs (per Target + Caster pair, stacks independently across casters) ----
 struct AegisBuff {
-    uint32_t goid;
+    uint32_t targetGoid;
+    uint32_t casterGoid;
     float    boost;
     DWORD    endTime;
 };
-const int kMaxAegisBuffs = 32;
+const int kMaxAegisBuffs = 256;
 AegisBuff g_aegisBuffs[kMaxAegisBuffs] = {};
 
-float GetAegisBonus(uint32_t goid) {
-    if (!goid) return 0.0f;
+float GetAegisBonus(uint32_t targetGoid) {
+    if (!targetGoid) return 0.0f;
     DWORD now = GetTickCount();
+    float total = 0.0f;
     for (int i = 0; i < kMaxAegisBuffs; ++i) {
-        if (g_aegisBuffs[i].goid == goid) {
+        if (g_aegisBuffs[i].targetGoid == targetGoid) {
             if (g_aegisBuffs[i].endTime != 0 && (int32_t)(g_aegisBuffs[i].endTime - now) > 0) {
-                return g_aegisBuffs[i].boost;
+                total += g_aegisBuffs[i].boost;
+            } else {
+                g_aegisBuffs[i].targetGoid = 0;
+                g_aegisBuffs[i].casterGoid = 0;
+                g_aegisBuffs[i].boost = 0.0f;
+                g_aegisBuffs[i].endTime = 0;
             }
-            g_aegisBuffs[i].goid = 0;
-            g_aegisBuffs[i].boost = 0.0f;
-            g_aegisBuffs[i].endTime = 0;
-            return 0.0f;
         }
     }
-    return 0.0f;
+    return total;
 }
 
-void SetAegisBonus(void* hero, uint32_t goid, float boost, DWORD durationMs) {
-    if (!goid) return;
+void SetAegisBonus(void* targetGo, uint32_t targetGoid, uint32_t casterGoid, float boost, DWORD durationMs) {
+    if (!targetGoid || !casterGoid) return;
     DWORD now = GetTickCount();
     DWORD endTime = now + durationMs;
     if (endTime == 0) endTime = 1;
@@ -159,28 +205,63 @@ void SetAegisBonus(void* hero, uint32_t goid, float boost, DWORD durationMs) {
     float oldBoost = 0.0f;
     int slot = -1;
     for (int i = 0; i < kMaxAegisBuffs; ++i) {
-        if (g_aegisBuffs[i].goid == goid) {
+        // Reclaim expired entries opportunistically so slots stay clean
+        if (g_aegisBuffs[i].targetGoid != 0 && g_aegisBuffs[i].endTime != 0 &&
+            (int32_t)(g_aegisBuffs[i].endTime - now) <= 0 &&
+            !(g_aegisBuffs[i].targetGoid == targetGoid && g_aegisBuffs[i].casterGoid == casterGoid)) {
+            if (slot == -1) slot = i;
+            continue;
+        }
+        if (g_aegisBuffs[i].targetGoid == targetGoid && g_aegisBuffs[i].casterGoid == casterGoid) {
             if (g_aegisBuffs[i].endTime != 0 && (int32_t)(g_aegisBuffs[i].endTime - now) > 0) {
                 oldBoost = g_aegisBuffs[i].boost;
             }
             slot = i;
             break;
         }
-        if (slot == -1 && g_aegisBuffs[i].goid == 0) slot = i;
+        if (slot == -1 && g_aegisBuffs[i].targetGoid == 0) slot = i;
     }
     if (slot == -1) slot = 0;
 
-    g_aegisBuffs[slot].goid = goid;
+    g_aegisBuffs[slot].targetGoid = targetGoid;
+    g_aegisBuffs[slot].casterGoid = casterGoid;
     g_aegisBuffs[slot].boost = boost;
     g_aegisBuffs[slot].endTime = endTime;
 
-    // Immediately apply delta to hero->m_Defend (+0x18) for instant 0-frame UI and combat update
-    if (hero && Readable(hero, 0x40)) {
-        void* defend = *(void**)((char*)hero + 0x18);
+    // Immediately apply delta to targetGo->m_Defend (+0x18) for instant 0-frame UI and combat update
+    if (targetGo && Readable(targetGo, 0x40)) {
+        void* defend = *(void**)((char*)targetGo + 0x18);
         if (defend && Readable(defend, 0x30)) {
             float delta = boost - oldBoost;
             if (delta != 0.0f) {
                 *(float*)((char*)defend + 0x28) += delta;
+            }
+        }
+    }
+}
+
+void ExpireAegisBuffs() {
+    DWORD now = GetTickCount();
+    void* godb = *(void**)0x007ACF4C;
+    for (int i = 0; i < kMaxAegisBuffs; ++i) {
+        if (g_aegisBuffs[i].targetGoid != 0 && g_aegisBuffs[i].endTime != 0 &&
+            (int32_t)(g_aegisBuffs[i].endTime - now) <= 0) {
+            uint32_t goid = g_aegisBuffs[i].targetGoid;
+            float expiredBoost = g_aegisBuffs[i].boost;
+            g_aegisBuffs[i].targetGoid = 0;
+            g_aegisBuffs[i].casterGoid = 0;
+            g_aegisBuffs[i].boost = 0.0f;
+            g_aegisBuffs[i].endTime = 0;
+            if (expiredBoost > 0.0f && godb && Readable(godb, 0x40)) {
+                void* go = FindGo(godb, goid);
+                if (go && Readable(go, 0x40)) {
+                    void* defend = *(void**)((char*)go + 0x18);
+                    if (defend && Readable(defend, 0x30)) {
+                        float newDef = *(float*)((char*)defend + 0x28) - expiredBoost;
+                        if (newDef < 0.0f) newDef = 0.0f;
+                        *(float*)((char*)defend + 0x28) = newDef;
+                    }
+                }
             }
         }
     }
@@ -237,18 +318,31 @@ void AwardAbilityExperience(void* hero, uint32_t heroGoid, const char* statKey, 
     if (!gRules || !actor || !aspect || !Readable(actor, 0x40) || !Readable(aspect, 0xD0)) return;
 
     int oldFloor = (int)floorf(GoActor_GetSkillLevel(actor, statKey));
-    Rules_RCAwardPrimaryExperience(gRules, &heroGoid, statKey, xp, false);
+    float oldNatLife = *(float*)((char*)aspect + 0xA8);
+    float oldNatMana = *(float*)((char*)aspect + 0xC4);
+    Rules_RCAwardPrimaryExperience(gRules, heroGoid, statKey, xp, false);
     int newFloor = (int)floorf(GoActor_GetSkillLevel(actor, statKey));
+    float newNatLife = *(float*)((char*)aspect + 0xA8);
+    float newNatMana = *(float*)((char*)aspect + 0xC4);
 
     if (newFloor > oldFloor) {
-        Rules_RCPlayLevelUpSoundAndText(gRules, &heroGoid, statKey);
-        GoAspect_SSetNaturalMaxLife(aspect, *(float*)((char*)aspect + 0xA8));
-        GoAspect_SSetNaturalMaxMana(aspect, *(float*)((char*)aspect + 0xC4));
+        Rules_RCPlayLevelUpSoundAndText(gRules, heroGoid, statKey);
+        GoAspect_SSetNaturalMaxLife(aspect, newNatLife);
+        GoAspect_SSetNaturalMaxMana(aspect, newNatMana);
         float lifeDelta = *(float*)((char*)aspect + 0xAC) - *(float*)((char*)aspect + 0xB0);
         float manaDelta = *(float*)((char*)aspect + 0xC8) - *(float*)((char*)aspect + 0xCC);
-        if (lifeDelta > 0.0f) Rules_ChangeLife(gRules, &heroGoid, lifeDelta, 0);
-        if (manaDelta > 0.0f) Rules_ChangeMana(gRules, &heroGoid, manaDelta, 0);
-        Rules_SetPackMemberStats(gRules, &heroGoid);
+        if (lifeDelta > 0.0f) Rules_ChangeLife(gRules, heroGoid, lifeDelta, 0);
+        if (manaDelta > 0.0f) Rules_ChangeMana(gRules, heroGoid, manaDelta, 0);
+        Rules_SetPackMemberStats(gRules, heroGoid);
+    } else if (newNatLife > oldNatLife || newNatMana > oldNatMana) {
+        // Secondary attribute (Strength / Dexterity / Intelligence) leveled up inside RCAwardPrimaryExperience
+        GoAspect_SSetNaturalMaxLife(aspect, newNatLife);
+        GoAspect_SSetNaturalMaxMana(aspect, newNatMana);
+        float lifeDelta = *(float*)((char*)aspect + 0xAC) - *(float*)((char*)aspect + 0xB0);
+        float manaDelta = *(float*)((char*)aspect + 0xC8) - *(float*)((char*)aspect + 0xCC);
+        if (lifeDelta > 0.0f) Rules_ChangeLife(gRules, heroGoid, lifeDelta, 0);
+        if (manaDelta > 0.0f) Rules_ChangeMana(gRules, heroGoid, manaDelta, 0);
+        Rules_SetPackMemberStats(gRules, heroGoid);
     }
 }
 
@@ -416,6 +510,43 @@ void ApplyRadialAoE(void* hero, uint32_t heroGoid, const SiegePos* heroPos, int 
     }
 }
 
+// ---- Helper: Resolve non-host human Player* owning a character, companion, or summon ----
+void* GetOwningHumanPlayer(void* go) {
+    void* cur = go;
+    for (int depth = 0; depth < 4 && cur && Readable(cur, 0x80); ++depth) {
+        void* pl = *(void**)((char*)cur + 0x78);
+        if (pl && Readable(pl, 0x100) && eng::Player_IsValid(pl)) {
+            if (*(int*)((char*)pl + 0x14) != 1) return nullptr; // 1 = PC_HUMAN (excludes PC_COMPUTER critters/NPCs/monsters)
+            const wchar_t* w = *(const wchar_t**)((char*)pl + 0x58);
+            if (w && Readable(w, sizeof(wchar_t)) && *w) {
+                if (_wcsicmp(w, L"ServerHost") == 0) return nullptr;
+            }
+            return pl;
+        }
+        cur = *(void**)((char*)cur + 0x60);
+    }
+    return nullptr;
+}
+
+// ---- Helper: True when casterGo and targetGo belong to allied human players (everywhere except PvP zones) ----
+bool AreActorsAllied(void* casterGo, void* heroMind, void* targetGo) {
+    void* casterPl = GetOwningHumanPlayer(casterGo);
+    void* targetPl = GetOwningHumanPlayer(targetGo);
+    if (!casterPl || !targetPl) return false;
+    if (casterPl == targetPl) return true;
+
+    // Player::IsEnemy (0x0056D2B9) is hooked by PvpZone on both Client and Server:
+    // returns true ONLY when both human players are inside one of the 3 PvP zones, and false everywhere else.
+    typedef bool(__thiscall* PlayerIsEnemyFn)(void*, const void*);
+    if (((PlayerIsEnemyFn)0x0056D2B9)(casterPl, targetPl)) {
+        return false;
+    }
+    if (heroMind && Readable(heroMind, 0x60) && GoMind_IsEnemy(heroMind, targetGo)) {
+        return false;
+    }
+    return true;
+}
+
 // ---- Apply Aegis of Renewal Buff & Heal to Nearby Living Allies ----
 void ApplyAegisToAllies(void* hero, uint32_t heroGoid, const SiegePos* heroPos, float radius, float boost, DWORD durationMs, float level, bool isServerAuth) {
     if (!hero || !heroPos) return;
@@ -439,27 +570,23 @@ void ApplyAegisToAllies(void* hero, uint32_t heroGoid, const SiegePos* heroPos, 
         void*    go;
         uint32_t goid;
     };
-    AllyTarget allies[24];
+    AllyTarget allies[64];
     int numAllies = 0;
 
     int guard = 0;
-    for (void* go = first; go && go != head && guard < 8192 && numAllies < 24; ++guard) {
+    for (void* go = first; go && go != head && guard < 8192 && numAllies < 64; ++guard) {
         if (!Readable(go, 0x80)) break;
         void* next = *(void**)((char*)go + kGoNext);
 
         if (go != hero) {
             uint32_t targetMask = *(uint32_t*)((char*)go + 0x68);
-            if ((heroMask & targetMask) == 0) {
+            if ((heroMask & targetMask) != 0) {
                 void* actor     = *(void**)((char*)go + 0x00);
                 void* aspect    = *(void**)((char*)go + 0x04);
                 void* placement = *(void**)((char*)go + 0x40);
                 if (actor && aspect && placement && Readable(aspect, 0xB8) && Readable(placement, 0x30)) {
-                    if (*(int*)((char*)aspect + 0xA0) == 1) { // conscious
-                        bool isEnemy = false;
-                        if (heroMind && Readable(heroMind, 0x60)) {
-                            isEnemy = GoMind_IsEnemy(heroMind, go);
-                        }
-                        if (!isEnemy) {
+                    if (*(int*)((char*)aspect + 0xA0) == 1 && (*(uint32_t*)((char*)aspect + 0x3C) & 0x100) == 0) { // conscious & not invincible
+                        if (AreActorsAllied(hero, heroMind, go)) {
                             const SiegePos* targetPos = GoPlacement_GetPosition(placement);
                             if (targetPos) {
                                 bool inRange = false;
@@ -503,8 +630,8 @@ void ApplyAegisToAllies(void* hero, uint32_t heroGoid, const SiegePos* heroPos, 
         void* allyAspect = *(void**)((char*)allyGo + 0x04);
         if (!allyAspect || !Readable(allyAspect, 0xC0)) continue;
 
-        // Apply identical Armor Rating defense boost and duration to ally
-        SetAegisBonus(allyGo, allyGoid, boost, durationMs);
+        // Apply identical Armor Rating defense boost and independent duration per caster to ally
+        SetAegisBonus(allyGo, allyGoid, heroGoid, boost, durationMs);
 
         // Spawn barrier VFX on ally
         if (wfx && Readable(wfx, 0x20)) {
@@ -522,7 +649,7 @@ void ApplyAegisToAllies(void* hero, uint32_t heroGoid, const SiegePos* heroPos, 
             float actualHeal = newLife - curLife;
             if (isServerAuth) {
                 if (gRules && Readable(gRules, 0x80)) {
-                    Rules_ChangeLife(gRules, &allyGoid, actualHeal, 0);
+                    Rules_ChangeLife(gRules, allyGoid, actualHeal, 0);
                 } else {
                     SSetCurrentLife(allyAspect, newLife);
                 }
@@ -566,11 +693,11 @@ void SendAbilityPacketToServer(uint32_t heroGoid, int slot) {
     if (!vtbl || !Readable(vtbl, 9 * sizeof(void*))) return;
 
     AbilityPacket pkt{};
-    pkt.magic       = kAbilityMagic;
-    pkt.heroGoid    = heroGoid;
-    pkt.slot        = (uint8_t)slot;
-    pkt.isBroadcast = 0;
-    pkt.reserved    = 0;
+    pkt.magic            = kAbilityMagic;
+    pkt.heroGoid         = heroGoid;
+    pkt.slot             = (uint8_t)slot;
+    pkt.isBroadcast      = 0;
+    pkt.skillLevelTenths = 0;
 
     struct DpnBufferDesc {
         DWORD size;
@@ -585,7 +712,7 @@ void SendAbilityPacketToServer(uint32_t heroGoid, int slot) {
     }
 }
 
-void BroadcastAbilityPacketToClients(uint32_t heroGoid, int slot) {
+void BroadcastAbilityPacketToClients(uint32_t heroGoid, int slot, float level) {
     void* dpServer = g_dp8Server;
     if (!dpServer) {
         void* srv = *(void**)0x007ACF70;
@@ -597,12 +724,13 @@ void BroadcastAbilityPacketToClients(uint32_t heroGoid, int slot) {
     void** vtbl = *(void***)dpServer;
     if (!vtbl || !Readable(vtbl, 15 * sizeof(void*))) return;
 
+    float clamped = (level < 0.0f) ? 0.0f : ((level > 6500.0f) ? 6500.0f : level);
     AbilityPacket pkt{};
-    pkt.magic       = kAbilityMagic;
-    pkt.heroGoid    = heroGoid;
-    pkt.slot        = (uint8_t)slot;
-    pkt.isBroadcast = 1;
-    pkt.reserved    = 0;
+    pkt.magic            = kAbilityMagic;
+    pkt.heroGoid         = heroGoid;
+    pkt.slot             = (uint8_t)slot;
+    pkt.isBroadcast      = 1;
+    pkt.skillLevelTenths = (uint16_t)(clamped * 10.0f + 0.5f);
 
     struct DpnBufferDesc {
         DWORD size;
@@ -716,7 +844,7 @@ void ExecuteCharacterAbility(int slot, void* hero, float level, bool isServerAut
         case 2: { // [E] Nature Magic — Aegis of Renewal
             DWORD durMs = 10000; // 10-second duration
             float boost = 80.0f + level * 6.0f;
-            SetAegisBonus(hero, heroGoid, boost, durMs);
+            SetAegisBonus(hero, heroGoid, heroGoid, boost, durMs);
 
             if (wfx && Readable(wfx, 0x20)) {
                 WorldFx_RunScript(wfx, "recharge_party", heroGoid, heroGoid, "", nullGoid, 0);
@@ -735,7 +863,7 @@ void ExecuteCharacterAbility(int slot, void* hero, float level, bool isServerAut
                     float actualHeal = newLife - curLife;
                     if (isServerAuth) {
                         if (gRules && Readable(gRules, 0x80)) {
-                            Rules_ChangeLife(gRules, &heroGoid, actualHeal, 0);
+                            Rules_ChangeLife(gRules, heroGoid, actualHeal, 0);
                         } else {
                             SSetCurrentLife(aspect, newLife);
                         }
@@ -812,6 +940,133 @@ bool IsChatActive() {
     return false;
 }
 
+bool IsActorDrinkingPotion(void* go) {
+    if (!go || !Readable(go, 0x80)) return false;
+    void* aspect = *(void**)((char*)go + 0x04);
+    if (!aspect || !Readable(aspect, 0xC0)) return false;
+    // Must be LS_ALIVE_CONSCIOUS (1)
+    if (*(int*)((char*)aspect + 0xA0) != 1) return false;
+
+    // 1. Check active front action job on GoMind (+0x34) (Server / Singleplayer)
+    void* mind = *(void**)((char*)go + 0x34);
+    if (mind && Readable(mind, 0x60)) {
+        typedef void* (__thiscall* GetFrontJobFn)(void*, int);
+        static const auto s_getFrontJob = (GetFrontJobFn)0x005DBF4E;
+        void* frontJob = s_getFrontJob(mind, 1 /*JQ_ACTION*/);
+        if (frontJob && Readable(frontJob, 0x10)) {
+            uint32_t jat = *(uint32_t*)frontJob;
+            if (jat == 0x0E /*jat_drink*/) {
+                return true;
+            }
+        }
+    }
+
+    // 2. Check if ES_WEAPON_HAND (GoInventory+0x38) holds a potion (Multiplayer Client & Server during Drinking$)
+    void* inv = *(void**)((char*)go + 0x2C);
+    if (inv && Readable(inv, 0x60)) {
+        void* weapItem = *(void**)((char*)inv + 0x38); // ES_WEAPON_HAND = slot 6 (0x20 + 6*4 = 0x38)
+        if (weapItem && Readable(weapItem, 0x60)) {
+            // Go::m_Potion is at +0x44 (Go::IsPotion @ 0x005396CF)
+            if (*(void**)((char*)weapItem + 0x44) != nullptr) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+extern "C" bool __fastcall Hook_GoMind_Validate(void* thisMind, void* unused_edx, const void* jobReq) {
+    if (thisMind && jobReq && Readable(thisMind, 0x20) && Readable(jobReq, 0x10)) {
+        uint32_t jat = *(const uint32_t*)jobReq;
+        uint32_t q   = *(const uint32_t*)((const char*)jobReq + 0x04);
+        if (q == 1 /*JQ_ACTION*/) {
+            void* go = *(void**)((char*)thisMind + 0x04);
+            if (IsActorDrinkingPotion(go)) {
+                // Allow only involuntary life-state/cutscene jobs (jat_die=0x0C, jat_unconscious=0x20, jat_gain_consciousness=0x15, jat_do_se_command=0x0D)
+                if (jat != 0x0C && jat != 0x20 && jat != 0x15 && jat != 0x0D) {
+                    return false;
+                }
+            }
+        }
+    }
+    return Orig_GoMind_Validate(thisMind, unused_edx, jobReq);
+}
+
+extern "C" bool __fastcall Hook_UIPartyManager_IsPlayerPartyMemberBusy(void* thisMgr, void* unused_edx, void* go, uint32_t bIgnoreCharWin) {
+    if (IsActorDrinkingPotion(go)) {
+        return true;
+    }
+    return Orig_UIPartyManager_IsPlayerPartyMemberBusy(thisMgr, unused_edx, go, bIgnoreCharWin);
+}
+
+// ---- BuffUI State Icon Cache & GoActor::AddGenericState Hook ----
+struct StateIconCacheEntry {
+    char stateName[64];
+    char activeIcon[64];
+};
+static StateIconCacheEntry s_stateIconCache[64] = {};
+static int s_stateIconCacheCount = 0;
+
+static void CacheStateActiveIcon(const char* sName, const char* icon) {
+    if (!sName || !*sName || !icon || !*icon) return;
+    for (int i = 0; i < s_stateIconCacheCount; ++i) {
+        if (_stricmp(s_stateIconCache[i].stateName, sName) == 0) {
+            strncpy(s_stateIconCache[i].activeIcon, icon, 63);
+            s_stateIconCache[i].activeIcon[63] = '\0';
+            return;
+        }
+    }
+    int idx = (s_stateIconCacheCount < 64) ? s_stateIconCacheCount++ : 0;
+    strncpy(s_stateIconCache[idx].stateName, sName, 63);
+    s_stateIconCache[idx].stateName[63] = '\0';
+    strncpy(s_stateIconCache[idx].activeIcon, icon, 63);
+    s_stateIconCache[idx].activeIcon[63] = '\0';
+}
+
+static const char* LookupCachedStateIcon(const char* sName) {
+    if (!sName || !*sName) return nullptr;
+    for (int i = 0; i < s_stateIconCacheCount; ++i) {
+        if (_stricmp(s_stateIconCache[i].stateName, sName) == 0 && s_stateIconCache[i].activeIcon[0] != '\0') {
+            return s_stateIconCache[i].activeIcon;
+        }
+    }
+    return nullptr;
+}
+
+extern "C" void __fastcall Hook_GoActor_AddGenericState(void* thisActor, void* unused_edx, const char* sName, const char* sDescription, uint32_t expireLo, uint32_t expireHi, uint32_t casterGoid, uint32_t spellGoid, float spellLevel) {
+    if (thisActor && sName && Readable(thisActor, 0x60) && Readable(sName, 1) && *sName) {
+        // Cache spell's active_icon while the spell Go* still exists in GoDb
+        if (spellGoid != 0) {
+            void* godb = *(void**)0x007ACF4C;
+            if (godb && Readable(godb, 0x40)) {
+                void* spellGo = FindGo(godb, spellGoid);
+                if (spellGo && Readable(spellGo, 0x40)) {
+                    void* goGui = *(void**)((char*)spellGo + 0x28);
+                    if (goGui && Readable(goGui, 0x20)) {
+                        typedef const eng::gpstring* (__thiscall* GetActiveIconFn)(const void*);
+                        static const auto s_getActiveIcon = (GetActiveIconFn)0x00541B78;
+                        const eng::gpstring* iconStr = s_getActiveIcon(goGui);
+                        if (iconStr && Readable(iconStr, 4) && iconStr->p && Readable(iconStr->p, 1) && *iconStr->p) {
+                            CacheStateActiveIcon(sName, iconStr->p);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fix vanilla GoActor::AddGenericState duration-extension bug:
+        // std::map::insert does not overwrite an existing state key, so remove any existing same-named state first.
+        typedef bool (__thiscall* HasGenericStateFn)(const void*, const char*);
+        typedef void (__thiscall* RemoveGenericStateFn)(void*, const char*);
+        static const auto s_hasState    = (HasGenericStateFn)0x005BD57A;
+        static const auto s_removeState = (RemoveGenericStateFn)0x005BD53A;
+        for (int guard = 0; guard < 8 && s_hasState(thisActor, sName); ++guard) {
+            s_removeState(thisActor, sName);
+        }
+    }
+    Orig_GoActor_AddGenericState(thisActor, unused_edx, sName, sDescription, expireLo, expireHi, casterGoid, spellGoid, spellLevel);
+}
+
 extern "C" void __fastcall Hook_GoDefend_ResetModifiers(void* defend) {
     Orig_GoDefend_ResetModifiers(defend);
     if (!defend || !Readable(defend, 0x30)) return;
@@ -851,11 +1106,11 @@ void CharacterAbilities_Init() {
         g_pktCsInit = true;
     }
 
-    // Hook GoDefend::ResetModifiers at 0x005D3F4D (7 bytes: 55 8B EC 51 56 8B F1)
-    if (Cfg().role != Role::Server) {
+    // Hook GoDefend::ResetModifiers at 0x005D3F4D on both Client and Server (7 bytes: 55 8B EC 51 56 8B F1)
+    {
         const BYTE kExpect[7] = { 0x55, 0x8B, 0xEC, 0x51, 0x56, 0x8B, 0xF1 };
         BYTE* p = (BYTE*)0x005D3F4D;
-        if (memcmp(p, kExpect, 7) == 0) {
+        if (Readable(p, 7) && memcmp(p, kExpect, 7) == 0) {
             DWORD o;
             if (VirtualProtect(p, 7, PAGE_EXECUTE_READWRITE, &o)) {
                 p[0] = 0xE9;
@@ -868,7 +1123,63 @@ void CharacterAbilities_Init() {
         }
     }
 
-    Log("initialized - 4 stat-tied abilities ready (Q: Cleave, W: Shrapnel, E: Aegis, R: Nova).");
+    // Hook GoMind::Validate at 0x005DAE8B on both Client and Server (6 bytes: 55 8B EC 83 EC 14)
+    // Prevents canceling jat_drink (0x0E) potion drinking animation via Z (CollectLoot), S (Stop), or other JQ_ACTION jobs
+    {
+        const BYTE kExpect[6] = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x14 };
+        BYTE* p = (BYTE*)0x005DAE8B;
+        if (Readable(p, 6) && memcmp(p, kExpect, 6) == 0) {
+            DWORD o;
+            if (VirtualProtect(p, 6, PAGE_EXECUTE_READWRITE, &o)) {
+                p[0] = 0xE9;
+                *(int32_t*)(p + 1) = (int32_t)((DWORD)(void*)&Hook_GoMind_Validate - (0x005DAE8B + 5));
+                p[5] = 0x90;
+                VirtualProtect(p, 6, o, &o);
+                FlushInstructionCache(GetCurrentProcess(), p, 6);
+                Log("hooked GoMind::Validate at 0x005DAE8B (potion animation cancel fix)");
+            }
+        }
+    }
+
+    // Hook UIPartyManager::IsPlayerPartyMemberBusy at 0x004A68E2 on Client (5 bytes: 55 8B EC 51 51)
+    // Prevents weapon/spell slot switching (1/2/3/4) and UI commands from interrupting potion drinking
+    {
+        const BYTE kExpect[5] = { 0x55, 0x8B, 0xEC, 0x51, 0x51 };
+        BYTE* p = (BYTE*)0x004A68E2;
+        if (Readable(p, 5) && memcmp(p, kExpect, 5) == 0) {
+            DWORD o;
+            if (VirtualProtect(p, 5, PAGE_EXECUTE_READWRITE, &o)) {
+                p[0] = 0xE9;
+                *(int32_t*)(p + 1) = (int32_t)((DWORD)(void*)&Hook_UIPartyManager_IsPlayerPartyMemberBusy - (0x004A68E2 + 5));
+                VirtualProtect(p, 5, o, &o);
+                FlushInstructionCache(GetCurrentProcess(), p, 5);
+                Log("hooked UIPartyManager::IsPlayerPartyMemberBusy at 0x004A68E2 (potion busy guard)");
+            }
+        }
+    }
+
+    // Hook GoActor::AddGenericState at 0x005BD321 on both Client and Server (9 bytes: 55 8B EC 81 EC A0 00 00 00)
+    // Fixes vanilla duration-extension overwrite bug and caches spell active icons for Native BuffUI
+    {
+        const BYTE kExpect[9] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0xA0, 0x00, 0x00, 0x00 };
+        BYTE* p = (BYTE*)0x005BD321;
+        if (Readable(p, 9) && memcmp(p, kExpect, 9) == 0) {
+            DWORD o;
+            if (VirtualProtect(p, 9, PAGE_EXECUTE_READWRITE, &o)) {
+                p[0] = 0xE9;
+                *(int32_t*)(p + 1) = (int32_t)((DWORD)(void*)&Hook_GoActor_AddGenericState - (0x005BD321 + 5));
+                p[5] = 0x90;
+                p[6] = 0x90;
+                p[7] = 0x90;
+                p[8] = 0x90;
+                VirtualProtect(p, 9, o, &o);
+                FlushInstructionCache(GetCurrentProcess(), p, 9);
+                Log("hooked GoActor::AddGenericState at 0x005BD321 (Native BuffUI state sync)");
+            }
+        }
+    }
+
+    Log("initialized - 4 stat-tied abilities ready (Q: Cleave, W: Shrapnel, E: Aegis, R: Nova) with shared 30s cooldown & Native BuffUI.");
 }
 
 bool CharacterAbilities_OnReceivePacket(bool isServer, DWORD /*senderDpnid*/, const BYTE* data, DWORD size) {
@@ -897,8 +1208,38 @@ bool CharacterAbilities_OnReceivePacket(bool isServer, DWORD /*senderDpnid*/, co
 }
 
 static void UpdateAbilityUI();
+static void UpdateBuffUI();
 static bool TriggerAbility(int slot);
 static volatile int g_queuedUiSlot = -1;
+
+struct ServerHeroSharedCd {
+    uint32_t heroGoid;
+    DWORD    lastUsedMs;
+};
+static ServerHeroSharedCd s_serverHeroCds[64] = {};
+
+static bool CheckAndRecordServerSharedCd(uint32_t heroGoid) {
+    if (!heroGoid) return false;
+    DWORD now = GetTickCount();
+    int freeSlot = -1;
+    for (int i = 0; i < 64; ++i) {
+        if (s_serverHeroCds[i].heroGoid == heroGoid) {
+            // Allow 1.5s tolerance for network latency jitter on the 30s shared cooldown
+            if (s_serverHeroCds[i].lastUsedMs != 0 && (DWORD)(now - s_serverHeroCds[i].lastUsedMs) < 28500) {
+                return false;
+            }
+            s_serverHeroCds[i].lastUsedMs = now ? now : 1;
+            return true;
+        }
+        if (freeSlot == -1 && (s_serverHeroCds[i].heroGoid == 0 || (DWORD)(now - s_serverHeroCds[i].lastUsedMs) >= 60000)) {
+            freeSlot = i;
+        }
+    }
+    if (freeSlot == -1) freeSlot = 0;
+    s_serverHeroCds[freeSlot].heroGoid   = heroGoid;
+    s_serverHeroCds[freeSlot].lastUsedMs = now ? now : 1;
+    return true;
+}
 
 void CharacterAbilities_QueueTrigger(int slot) {
     if (slot >= 0 && slot <= 3) {
@@ -909,6 +1250,8 @@ void CharacterAbilities_QueueTrigger(int slot) {
 void CharacterAbilities_Tick() {
     if (!CharacterAbilities_IsServerSupported()) return;
 
+    ExpireAegisBuffs();
+
     if (Cfg().role != Role::Server) {
         int qSlot = g_queuedUiSlot;
         if (qSlot >= 0 && qSlot <= 3) {
@@ -916,6 +1259,7 @@ void CharacterAbilities_Tick() {
             TriggerAbility(qSlot);
         }
         UpdateAbilityUI();
+        UpdateBuffUI();
     }
 
     // Process queued network packets (Client -> Server requests or Server -> Client broadcasts)
@@ -957,16 +1301,25 @@ void CharacterAbilities_Tick() {
         void* hero = FindGo(godb, pkt.heroGoid);
         if (!hero || !Readable(hero, 0x80)) continue;
         if (!IsCharacterAliveAndConscious(hero)) continue;
+        if (IsActorDrinkingPotion(hero)) continue;
         void* actor = *(void**)((char*)hero + 0x00);
         if (!actor || !Readable(actor, 0x40)) continue;
 
-        float level = GoActor_GetSkillLevel(actor, g_powers[pkt.slot].statKey);
+        float level = (!serverLocal && pkt.isBroadcast != 0 && pkt.skillLevelTenths > 0)
+            ? ((float)pkt.skillLevelTenths * 0.1f)
+            : GoActor_GetSkillLevel(actor, g_powers[pkt.slot].statKey);
         if (level < g_powers[pkt.slot].reqLevel) continue;
+
+        if (serverLocal && pkt.isBroadcast == 0) {
+            if (!CheckAndRecordServerSharedCd(pkt.heroGoid)) {
+                continue;
+            }
+        }
 
         ExecuteCharacterAbility(pkt.slot, hero, level, serverLocal);
 
         if (serverLocal && pkt.isBroadcast == 0) {
-            BroadcastAbilityPacketToClients(pkt.heroGoid, pkt.slot);
+            BroadcastAbilityPacketToClients(pkt.heroGoid, pkt.slot, level);
         }
     }
 }
@@ -1046,6 +1399,16 @@ static void UpdateAbilityUI() {
     }
     void* actor = *(void**)((char*)hero + 0x00);
 
+    // Reset client cooldown if hero Goid changed (e.g. switched characters / rejoined)
+    static uint32_t s_lastClientHeroGoid = 0;
+    uint32_t curHeroGoid = *(uint32_t*)((char*)hero + 0x4C);
+    if (curHeroGoid != 0 && curHeroGoid != s_lastClientHeroGoid) {
+        s_lastClientHeroGoid = curHeroGoid;
+        for (int i = 0; i < 4; ++i) {
+            g_powers[i].lastUsedMs = 0;
+        }
+    }
+
     void* slotsPanel = eng::FindWindow("window_slots_panel_1", "character_awp");
     bool slotsVis = slotsPanel ? eng::UIWindow_GetVisible(slotsPanel) : true;
     bool charVis = eng::InterfaceVisible("character");
@@ -1095,19 +1458,20 @@ static void UpdateAbilityUI() {
     }
 
     DWORD now = GetTickCount();
+    bool isAliveConscious = IsCharacterAliveAndConscious(hero);
 
     for (int i = 0; i < 4; ++i) {
         float level = (actor && Readable(actor, 0x40)) ? GoActor_GetSkillLevel(actor, g_powers[i].statKey) : 0.0f;
         bool isLocked = (level < g_powers[i].reqLevel);
 
         float cdRemaining = 0.0f;
-        if (g_powers[i].lastUsedMs != 0 && now - g_powers[i].lastUsedMs < g_powers[i].cooldownMs) {
-            cdRemaining = (float)(g_powers[i].cooldownMs - (now - g_powers[i].lastUsedMs)) / 1000.0f;
+        if (g_powers[i].lastUsedMs != 0 && (DWORD)(now - g_powers[i].lastUsedMs) < g_powers[i].cooldownMs) {
+            cdRemaining = (float)(g_powers[i].cooldownMs - (DWORD)(now - g_powers[i].lastUsedMs)) / 1000.0f;
         }
 
         bool justOffCd = false;
         if (g_powers[i].lastUsedMs != 0 && cdRemaining <= 0.0f) {
-            DWORD elapsed = now - g_powers[i].lastUsedMs;
+            DWORD elapsed = (DWORD)(now - g_powers[i].lastUsedMs);
             if (elapsed >= g_powers[i].cooldownMs && elapsed < g_powers[i].cooldownMs + 400) {
                 justOffCd = true;
             }
@@ -1119,6 +1483,7 @@ static void UpdateAbilityUI() {
         DWORD keyColor = 0xFFCCCCCC;
 
         if (isLocked) {
+            // Disabled because required discipline level is not met: never display cooldown timer
             alpha = 0.35f;
             cdStr[0] = '\0';
             cdColor = 0xFFFFFFFF;
@@ -1127,6 +1492,11 @@ static void UpdateAbilityUI() {
             alpha = 0.50f;
             int sec = (int)ceilf(cdRemaining);
             snprintf(cdStr, sizeof(cdStr), "%d", sec);
+            cdColor = 0xFFFFFFFF;
+            keyColor = 0xFF888888;
+        } else if (!isAliveConscious) {
+            alpha = 0.50f;
+            cdStr[0] = '\0';
             cdColor = 0xFFFFFFFF;
             keyColor = 0xFF888888;
         } else if (justOffCd) {
@@ -1183,6 +1553,259 @@ static void UpdateAbilityUI() {
     }
 }
 
+// ---- Native BuffUI Update (Drives [BuffUI] from GoActor::m_GenericStateMap + Active Aegis of Renewal Buffs) ----
+static void UpdateBuffUI() {
+    const char* ws = eng::CurrentWorldState();
+    if (!ws || !strstr(ws, "_ingame")) return;
+    if (!eng::InterfaceVisible("BuffUI")) return;
+
+    static DWORD s_lastBuffUiTick = 0;
+    DWORD nowTick = GetTickCount();
+    if (s_lastBuffUiTick != 0 && (DWORD)(nowTick - s_lastBuffUiTick) < 200) {
+        return;
+    }
+    s_lastBuffUiTick = nowTick ? nowTick : 1;
+
+    void* godb = *(void**)0x007ACF4C;
+    void* srv  = *(void**)0x007ACF70;
+    if (!godb || !Readable(godb, 0x40) || !srv || !Readable(srv, 0x20)) return;
+
+    // Resolve focused hero (supports single-player party selection via GoDb::GetFocusGo, fallback to GetScreenHero)
+    typedef uint32_t (__thiscall* GetFocusGoFn)(const void*);
+    static const auto s_getFocusGo = (GetFocusGoFn)0x0054EB1F;
+    uint32_t focusGoid = s_getFocusGo(godb);
+    void* hero = focusGoid ? FindGo(godb, focusGoid) : nullptr;
+    if (!hero || !Readable(hero, 0x80)) {
+        hero = GetScreenHero(srv);
+    }
+    if (!hero || !Readable(hero, 0x80)) return;
+
+    void* actor  = *(void**)((char*)hero + 0x00);
+    void* common = *(void**)((char*)hero + 0x10);
+    uint32_t heroGoid = *(uint32_t*)((char*)hero + 0x4C);
+    if (!actor || !Readable(actor, 0x60)) return;
+
+    struct ActiveBuffEntry {
+        int  remSec;
+        char desc[128];
+        char icon[64];
+    };
+    ActiveBuffEntry entries[24];
+    int numEntries = 0;
+
+    double curWorldTime = eng::WorldTime();
+
+    typedef const eng::gpstring* (__thiscall* GetActiveIconFn)(const void*);
+    static const auto s_getActiveIcon = (GetActiveIconFn)0x00541B78;
+    typedef void (__thiscall* TreeNextFn)(void**);
+    static const auto s_treeNext = (TreeNextFn)0x005BEC9B;
+
+    // 1. Collect spell buffs from GoActor::m_GenericStateMap (red-black tree _Head at actor + 0x4C)
+    void* head = *(void**)((char*)actor + 0x4C);
+    if (head && Readable(head, 0x10)) {
+        void* node = *(void**)head; // _Head->_Left (begin())
+        int guard = 0;
+        while (node && node != head && guard < 128 && numEntries < 24) {
+            if (!Readable(node, 0x40)) break;
+            const char*    stateKey   = *(const char**)((char*)node + 0x0C);
+            const wchar_t* wDesc      = *(const wchar_t**)((char*)node + 0x14);
+            uint32_t       spellGoid  = *(uint32_t*)((char*)node + 0x20);
+            double         expireTime = *(double*)((char*)node + 0x2C);
+            bool           bNoExpire  = *(uint8_t*)((char*)node + 0x3C) != 0;
+
+            int remSec = bNoExpire ? 0 : (int)floor(expireTime - curWorldTime + 0.5);
+            if (!bNoExpire && remSec >= 0) {
+                ActiveBuffEntry& e = entries[numEntries];
+                e.remSec = remSec;
+                e.desc[0] = '\0';
+                e.icon[0] = '\0';
+
+                if (wDesc && Readable(wDesc, sizeof(wchar_t)) && *wDesc) {
+                    WideCharToMultiByte(CP_ACP, 0, wDesc, -1, e.desc, sizeof(e.desc) - 1, NULL, NULL);
+                    e.desc[sizeof(e.desc) - 1] = '\0';
+                }
+                if (e.desc[0] == '\0' && stateKey && Readable(stateKey, 1) && *stateKey) {
+                    strncpy(e.desc, stateKey, sizeof(e.desc) - 1);
+                    e.desc[sizeof(e.desc) - 1] = '\0';
+                }
+
+                // Resolve active icon from live spell Go* or cached state table
+                if (spellGoid != 0) {
+                    void* spellGo = FindGo(godb, spellGoid);
+                    if (spellGo && Readable(spellGo, 0x40)) {
+                        void* goGui = *(void**)((char*)spellGo + 0x28);
+                        if (goGui && Readable(goGui, 0x20)) {
+                            const eng::gpstring* iconStr = s_getActiveIcon(goGui);
+                            if (iconStr && Readable(iconStr, 4) && iconStr->p && Readable(iconStr->p, 1) && *iconStr->p) {
+                                strncpy(e.icon, iconStr->p, sizeof(e.icon) - 1);
+                                e.icon[sizeof(e.icon) - 1] = '\0';
+                                if (stateKey && Readable(stateKey, 1) && *stateKey) {
+                                    CacheStateActiveIcon(stateKey, e.icon);
+                                }
+                            }
+                        }
+                    }
+                }
+                if (e.icon[0] == '\0' && stateKey && Readable(stateKey, 1) && *stateKey) {
+                    const char* cached = LookupCachedStateIcon(stateKey);
+                    if (cached) {
+                        strncpy(e.icon, cached, sizeof(e.icon) - 1);
+                        e.icon[sizeof(e.icon) - 1] = '\0';
+                    }
+                }
+                if (e.icon[0] == '\0') {
+                    strcpy(e.icon, "b_gui_ig_mnu_nature-magic");
+                }
+                ++numEntries;
+            }
+
+            s_treeNext(&node);
+            ++guard;
+        }
+    }
+
+    // 2. Collect active [E] Aegis of Renewal buffs on heroGoid (supports multiple independent ally stacks)
+    if (heroGoid != 0) {
+        for (int i = 0; i < kMaxAegisBuffs && numEntries < 24; ++i) {
+            if (g_aegisBuffs[i].targetGoid == heroGoid && g_aegisBuffs[i].endTime != 0) {
+                int32_t remMs = (int32_t)(g_aegisBuffs[i].endTime - nowTick);
+                if (remMs > 0) {
+                    ActiveBuffEntry& e = entries[numEntries++];
+                    e.remSec = (int)((remMs + 500) / 1000);
+                    snprintf(e.desc, sizeof(e.desc), "Aegis of Renewal (+%.0f Armor)", g_aegisBuffs[i].boost);
+                    strcpy(e.icon, "b_gui_ig_mnu_nature-magic");
+                }
+            }
+        }
+    }
+
+    // 3. Sort active buffs by remaining duration ascending (shortest remaining time first, matching BufUI)
+    for (int i = 0; i < numEntries - 1; ++i) {
+        for (int j = i + 1; j < numEntries; ++j) {
+            if (entries[j].remSec < entries[i].remSec) {
+                ActiveBuffEntry tmp = entries[i];
+                entries[i] = entries[j];
+                entries[j] = tmp;
+            }
+        }
+    }
+
+    // 4. Update BuffUI title ("<Hero>'s active buffs (<N>)")
+    char heroName[64] = "Hero";
+    if (common && Readable(common, 0x20)) {
+        const wchar_t* wName = *(const wchar_t**)((char*)common + 0x14);
+        if (wName && Readable(wName, sizeof(wchar_t)) && *wName) {
+            WideCharToMultiByte(CP_ACP, 0, wName, -1, heroName, sizeof(heroName) - 1, NULL, NULL);
+            heroName[sizeof(heroName) - 1] = '\0';
+        }
+    }
+    size_t nameLen = strlen(heroName);
+    bool endsWithS = (nameLen > 0 && (heroName[nameLen - 1] == 's' || heroName[nameLen - 1] == 'S'));
+    char titleBuf[128];
+    if (numEntries > 0) {
+        snprintf(titleBuf, sizeof(titleBuf), "%s'%s active buffs (%d)", heroName, endsWithS ? "" : "s", numEntries);
+    } else {
+        snprintf(titleBuf, sizeof(titleBuf), "%s'%s active buffs", heroName, endsWithS ? "" : "s");
+    }
+
+    typedef void (__thiscall* UITextSetTextFn)(void*, const eng::gpstring*, bool);
+    typedef int  (__thiscall* UITextBoxSetLineTextFn)(void*, int, const eng::gpstring*, DWORD);
+    typedef void (__thiscall* UIWindowLoadTextureFn)(void*, const eng::gpstring*, bool);
+    static const auto s_uiTextSetText        = (UITextSetTextFn)0x0047B4C4;
+    static const auto s_uiTextBoxSetLineText = (UITextBoxSetLineTextFn)0x0047F8AA;
+    static const auto s_uiWindowLoadTexture  = (UIWindowLoadTextureFn)0x0047B039;
+
+    void* wTitleI    = eng::FindWindow("i_title", "BuffUI");
+    void* wTitleT    = eng::FindWindow("t_title", "BuffUI");
+    void* wBuffsList = eng::FindWindow("t_buffs", "BuffUI");
+    void* wTimesList = eng::FindWindow("t_times", "BuffUI");
+    void* wExtBg     = eng::FindWindow("j_background", "BuffUI");
+
+    eng::GpStr titleGp(titleBuf);
+    if (wTitleI) s_uiTextSetText(wTitleI, &titleGp.s, true);
+    if (wTitleT) s_uiTextSetText(wTitleT, &titleGp.s, true);
+
+    eng::GpStr emptyGp("");
+    eng::GpStr emptyIconGp("b_gui_ig_mnu_bufui_empty");
+
+    for (int line = 0; line < 24; ++line) {
+        char iconWinName[16];
+        char timeWinName[16];
+        snprintf(iconWinName, sizeof(iconWinName), "i_icon%d", line);
+        snprintf(timeWinName, sizeof(timeWinName), "i_time%d", line);
+        void* wIcon = eng::FindWindow(iconWinName, "BuffUI");
+        void* wTime = eng::FindWindow(timeWinName, "BuffUI");
+
+        if (line < numEntries) {
+            int slotTime = entries[line].remSec;
+            int timeHrs  = slotTime / 3600;
+            int timeMin  = (slotTime - timeHrs * 3600) / 60;
+            int timeSec  = slotTime % 60;
+
+            char hmsBuf[32];
+            char secBuf[16];
+            if (timeHrs > 0) {
+                snprintf(hmsBuf, sizeof(hmsBuf), "%d:%02d:%02d", timeHrs, timeMin, timeSec);
+            } else if (slotTime > 59) {
+                snprintf(hmsBuf, sizeof(hmsBuf), "%2d:%02d", timeMin, timeSec);
+            } else {
+                snprintf(hmsBuf, sizeof(hmsBuf), "%2d", timeSec);
+            }
+            if (slotTime > 59) {
+                snprintf(secBuf, sizeof(secBuf), "%02d", timeSec);
+            } else {
+                snprintf(secBuf, sizeof(secBuf), "%2d", timeSec);
+            }
+
+            DWORD timeColor = (slotTime > 10) ? 0xFF4999FF : 0xFFFF0000;
+            eng::GpStr hmsGp(hmsBuf);
+            eng::GpStr descGp(entries[line].desc);
+            if (wTimesList) s_uiTextBoxSetLineText(wTimesList, line, &hmsGp.s, timeColor);
+            if (wBuffsList) s_uiTextBoxSetLineText(wBuffsList, line, &descGp.s, 0xFFFFFFFF);
+
+            if (wIcon) {
+                eng::GpStr iconGp(entries[line].icon);
+                s_uiWindowLoadTexture(wIcon, &iconGp.s, false);
+            }
+            if (wTime) {
+                if (slotTime > 5999) {
+                    eng::GpStr p99("99");
+                    eng::GpStr ppp("++");
+                    s_uiTextBoxSetLineText(wTime, 0, &p99.s, 0xFF4999FF);
+                    s_uiTextBoxSetLineText(wTime, 1, &ppp.s, 0xFF4999FF);
+                } else {
+                    int totalMin = slotTime / 60;
+                    char minBuf[16] = "";
+                    if (totalMin > 0) {
+                        snprintf(minBuf, sizeof(minBuf), "%d", totalMin);
+                    }
+                    eng::GpStr minGp(minBuf);
+                    eng::GpStr secGp(secBuf);
+                    s_uiTextBoxSetLineText(wTime, 0, &minGp.s, 0xFF4999FF);
+                    s_uiTextBoxSetLineText(wTime, 1, &secGp.s, timeColor);
+                }
+            }
+        } else {
+            if (wTimesList) s_uiTextBoxSetLineText(wTimesList, line, &emptyGp.s, 0xFFFFFFFF);
+            if (wBuffsList) s_uiTextBoxSetLineText(wBuffsList, line, &emptyGp.s, 0xFFFFFFFF);
+            if (wIcon) s_uiWindowLoadTexture(wIcon, &emptyIconGp.s, false);
+            if (wTime) {
+                s_uiTextBoxSetLineText(wTime, 0, &emptyGp.s, 0xFFFFFFFF);
+                s_uiTextBoxSetLineText(wTime, 1, &emptyGp.s, 0xFFFFFFFF);
+            }
+        }
+    }
+
+    if (wExtBg) {
+        if (numEntries <= 12) {
+            s_uiWindowLoadTexture(wExtBg, &emptyIconGp.s, false);
+        } else {
+            eng::GpStr fullBgGp("b_gui_ig_mnu_bufui");
+            s_uiWindowLoadTexture(wExtBg, &fullBgGp.s, false);
+        }
+    }
+}
+
 static bool TriggerAbility(int slot) {
     if (slot < 0 || slot > 3) return false;
     if (!CharacterAbilities_IsServerSupported()) return false;
@@ -1197,8 +1820,11 @@ static bool TriggerAbility(int slot) {
     void* actor = *(void**)((char*)hero + 0x00);
     if (!actor || !Readable(actor, 0x40)) return false;
 
-    // Cannot use abilities while unconscious, dead, or a ghost (no chat messages)
+    // Cannot use abilities while unconscious, dead, a ghost, or drinking a potion
     if (!IsCharacterAliveAndConscious(hero)) {
+        return false;
+    }
+    if (IsActorDrinkingPotion(hero)) {
         return false;
     }
 
@@ -1213,11 +1839,11 @@ static bool TriggerAbility(int slot) {
         return false;
     }
 
-    // Check cooldown
+    // Check shared 30-second cooldown
     DWORD now = GetTickCount();
-    if (g_powers[slot].lastUsedMs != 0 && now - g_powers[slot].lastUsedMs < g_powers[slot].cooldownMs) {
+    if (g_powers[slot].lastUsedMs != 0 && (DWORD)(now - g_powers[slot].lastUsedMs) < g_powers[slot].cooldownMs) {
         Go_PlayVoiceSound(hero, "order_out_of_mana", false);
-        float remaining = (float)(g_powers[slot].cooldownMs - (now - g_powers[slot].lastUsedMs)) / 1000.0f;
+        float remaining = (float)(g_powers[slot].cooldownMs - (DWORD)(now - g_powers[slot].lastUsedMs)) / 1000.0f;
         char buf[128];
         snprintf(buf, sizeof(buf), "%s cooling down (%.1fs remaining).",
                  g_powers[slot].name, remaining);
@@ -1225,8 +1851,11 @@ static bool TriggerAbility(int slot) {
         return false;
     }
 
-    // Successfully trigger ability!
-    g_powers[slot].lastUsedMs = now;
+    // Successfully trigger ability — put all 4 character abilities on the shared 30-second cooldown!
+    DWORD stamp = now ? now : 1;
+    for (int i = 0; i < 4; ++i) {
+        g_powers[i].lastUsedMs = stamp;
+    }
 
     bool serverLocal = IsServerLocal();
     ExecuteCharacterAbility(slot, hero, level, serverLocal);
@@ -1272,7 +1901,8 @@ bool CharacterAbilities_FilterKey(LPMSG msg) {
                               msg->wParam == 'q' || msg->wParam == 'Q' ||
                               msg->wParam == 'w' || msg->wParam == 'W' ||
                               msg->wParam == 'e' || msg->wParam == 'E' ||
-                              msg->wParam == 'r' || msg->wParam == 'R')) {
+                              msg->wParam == 'r' || msg->wParam == 'R' ||
+                              msg->wParam == ';' || msg->wParam == ':')) {
             g_eatNextChar = false;
             g_eatCharVal = 0;
             msg->message = WM_NULL;
@@ -1294,6 +1924,28 @@ bool CharacterAbilities_FilterKey(LPMSG msg) {
     }
 
     if (msg->message != WM_KEYDOWN) return false;
+
+    // Support Shift + ; (VK_OEM_1) hotkey to toggle BuffUI panel
+    if (msg->wParam == VK_OEM_1 && (GetKeyState(VK_SHIFT) & 0x8000) != 0) {
+        if ((msg->lParam & 0x40000000) == 0) {
+            bool vis = eng::InterfaceVisible("BuffUI");
+            if (vis) {
+                eng::HideInterface("BuffUI");
+            } else {
+                eng::ShowInterface("BuffUI");
+            }
+            void* btn = eng::FindWindow("buffui_button", "data_bar");
+            if (btn) {
+                eng::UICheckbox_SetCheckState(btn, !vis);
+            }
+        }
+        msg->message = WM_NULL;
+        msg->wParam = 0;
+        msg->lParam = 0;
+        g_eatNextChar = true;
+        g_eatCharVal = ':';
+        return true;
+    }
 
     // Check which slot
     WPARAM key = msg->wParam;
