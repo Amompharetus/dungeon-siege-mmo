@@ -150,7 +150,9 @@ inline bool Readable(const void* p, size_t n) {
     if (mbi.State != MEM_COMMIT) return false;
     const DWORD ok = PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY |
                      PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
-    return (mbi.Protect & ok) != 0;
+    if (!(mbi.Protect & ok)) return false;
+    if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) return false;
+    return (const char*)p + n <= (const char*)mbi.BaseAddress + mbi.RegionSize;
 }
 
 inline std::string GetSafeModifierString(void* container, int offset) {
@@ -394,7 +396,9 @@ bool IsHeroInTown(void* hero, unsigned* outLoc = nullptr, unsigned* outGroup = n
             pl = candidate;
             break;
         }
-        cur = *(void**)((char*)cur + 0x60);
+        void* next = *(void**)((char*)cur + 0x6C);
+        if (!next || next == cur) break;
+        cur = next;
     }
 
     if (!pl && Cfg().role != Role::Server) {
@@ -1752,8 +1756,11 @@ static int s_hiddenStashCount = 0;
 
 static void HideSingleStashForLoot(void* heroInv, void* stashGo) {
     if (!heroInv || !stashGo || s_hiddenStashCount >= 40) return;
-    if (!Readable(heroInv, 0x90) || !Readable(stashGo, 0x98)) return;
+    if (!Readable(heroInv, 0xA0) || !Readable(stashGo, 0x98)) return;
     if ((*((unsigned char*)stashGo + 0x96) & 8) != 0) return; // marked for deletion
+    void* ownerGo = *(void**)((char*)heroInv + 0x04);
+    if (!ownerGo || ownerGo == stashGo || !Readable(ownerGo, 0x80)) return;
+    if (*(void**)((char*)ownerGo + 0x2C) != heroInv) return;
 
     for (int i = 0; i < s_hiddenStashCount; ++i) {
         if (s_hiddenStashes[i].heroInv == heroInv && s_hiddenStashes[i].stashGo == stashGo) {
@@ -1789,8 +1796,8 @@ struct ScopedHideStashesForLoot {
                     if (hero && Readable(hero, 0x80)) {
                         HideSingleStashForLoot(*(void**)((char*)hero + 0x2C), stashGo);
                     }
-                    void* parentGo = *(void**)((char*)stashGo + 0x60);
-                    if (parentGo && Readable(parentGo, 0x80)) {
+                    void* parentGo = *(void**)((char*)stashGo + 0x6C);
+                    if (parentGo && parentGo != stashGo && Readable(parentGo, 0x80)) {
                         HideSingleStashForLoot(*(void**)((char*)parentGo + 0x2C), stashGo);
                     }
                 }
@@ -1803,14 +1810,14 @@ struct ScopedHideStashesForLoot {
                     if (hero && Readable(hero, 0x80)) {
                         HideSingleStashForLoot(*(void**)((char*)hero + 0x2C), stashGo);
                     }
-                    void* parentGo = *(void**)((char*)stashGo + 0x60);
-                    if (parentGo && Readable(parentGo, 0x80)) {
+                    void* parentGo = *(void**)((char*)stashGo + 0x6C);
+                    if (parentGo && parentGo != stashGo && Readable(parentGo, 0x80)) {
                         HideSingleStashForLoot(*(void**)((char*)parentGo + 0x2C), stashGo);
                     }
                 }
             }
 
-            if (extraInv && Readable(extraInv, 0x90)) {
+            if (extraInv && Readable(extraInv, 0xA0)) {
                 void* extraStash = FindHeroStashGo(extraInv);
                 if (extraStash) {
                     HideSingleStashForLoot(extraInv, extraStash);
@@ -1824,7 +1831,7 @@ struct ScopedHideStashesForLoot {
         if (--s_hideStashDepth == 0) {
             for (int i = s_hiddenStashCount - 1; i >= 0; --i) {
                 const HiddenStashEntry& e = s_hiddenStashes[i];
-                if (e.heroInv && e.stashGo && Readable(e.heroInv, 0x90) && Readable(e.stashGo, 0x98) &&
+                if (e.heroInv && e.stashGo && Readable(e.heroInv, 0xA0) && Readable(e.stashGo, 0x98) &&
                     (*((unsigned char*)e.stashGo + 0x96) & 8) == 0) {
                     if (e.prevLoc != 0x11) {
                         SetInventoryDbLocation(e.heroInv, e.stashGo, e.prevLoc);
@@ -1857,6 +1864,9 @@ __asm__(
 );
 
 extern "C" void __fastcall Hook_GoInventory_SerializeGridboxes(void* inv, void* unused_edx, void* packer) {
+    if (!inv || !packer || !Readable(inv, 0xA0)) return;
+    typedef void* (__thiscall* GetGridboxFn)(void*);
+    if (((GetGridboxFn)0x00579717)(inv) == nullptr) return;
     ScopedHideStashesForLoot guard(inv);
     Orig_GoInventory_SerializeGridboxes(inv, unused_edx, packer);
 }
@@ -1880,8 +1890,9 @@ extern "C" uint32_t __fastcall Hook_AIAction_RSCollectLootMp(void* aiAction, voi
     if (IsActorDrinkingPotion(hero)) {
         return 0;
     }
-    void* heroInv = (hero && Readable(hero, 0x80)) ? *(void**)((char*)hero + 0x2C) : nullptr;
-    ScopedHideStashesForLoot guard(heroInv);
+    bool isLocalSrv = s_isServerLocal();
+    void* heroInv = (isLocalSrv && hero && Readable(hero, 0x80)) ? *(void**)((char*)hero + 0x2C) : nullptr;
+    ScopedHideStashesForLoot guard(heroInv, isLocalSrv);
     return Orig_AIAction_RSCollectLootMp(aiAction, unused_edx, goid, data, len);
 }
 
@@ -2683,7 +2694,8 @@ bool SharedStash_FilterKey(LPMSG msg) {
                         if (godb && Readable(godb, 0x10)) {
                             void** selBegin = *(void***)godb;
                             void** selEnd   = *((void***)godb + 1);
-                            if (selBegin && selEnd && selEnd > selBegin && (size_t)(selEnd - selBegin) <= 64) {
+                            if (selBegin && selEnd && selEnd > selBegin && (size_t)(selEnd - selBegin) <= 64 &&
+                                Readable(selBegin, (size_t)(selEnd - selBegin) * sizeof(void*))) {
                                 typedef bool(__thiscall* IsScreenPartyFn)(void*);
                                 for (void** it = selBegin; it != selEnd; ++it) {
                                     if (*it && Readable(*it, 0x80) && ((IsScreenPartyFn)0x00539711)(*it)) {

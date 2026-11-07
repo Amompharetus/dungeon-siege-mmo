@@ -630,7 +630,9 @@ bool MemReadable(const void* p, size_t n) {
     if (mbi.State != MEM_COMMIT) return false;
     const DWORD ok = PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY |
                      PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
-    return (mbi.Protect & ok) != 0;
+    if (!(mbi.Protect & ok)) return false;
+    if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) return false;
+    return (const char*)p + n <= (const char*)mbi.BaseAddress + mbi.RegionSize;
 }
 
 bool IsOfficialTemplate(const char* tmpl) {

@@ -1164,6 +1164,11 @@ static void __attribute__((noinline)) CrashFilterWorker() {
 }
 
 static LONG WINAPI CrashFilter(EXCEPTION_POINTERS* ep) {
+    if (!ep || !ep->ExceptionRecord || !ep->ContextRecord) return EXCEPTION_CONTINUE_SEARCH;
+    static volatile LONG s_crashLogged = 0;
+    if (InterlockedCompareExchange(&s_crashLogged, 1, 0) != 0) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
     g_crashEp = ep;
     DWORD oldEsp;
     DWORD newEsp = (DWORD)(g_crashStack + sizeof(g_crashStack) - 64);
@@ -1182,12 +1187,50 @@ static LONG WINAPI CrashFilter(EXCEPTION_POINTERS* ep) {
 static LONG WINAPI VectoredCrashHandler(EXCEPTION_POINTERS* ep) {
     if (!ep || !ep->ExceptionRecord) return EXCEPTION_CONTINUE_SEARCH;
     if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_STACK_OVERFLOW) {
-        static volatile LONG s_inVectored = 0;
-        if (InterlockedCompareExchange(&s_inVectored, 1, 0) == 0) {
+        CrashFilter(ep);
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+// DSLOA.exe wraps WinMain in an SEH __except filter at 0x00414F5C that passes bCallPreviousFilter=0
+// to 0x0041C731, bypassing SetUnhandledExceptionFilter and exiting with code 1. Hook 0x00414F5C
+// (7 bytes: 57 FF 15 54 91 72 00) so CrashFilter always logs registers, frames, and minidump first.
+extern "C" int __stdcall Orig_DsloaSehFilter(EXCEPTION_POINTERS* ep);
+__asm__(
+    ".text\n"
+    ".globl _Orig_DsloaSehFilter\n"
+    ".globl _Orig_DsloaSehFilter@4\n"
+    "_Orig_DsloaSehFilter:\n"
+    "_Orig_DsloaSehFilter@4:\n"
+    "  pushl %edi\n"
+    "  call *0x00729154\n"
+    "  movl $0x00414F63, %edx\n"
+    "  jmp *%edx\n"
+);
+
+extern "C" int __stdcall Hook_DsloaSehFilter(EXCEPTION_POINTERS* ep) {
+    if (ep && ep->ExceptionRecord) {
+        DWORD code = ep->ExceptionRecord->ExceptionCode;
+        if ((code & 0x80000000U) != 0 || code == 0x4661746CU /*'Fatl'*/) {
             CrashFilter(ep);
         }
     }
-    return EXCEPTION_CONTINUE_SEARCH;
+    return Orig_DsloaSehFilter(ep);
+}
+
+static void DsloaSehFilterInstall() {
+    const DWORD kTarget = 0x00414F5C;
+    const BYTE kExpect[7] = { 0x57, 0xFF, 0x15, 0x54, 0x91, 0x72, 0x00 };
+    if (memcmp((const void*)kTarget, kExpect, 7) == 0) {
+        BYTE patch[7] = { 0xE9, 0, 0, 0, 0, 0x90, 0x90 };
+        DWORD rel = (DWORD)(void*)&Hook_DsloaSehFilter - (kTarget + 5);
+        memcpy(patch + 1, &rel, 4);
+        if (WriteCode(kTarget, patch, 7)) {
+            Log("Hooked DSLOA top-level SEH filter at 0x%08lX (crash minidump + stack trace).", kTarget);
+        }
+    } else {
+        Log("WARNING: unexpected bytes at DSLOA SEH filter 0x%08lX.", kTarget);
+    }
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -1230,6 +1273,7 @@ static void Startup() {
     HMODULE exe = GetModuleHandleA(nullptr);
     if (!IdentifyTarget(exe)) { Log("Unknown executable build. Patches NOT applied (safety)."); return; }
 
+    DsloaSehFilterInstall();
     ImeDisableInstall();
 
     std::vector<Patch> patches;

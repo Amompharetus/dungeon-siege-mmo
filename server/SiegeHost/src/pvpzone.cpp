@@ -145,7 +145,7 @@ bool ArePvpEnemies(void* plA, void* plB) {
     return IsPvpCombatant(plA) && IsPvpCombatant(plB);
 }
 
-// Walks a Go* (and up to 3 parent links at Go+0x60) to find an owning human Player* (Go+0x78).
+// Walks a Go* (and up to 3 parent links at Go+0x6C) to find an owning human Player* (Go+0x78).
 void* HumanPlayerOfGo(void* go) {
     void* cur = go;
     for (int depth = 0; depth < 4 && Readable(cur, 0x7C); ++depth) {
@@ -153,7 +153,7 @@ void* HumanPlayerOfGo(void* go) {
         if (pl && Readable(pl, 0x18) && *(int*)((char*)pl + 0x14) == 1 && eng::Player_IsValid(pl)) {
             return pl;
         }
-        void* parent = *(void**)((char*)cur + 0x60);
+        void* parent = *(void**)((char*)cur + 0x6C);
         if (!parent || parent == cur) break;
         cur = parent;
     }

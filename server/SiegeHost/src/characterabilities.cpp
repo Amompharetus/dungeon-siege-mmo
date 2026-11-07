@@ -164,7 +164,9 @@ bool Readable(const void* p, size_t n) {
     if (mbi.State != MEM_COMMIT) return false;
     const DWORD ok = PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY |
                      PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
-    return (mbi.Protect & ok) != 0;
+    if (!(mbi.Protect & ok)) return false;
+    if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) return false;
+    return (const char*)p + n <= (const char*)mbi.BaseAddress + mbi.RegionSize;
 }
 
 // ---- Active Aegis of Renewal Armor Rating Buffs (per Target + Caster pair, stacks independently across casters) ----
@@ -523,7 +525,9 @@ void* GetOwningHumanPlayer(void* go) {
             }
             return pl;
         }
-        cur = *(void**)((char*)cur + 0x60);
+        void* next = *(void**)((char*)cur + 0x6C);
+        if (!next || next == cur) break;
+        cur = next;
     }
     return nullptr;
 }
@@ -947,16 +951,22 @@ bool IsActorDrinkingPotion(void* go) {
     // Must be LS_ALIVE_CONSCIOUS (1)
     if (*(int*)((char*)aspect + 0xA0) != 1) return false;
 
-    // 1. Check active front action job on GoMind (+0x34) (Server / Singleplayer)
+    // 1. Check active front action job on GoMind (+0x34) (JQ_ACTION span at +0x68..+0x6C)
     void* mind = *(void**)((char*)go + 0x34);
-    if (mind && Readable(mind, 0x60)) {
-        typedef void* (__thiscall* GetFrontJobFn)(void*, int);
-        static const auto s_getFrontJob = (GetFrontJobFn)0x005DBF4E;
-        void* frontJob = s_getFrontJob(mind, 1 /*JQ_ACTION*/);
-        if (frontJob && Readable(frontJob, 0x10)) {
-            uint32_t jat = *(uint32_t*)frontJob;
-            if (jat == 0x0E /*jat_drink*/) {
-                return true;
+    if (mind && Readable(mind, 0x70)) {
+        void** jb = *(void***)((char*)mind + 0x68);
+        void** je = *(void***)((char*)mind + 0x6C);
+        if (jb && je && je > jb && (size_t)(je - jb) <= 64 &&
+            Readable(jb, (size_t)(je - jb) * sizeof(void*))) {
+            for (void** it = jb; it != je; ++it) {
+                void* job = *it;
+                if (!job || !Readable(job, 0x14)) break;
+                if ((*((const unsigned char*)job + 0x10) & 0x02) == 0) {
+                    if (*(const uint32_t*)job == 0x0E /*jat_drink*/) {
+                        return true;
+                    }
+                    break;
+                }
             }
         }
     }
