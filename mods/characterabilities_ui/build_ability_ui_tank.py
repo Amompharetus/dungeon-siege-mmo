@@ -442,6 +442,7 @@ rollover_additions = (
     '\t\tawp_ability_2 = "[E] Aegis of Renewal\\nPress E to use Aegis of Renewal";\r\n'
     '\t\tawp_ability_3 = "[R] Flame Nova\\nPress R to use Flame Nova";\r\n'
     '\t\tawp_shared_stash = "Shared Stash\\nClick or type /stash to open Shared Stash";\r\n'
+    '\t\tbuffui_button = "Click to show/hide active buffs panel (Hotkey: Shift+;)\\nRight-click to toggle graphical/text view";\r\n'
 )
 
 anchor = 'button_auto_sell_list = "Click and hold to choose from a list of auto sell options.";'
@@ -451,23 +452,169 @@ if anchor_idx == -1:
 
 insert_pos = anchor_idx + len(anchor)
 uet_text = uet_text[:insert_pos] + rollover_additions + uet_text[insert_pos:]
-print("Added Character Abilities & Shared Stash rollover help entries to user_education_tooltips.gas.")
+print("Added Character Abilities, Shared Stash & BuffUI rollover help entries to user_education_tooltips.gas.")
 
-# 3. Validate GAS syntax
+# 3. Load BufUI artwork and layout from BufUI_LOA_v3.0.0.dsres and build clean UI-only BuffUI
+bufui_src_path = r'Dungeon Siege 1\10-mods\BufUI LoA 3.0-167-3-0-1768604822\BufUI_LOA_v3.0.0.dsres'
+t_bufui = tank_read.load(bufui_src_path)
+
+raw_bufui_panel = t_bufui['ui/interfaces/backend/lokiswaq_bufui/lokiswaq_bufui.gas'].decode('latin1')
+skrit_end_idx = raw_bufui_panel.find(']];')
+if skrit_end_idx == -1:
+    raise RuntimeError("ERROR: could not find end of skrit block in lokiswaq_bufui.gas")
+
+panel_widgets = raw_bufui_panel[skrit_end_idx + 3:]
+# Remove the old [t:dialog_box,n:main] widget with onstartanim = call( my_Fill_Values$ )
+main_start = panel_widgets.find('[t:dialog_box,n:main]')
+t_bg_start = panel_widgets.find('// Text panel background')
+if main_start != -1 and t_bg_start != -1 and t_bg_start > main_start:
+    panel_widgets = panel_widgets[t_bg_start:]
+
+panel_widgets = panel_widgets.replace('Lokiswaq_BufUI_text', 'BuffUI_text')
+panel_widgets = panel_widgets.replace('Lokiswaq_BufUI_icons', 'BuffUI_icons')
+panel_widgets = panel_widgets.replace('Lokiswaq_BufUI', 'BuffUI')
+panel_widgets = panel_widgets.replace('something went wrong :(', 'Active buffs')
+
+buffui_gas = (
+    '[BuffUI]\r\n'
+    '{\r\n'
+    '  intended_resolution_height = 600;\r\n'
+    '  intended_resolution_width = 800;\r\n'
+    '  interface = true;\r\n'
+    '\r\n  ' + panel_widgets
+)
+
+# Build clean data_bar.gas from Expansion.dsres + BuffUI toggle button
+data_bar_text = t_exp['ui/interfaces/backend/data_bar/data_bar.gas'].decode('latin1')
+data_bar_buffui_insert = """
+  skrit =
+  [[
+    property bool _server_only$ = false;
+    owner = UIWindow;
+
+    void move_button_BuffUI$( void )
+    {
+      if ( World.IsSinglePlayer )
+      {
+        UIWindow w$ = UIShell.FindUIWindow( "buffui_button", "data_bar" );
+        w$.SetRect( 133, 151, UIShell.ScreenHeight-480+437, UIShell.ScreenHeight-480+472, false );
+      }
+    }
+
+    void activate_interface_BuffUI$( void )
+    {
+      UIShell.ActivateInterface( "ui:interfaces:backend:buffui:BuffUI", false );
+      move_button_BuffUI$();
+    }
+
+    void deactivate_interface_BuffUI$( void )
+    {
+      UIShell.DeactivateInterface( "BuffUI" );
+    }
+
+    void hide_interface_BuffUI$( void )
+    {
+      UIShell.HideInterface( "BuffUI" );
+    }
+
+    void toggle_interface_BuffUI$( void )
+    {
+      if ( UIShell.IsInterfaceVisible( "BuffUI" ) )
+      {
+        UIShell.HideInterface( "BuffUI" );
+      }
+      else
+      {
+        UIShell.ShowInterface( "BuffUI" );
+      }
+    }
+
+    void swap_view_BuffUI$( void )
+    {
+      if ( UIShell.IsInterfaceVisible( "BuffUI" ) )
+      {
+        if ( UIShell.FindUIWindow( "t_background", "BuffUI" ).Visible == true )
+        {
+          UIShell.ShowGroup( "BuffUI_text", false, true, "BuffUI" );
+          UIShell.ShowGroup( "BuffUI_icons", true, true, "BuffUI" );
+        }
+        else
+        {
+          UIShell.ShowGroup( "BuffUI_text", true, true, "BuffUI" );
+          UIShell.ShowGroup( "BuffUI_icons", false, true, "BuffUI" );
+        }
+      }
+    }
+  ]];
+
+  [t:checkbox,n:buffui_button]
+  {
+    f alpha = 0.800000;
+    b common_control = false;
+    common_template = ;
+    dock_group = information_dockbar;
+    i draw_order = 2;
+    group = information_dockbar;
+    is_bottom_anchor = true;
+    bottom_anchor = 43;
+    rect = 97,437,115,472;
+    texture = b_gui_ig_i_it_magic-book-17;
+    uvcoords = 0.000000,0.000000,1.000000,1.000000;
+    wrap_mode = clamp;
+    rollover_help = buffui_button;
+    leftright_button = true;
+    [messages]
+    {
+      oncreated = call( activate_interface_BuffUI$ );
+      ondestroyed = call( deactivate_interface_BuffUI$ );
+      onhidden = call( hide_interface_BuffUI$ );
+      oncheck = call( toggle_interface_BuffUI$ );
+      onuncheck = call( toggle_interface_BuffUI$ );
+      onrbuttondown = setalpha(0.8) & call( swap_view_BuffUI$ );
+      onrbuttonup = setalpha(1.0);
+      onlbuttondown = setalpha(0.8);
+      onlbuttonup = setalpha(1.0);
+      onlbuttondownchecked = setalpha(0.8);
+      onlbuttonupchecked = setalpha(1.0);
+      onrolloff = setalpha(0.8);
+      onrollover = setalpha(1.0);
+      onrolloffchecked = setalpha(0.8);
+      onrolloverchecked = setalpha(1.0);
+    }
+  }
+"""
+
+db_anchor = 'b interface = true;'
+db_idx = data_bar_text.find(db_anchor)
+if db_idx == -1:
+    raise RuntimeError("ERROR: could not find 'b interface = true;' in data_bar.gas")
+db_insert_pos = db_idx + len(db_anchor)
+data_bar_text = data_bar_text[:db_insert_pos] + "\r\n" + data_bar_buffui_insert.replace('\n', '\r\n') + data_bar_text[db_insert_pos:]
+print("Added BuffUI toggle button to data_bar.gas.")
+
+# 4. Validate GAS syntax
 validate_gas(awp_text, "character_awp.gas")
 validate_gas(uet_text, "user_education_tooltips.gas")
+validate_gas(buffui_gas, "buffui.gas")
+validate_gas(data_bar_text, "data_bar.gas")
 
-# 4. Build tank
+# 5. Build tank
 out_tank = r'Dungeon Siege 1\01-client\Dungeon Siege 1\DSLOA\Z_CharacterAbilities_UI.dsres'
 files = {
+    '/art/bitmaps/gui/in_game/menus/b_gui_ig_mnu_bufui.gas': t_bufui['art/bitmaps/gui/in_game/menus/b_gui_ig_mnu_bufui.gas'],
+    '/art/bitmaps/gui/in_game/menus/b_gui_ig_mnu_bufui.raw': t_bufui['art/bitmaps/gui/in_game/menus/b_gui_ig_mnu_bufui.raw'],
+    '/art/bitmaps/gui/in_game/menus/b_gui_ig_mnu_bufui_empty.gas': t_bufui['art/bitmaps/gui/in_game/menus/b_gui_ig_mnu_bufui_empty.gas'],
+    '/art/bitmaps/gui/in_game/menus/b_gui_ig_mnu_bufui_empty.raw': t_bufui['art/bitmaps/gui/in_game/menus/b_gui_ig_mnu_bufui_empty.raw'],
+    '/ui/interfaces/backend/buffui/buffui.gas': buffui_gas.encode('latin1'),
     '/ui/interfaces/backend/character_awp/character_awp.gas': awp_text.encode('latin1'),
+    '/ui/interfaces/backend/data_bar/data_bar.gas': data_bar_text.encode('latin1'),
     '/ui/user_education_tooltips.gas': uet_text.encode('latin1'),
 }
 nfiles, nbytes = tank_build.build_tank(
     files,
     out_tank,
-    title="Character Abilities UI (Top-Left AWP Sub-bar)",
+    title="Character Abilities & BuffUI HUD",
     author="Antigravity",
-    description="Character Abilities UI in Top-Left HUD beside weapon slots with Shared Stash button and rollover info"
+    description="Character Abilities UI in Top-Left HUD beside weapon slots with Shared Stash button and Native BuffUI"
 )
 print(f"Tank built: {out_tank} ({nfiles} files, {nbytes} bytes)")

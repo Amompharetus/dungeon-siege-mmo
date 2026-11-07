@@ -1253,6 +1253,7 @@ static void Startup() {
     if (g_cfg.role == Role::Server) { AreaScaleInstall(); ShopStockInstall(); InvFixInstall(); QuestModeInstall(); JipQueueInstall(); }
     else { InvFixInstall(); QuestModeInstall(); ShopStockClientInstall(); }   // 0.9.0: the backpack cap has to come off on a player's own machine too
     if (g_cfg.role == Role::Client) { ChatFixInstall(); PartyPanelInstall(); PortraitFixInstall(); if (g_cfg.showOtherPlayers) PanelHostFilterInstall(); PortraitDiagInstall(); ChatDiagInstall(); AreaScaleClientDiagInstall(); }
+    else if (g_cfg.role == Role::None) { ChatFixGameMsgCooldownInstall(); }
 
     if (g_cfg.role == Role::Client) {
         PatchCall(0x00488D01, (void*)WrapNetPipeConnect);

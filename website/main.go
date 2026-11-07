@@ -37,15 +37,15 @@ const (
 	gmCookieName = "ds1mmo_gm_session"
 	awsCredsFile  = "/etc/ds1mmo/aws-eu.csv"
 	awsEURegion   = "eu-central-1"
-	awsEUInstance = "i-00000000000000001"
+	awsEUInstance = "i-0b48befaf07854f49"
 	awsNARegion   = "us-east-1"
-	awsNAInstance = "i-00000000000000002"
+	awsNAInstance = "i-0c0eebbb28fcafe2b"
 )
 
 var gmUsers = map[string]bool{
-	"admin": true,
-	"gm1":      true,
-	"gm2":       true,
+	"amompharetus": true,
+	"andreou":      true,
+	"ashley":       true,
 }
 
 func isAuthorizedGM(username string) bool {
@@ -60,6 +60,7 @@ type CachedChar struct {
 	SaveSHA   string `json:"save_sha"`
 	StartLoc  string `json:"start_loc"`
 	MapAreaId string `json:"map_area_id"`
+	SaveTime  int64  `json:"save_time"`
 }
 
 type PlayerInfo struct {
@@ -372,6 +373,7 @@ var (
 	templateRe   = regexp.MustCompile(`(?i)template_name\s*=\s*([^;\r\n]+);`)
 	startLocRe   = regexp.MustCompile(`(?i)multiplayer_world\s*=\s*"?([a-zA-Z0-9_]+)"?`)
 	regionRe     = regexp.MustCompile(`(?i)region\s*=\s*([a-zA-Z0-9_]+)`)
+	saveTimeRe   = regexp.MustCompile(`(?i)\bsave_time\s*=\s*([0-9]+)`)
 )
 
 func templateToRace(tpl string) string {
@@ -869,7 +871,7 @@ func buildRealmStatus() RealmStatus {
 	serverTown := make(map[string]string)
 
 	// 1. Fetch live portal status
-	resp, err := portalHTTP.Get(portalURL + "/api/status")
+	resp, err := portalHTTP.Get(portalURL + "/api/status?internal=1")
 	if err == nil {
 		defer resp.Body.Close()
 		var portalResp struct {
@@ -1078,25 +1080,12 @@ func buildRealmStatus() RealmStatus {
 			canonicalName = acct.Name
 		}
 
-		var newestChar *CharRec
 		saveSHA := ""
 		if acct != nil {
 			saveSHA = acct.SaveSHA
-			for _, ch := range acct.Chars {
-				if newestChar == nil || ch.Updated.After(newestChar.Updated) {
-					newestChar = ch
-				}
-			}
 		}
 
-		charName := canonicalName
-		if hero, ok := heartbeatHeroes[acctLower]; ok && hero != "" {
-			charName = hero
-		} else if newestChar != nil && newestChar.Name != "" {
-			charName = newestChar.Name
-		}
-
-		charDetails := resolveCharacterDetails(canonicalName, charName, saveSHA, newestChar)
+		_, _, charDetails := selectActiveCharacter(canonicalName, acct, saveSHA, heartbeatHeroes[acctLower])
 
 		// If save file level is not available (level <= 1) and shard heartbeat reported XP, fallback to formula
 		if charDetails.Level <= 1 {
@@ -1519,6 +1508,11 @@ func resolveCharacterDetails(account, charName, saveSHA string, rec *CharRec) Ca
 									res.MapAreaId = mId
 								}
 							}
+							if m := saveTimeRe.FindStringSubmatch(infoStr); len(m) > 1 {
+								if stVal, err := strconv.ParseInt(strings.TrimSpace(m[1]), 10, 64); err == nil && stVal > 0 {
+									res.SaveTime = stVal
+								}
+							}
 						}
 					}
 
@@ -1557,7 +1551,7 @@ func getLiveOnlineSnapshot() (map[string]string, map[string]string, map[string]s
 	onlineHeroes := make(map[string]string)
 	onlineMap := make(map[string]string)
 
-	resp, err := portalHTTP.Get(portalURL + "/api/status")
+	resp, err := portalHTTP.Get(portalURL + "/api/status?internal=1")
 	if err != nil {
 		return onlineAccts, onlineHeroes, onlineMap
 	}
@@ -1759,6 +1753,79 @@ func matchCharRec(chars map[string]*CharRec, cleanName string) *CharRec {
 	return nil
 }
 
+func selectActiveCharacter(canonicalAcctName string, acct *Account, saveSHA string, heroHint string) (string, *CharRec, CachedChar) {
+	var newestChar *CharRec
+	if acct != nil {
+		for _, ch := range acct.Chars {
+			if newestChar == nil || ch.Updated.After(newestChar.Updated) {
+				newestChar = ch
+			}
+		}
+	}
+
+	if heroHint != "" {
+		var rec *CharRec
+		if acct != nil {
+			rec = matchCharRec(acct.Chars, heroHint)
+		}
+		if rec == nil {
+			rec = newestChar
+		}
+		details := resolveCharacterDetails(canonicalAcctName, heroHint, saveSHA, rec)
+		return heroHint, rec, details
+	}
+
+	// If a character was updated on the game server more recently than the last save upload, it is actively in-game now.
+	if acct != nil && !acct.SaveTime.IsZero() && newestChar != nil && newestChar.Name != "" && newestChar.Updated.After(acct.SaveTime) {
+		details := resolveCharacterDetails(canonicalAcctName, newestChar.Name, saveSHA, newestChar)
+		return newestChar.Name, newestChar, details
+	}
+
+	// Otherwise, inspect the account's .dsparty saves in current.zip and pick the character most recently saved by the game (info.gas save_time).
+	acctLower := strings.ToLower(strings.TrimSpace(canonicalAcctName))
+	zipPath := filepath.Join(portalDir, "portal-data", "saves", acctLower, "current.zip")
+	if r, err := zip.OpenReader(zipPath); err == nil {
+		defer r.Close()
+		var bestName string
+		var bestRec *CharRec
+		var bestDetails CachedChar
+		hasBest := false
+
+		for _, f := range r.File {
+			if strings.HasPrefix(f.Name, "Save/") && strings.HasSuffix(f.Name, ".dsparty") && !strings.HasSuffix(f.Name, ".bak") {
+				cleanName := strings.TrimSuffix(strings.TrimPrefix(f.Name, "Save/"), ".dsparty")
+				var rec *CharRec
+				if acct != nil && acct.Chars != nil {
+					rec = matchCharRec(acct.Chars, cleanName)
+					if len(acct.Chars) > 0 && rec == nil {
+						continue
+					}
+				}
+				details := resolveCharacterDetails(canonicalAcctName, cleanName, saveSHA, rec)
+				if !hasBest {
+					bestName, bestRec, bestDetails, hasBest = cleanName, rec, details, true
+					continue
+				}
+				if details.SaveTime > bestDetails.SaveTime {
+					bestName, bestRec, bestDetails = cleanName, rec, details
+				} else if details.SaveTime == bestDetails.SaveTime && rec != nil && (bestRec == nil || rec.Updated.After(bestRec.Updated)) {
+					bestName, bestRec, bestDetails = cleanName, rec, details
+				}
+			}
+		}
+		if hasBest {
+			return bestName, bestRec, bestDetails
+		}
+	}
+
+	charName := canonicalAcctName
+	if newestChar != nil && newestChar.Name != "" {
+		charName = newestChar.Name
+	}
+	details := resolveCharacterDetails(canonicalAcctName, charName, saveSHA, newestChar)
+	return charName, newestChar, details
+}
+
 func buildLadderCharacters() []LadderCharacter {
 	accounts := loadAccounts()
 	var list []LadderCharacter
@@ -1771,71 +1838,71 @@ func buildLadderCharacters() []LadderCharacter {
 			canonicalAcctName = acctLower
 		}
 
-		var newestChar *CharRec
-		if acct.Chars != nil {
-			for _, c := range acct.Chars {
-				if newestChar == nil || c.Updated.After(newestChar.Updated) {
-					newestChar = c
-				}
-			}
-		}
+		activeCharName, _, _ := selectActiveCharacter(canonicalAcctName, acct, acct.SaveSHA, onlineHeroes[acctLower])
+		activeCharNorm := normalizeCharName(activeCharName)
 
 		zipPath := filepath.Join(portalDir, "portal-data", "saves", acctLower, "current.zip")
 		r, err := zip.OpenReader(zipPath)
 		if err == nil {
-			var dspartyFiles []*zip.File
+			var maxSaveTime int64
+			dspartyCount := 0
 			for _, f := range r.File {
 				if strings.HasPrefix(f.Name, "Save/") && strings.HasSuffix(f.Name, ".dsparty") && !strings.HasSuffix(f.Name, ".bak") {
-					dspartyFiles = append(dspartyFiles, f)
+					cleanName := strings.TrimSuffix(strings.TrimPrefix(f.Name, "Save/"), ".dsparty")
+					var charRec *CharRec
+					if acct.Chars != nil {
+						charRec = matchCharRec(acct.Chars, cleanName)
+					}
+					if charRec == nil {
+						continue
+					}
+					dspartyCount++
+					d := resolveCharacterDetails(canonicalAcctName, cleanName, acct.SaveSHA, charRec)
+					if d.SaveTime > maxSaveTime {
+						maxSaveTime = d.SaveTime
+					}
 				}
 			}
 
-			saveTime := acct.SaveTime
-			if st, err := os.Stat(zipPath); err == nil && st.ModTime().After(saveTime) {
-				saveTime = st.ModTime()
-			}
+			for _, f := range r.File {
+				if strings.HasPrefix(f.Name, "Save/") && strings.HasSuffix(f.Name, ".dsparty") && !strings.HasSuffix(f.Name, ".bak") {
+					cleanName := strings.TrimSuffix(strings.TrimPrefix(f.Name, "Save/"), ".dsparty")
 
-			for _, f := range dspartyFiles {
-				cleanName := strings.TrimSuffix(strings.TrimPrefix(f.Name, "Save/"), ".dsparty")
-
-				var charRec *CharRec
-				if acct.Chars != nil {
-					charRec = matchCharRec(acct.Chars, cleanName)
-				}
-
-				// Only MMO characters that have an active server record can be on the ladder.
-				// Prevents local-only hacked singleplayer saves from polluting the ladder.
-				if charRec == nil {
-					continue
-				}
-
-				charDetails := resolveCharacterDetails(canonicalAcctName, cleanName, acct.SaveSHA, charRec)
-
-				var xp int64 = 0
-				if charRec != nil {
-					xp = charRec.XP
-				}
-
-				race := charDetails.Race
-				if race == "" {
-					race = "Human"
-				}
-
-				var lastTime time.Time
-				if charRec != nil && !charRec.Updated.IsZero() && charRec.Updated.Year() >= 2020 {
-					lastTime = charRec.Updated
-				}
-				if f != nil {
-					mod := f.ModTime()
-					if !mod.IsZero() && mod.Year() >= 2020 && mod.After(lastTime) {
-						lastTime = mod
+					var charRec *CharRec
+					if acct.Chars != nil {
+						charRec = matchCharRec(acct.Chars, cleanName)
 					}
-				}
-				if !saveTime.IsZero() && saveTime.Year() >= 2020 && saveTime.After(lastTime) {
-					if len(dspartyFiles) <= 1 || newestChar == nil || (charRec != nil && (strings.EqualFold(newestChar.Name, charRec.Name) || normalizeCharName(newestChar.Name) == normalizeCharName(cleanName))) {
-						lastTime = saveTime
+
+					// Only MMO characters that have an active server record can be on the ladder.
+					// Prevents local-only hacked singleplayer saves from polluting the ladder.
+					if charRec == nil {
+						continue
 					}
-				}
+
+					charDetails := resolveCharacterDetails(canonicalAcctName, cleanName, acct.SaveSHA, charRec)
+
+					var xp int64 = 0
+					if charRec != nil {
+						xp = charRec.XP
+					}
+
+					race := charDetails.Race
+					if race == "" {
+						race = "Human"
+					}
+
+					var lastTime time.Time
+					if charRec != nil && !charRec.Updated.IsZero() && charRec.Updated.Year() >= 2020 {
+						lastTime = charRec.Updated
+					}
+					// Only apply zip entry ModTime to the most recently saved .dsparty in current.zip,
+					// since unpacking current.zip on session start resets mtimes of inactive characters.
+					if f != nil && (dspartyCount <= 1 || (maxSaveTime > 0 && charDetails.SaveTime == maxSaveTime)) {
+						mod := f.ModTime()
+						if !mod.IsZero() && mod.Year() >= 2020 && mod.After(lastTime) {
+							lastTime = mod
+						}
+					}
 
 					isOnline := false
 					onlineShard := ""
@@ -1854,8 +1921,8 @@ func buildLadderCharacters() []LadderCharacter {
 								onlineShard = s
 							}
 						} else {
-							// If joinguard didn't specify hero, only the account's newest character is marked online
-							if newestChar != nil && (strings.EqualFold(newestChar.Name, charDetails.Name) || strings.EqualFold(newestChar.Name, cleanName) || normalizeCharName(newestChar.Name) == cleanNorm) {
+							// If joinguard didn't specify hero, only the account's active character is marked online
+							if activeCharName != "" && (strings.EqualFold(activeCharName, charDetails.Name) || strings.EqualFold(activeCharName, cleanName) || activeCharNorm == cleanNorm) {
 								isOnline = true
 								onlineShard = s
 							}
@@ -1890,6 +1957,7 @@ func buildLadderCharacters() []LadderCharacter {
 						OnlineShard:   onlineShard,
 					})
 				}
+			}
 			r.Close()
 		}
 	}

@@ -91,6 +91,7 @@ type ServerEntry struct {
 
 type shardState struct {
 	fields  map[string]string
+	pcs     map[string]string
 	address string
 	seen    time.Time
 }
@@ -413,7 +414,8 @@ func readHeartbeatFile(path string) map[string]string {
 func (p *Portal) readHeartbeat() map[string]string { return readHeartbeatFile(p.cfg.HeartbeatFile) }
 
 // serverList returns every configured game server with live status. Caller must NOT hold p.mu.
-func (p *Portal) serverList() []map[string]any {
+func (p *Portal) serverList(includePC ...bool) []map[string]any {
+	withPC := len(includePC) > 0 && includePC[0]
 	odStates := map[string]string{}
 	for _, s := range p.cfg.Servers {
 		if s.OnDemand != nil {
@@ -432,6 +434,11 @@ func (p *Portal) serverList() []map[string]any {
 			game = map[string]string{}
 			for k, v := range st.fields {
 				game[k] = v
+			}
+			if withPC {
+				for k, v := range st.pcs {
+					game[k] = v
+				}
 			}
 			age := time.Since(st.seen)
 			game["heartbeat_age_s"] = fmt.Sprint(int(age.Seconds()))
@@ -568,10 +575,16 @@ func (p *Portal) handleShardHeartbeat(w http.ResponseWriter, r *http.Request) {
 	if addr == "" || strings.EqualFold(addr, "auto") {
 		addr, _, _ = net.SplitHostPort(r.RemoteAddr)
 	}
+	pcs := map[string]string{}
+	for k, v := range body.Fields {
+		if strings.HasPrefix(k, "pc") && isDigits(k[2:]) {
+			pcs[k] = v
+		}
+	}
 	p.mu.Lock()
 	p.shardReportLocked(id, body.Fields)
 	prev := p.shards[id]
-	p.shards[id] = &shardState{fields: body.Fields, address: addr, seen: time.Now()}
+	p.shards[id] = &shardState{fields: body.Fields, pcs: pcs, address: addr, seen: time.Now()}
 	p.mu.Unlock()
 	if prev == nil || prev.fields["phase"] != body.Fields["phase"] {
 		log.Printf("shard %s: phase=%s players=%s address=%s", id, body.Fields["phase"], body.Fields["players"], addr)
@@ -634,7 +647,10 @@ func (p *Portal) fileHash(path string) (string, int64, error) {
 }
 
 func (p *Portal) handleStatus(w http.ResponseWriter, r *http.Request) {
-	servers := p.serverList()
+	host, _, _ := net.SplitHostPort(r.RemoteAddr)
+	ip := net.ParseIP(host)
+	includePC := r.URL.Query().Get("internal") == "1" && ip != nil && ip.IsLoopback() && r.Header.Get("X-Forwarded-For") == "" && r.Header.Get("X-Real-IP") == ""
+	servers := p.serverList(includePC)
 	p.mu.Lock()
 	addr := p.cfg.GameAddress
 	maxPlayers := p.cfg.MaxPlayers

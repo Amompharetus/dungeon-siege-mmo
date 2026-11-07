@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <string>
 
-#define SIEGEHOST_VERSION "1.5.22"
+#define SIEGEHOST_VERSION "1.5.23"
 
 enum class Role { None, Server, Client };
 
@@ -112,5 +112,9 @@ void NR_Tick();
 std::string NR_HeartbeatLines();
 void CompareSessionInfo(const BYTE* remoteAppReserved);  // join compatibility diagnostics
 void ChatKeyFilter(LPMSG msg);  // 1.5.10: in-game chat Ctrl+Backspace, Ctrl+A filter
+void ChatFixGameMsgCooldownInstall();  // 1.5.23: 3-second per-message cooldown on gameplay chat messages
+bool ChatFix_AllowGameMessage(const char* text);
+bool ChatFix_AllowGameMessageWide(const wchar_t* text);
+bool IsActorDrinkingPotion(void* go);
 std::string JG_GetAccountForDpnid(DWORD dpnid);
 #include "sharedstash.h"

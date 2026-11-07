@@ -188,6 +188,9 @@ func (p *Portal) shardReportLocked(serverID string, fields map[string]string) {
 			case xp > rec.XP:
 				rec.XP, rec.Updated = xp, time.Now().UTC()
 				dirty = true
+			case time.Since(rec.Updated) > 15*time.Second:
+				rec.Updated = time.Now().UTC()
+				dirty = true
 			}
 		case strings.HasPrefix(k, "ref") && isDigits(k[3:]):
 			delete(fields, k)
