@@ -1749,6 +1749,7 @@ struct HiddenStashEntry {
     void* stashInv;
     int   prevLoc;
     char  prevIsBp;
+    int   wasActive;   // heroInv+0xA4 (active backpack) pointed at the stash
 };
 static int s_hideStashDepth = 0;
 static HiddenStashEntry s_hiddenStashes[40] = {};
@@ -1771,9 +1772,15 @@ static void HideSingleStashForLoot(void* heroInv, void* stashGo) {
     int prevLoc = GetInventoryDbLocation(heroInv, stashGo);
     void* stashInv = *(void**)((char*)stashGo + 0x2C);
     char prevIsBp = (stashInv && Readable(stashInv, 0x90)) ? *((char*)stashInv + 0x86) : 0;
-    if (prevLoc == 0x11 /*il_invalid*/ && prevIsBp == 0) return;
+    int wasActive = (*(void**)((char*)heroInv + 0xA4) == stashGo) ? 1 : 0;
+    if (prevLoc == 0x11 /*il_invalid*/ && prevIsBp == 0 && !wasActive) return;
 
-    s_hiddenStashes[s_hiddenStashCount++] = { heroInv, stashGo, stashInv, prevLoc, prevIsBp };
+    s_hiddenStashes[s_hiddenStashCount++] = { heroInv, stashGo, stashInv, prevLoc, prevIsBp, wasActive };
+    // The engine's auto-add (0x0057940C) tries the ACTIVE backpack (heroInv+0xA4) first. While the stash
+    // is open that is the stash, so looted items were being sent into the hidden stash and lost.
+    if (wasActive) {
+        *(void**)((char*)heroInv + 0xA4) = nullptr;
+    }
     if (prevLoc != 0x11) {
         SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
     }
@@ -1838,6 +1845,9 @@ struct ScopedHideStashesForLoot {
                     }
                     if (e.prevIsBp != 0 && e.stashInv && Readable(e.stashInv, 0x90)) {
                         *((char*)e.stashInv + 0x86) = e.prevIsBp;
+                    }
+                    if (e.wasActive && *(void**)((char*)e.heroInv + 0xA4) == nullptr) {
+                        *(void**)((char*)e.heroInv + 0xA4) = e.stashGo;
                     }
                 }
             }
