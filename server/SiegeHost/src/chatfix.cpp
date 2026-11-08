@@ -48,6 +48,8 @@ const char kLeaveTheirNew[]  = "$MSG$Player %S has left the game with all their 
 // and forwarding to UIMultiplayer::PrintChat (0x0048D2AA). Player-typed multiplayer chat (0x0048D49B -> 0x0048D58B) never calls 0x0050E295.
 const DWORD kPrintScreenVa = 0x0050E295;
 const BYTE kPrintScreenExpect[10] = { 0x55, 0x8B, 0xEC, 0x51, 0x8B, 0x0D, 0xE4, 0xCF, 0x7A, 0x00 };
+const DWORD kConsoleSinkVa = 0x00476C48;
+const BYTE kConsoleSinkExpect[6] = { 0x8B, 0x0D, 0xE4, 0xCF, 0x7A, 0x00 };
 const DWORD kGameMsgCooldownMs = 3000;
 bool g_screenMsgHookOn = false;
 
@@ -163,6 +165,36 @@ extern "C" void __fastcall Hook_PrintScreenMessage(void* self, void* unused_edx,
     Orig_PrintScreenMessage(self, unused_edx, gpwstr);
 }
 
+extern "C" char __cdecl ChatFix_CheckGpwstrAllowed(const void* gpwstr) {
+    if (gpwstr && ReadableMsgPtr(gpwstr, sizeof(void*))) {
+        const wchar_t* ws = *(const wchar_t* const*)gpwstr;
+        if (ws && !ChatFix_AllowGameMessageWide(ws)) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+extern "C" void Hook_ConsoleSinkOutputString();
+__asm__(
+    ".text\n"
+    ".globl _Hook_ConsoleSinkOutputString\n"
+    "_Hook_ConsoleSinkOutputString:\n"
+    "  pushal\n"
+    "  pushl %edi\n"
+    "  call _ChatFix_CheckGpwstrAllowed\n"
+    "  addl $4, %esp\n"
+    "  testb %al, %al\n"
+    "  popal\n"
+    "  jz 1f\n"
+    "  movl 0x007ACFE4, %ecx\n"
+    "  pushl $0x00476C4E\n"
+    "  ret\n"
+    "1:\n"
+    "  pushl $0x00476C7C\n"
+    "  ret\n"
+);
+
 void ChatFixGameMsgCooldownInstall() {
     static bool s_attempted = false;
     if (s_attempted) return;
@@ -172,23 +204,41 @@ void ChatFixGameMsgCooldownInstall() {
     BYTE* p = (BYTE*)kPrintScreenVa;
     if (memcmp(p, kPrintScreenExpect, sizeof kPrintScreenExpect) != 0) {
         Log("ChatFix: VERIFY FAILED at 0x%08lX - global gameplay chat cooldown not installed.", kPrintScreenVa);
-        return;
+    } else {
+        DWORD o;
+        if (VirtualProtect(p, sizeof kPrintScreenExpect, PAGE_EXECUTE_READWRITE, &o)) {
+            p[0] = 0xE9;
+            *(int32_t*)(p + 1) = (int32_t)((DWORD)(void*)&Hook_PrintScreenMessage - (kPrintScreenVa + 5));
+            for (size_t i = 5; i < sizeof kPrintScreenExpect; ++i) {
+                p[i] = 0x90;
+            }
+            VirtualProtect(p, sizeof kPrintScreenExpect, o, &o);
+            FlushInstructionCache(GetCurrentProcess(), p, sizeof kPrintScreenExpect);
+            g_screenMsgHookOn = true;
+            Log("ChatFix: armed %lu ms per-message cooldown on gameplay chat messages (patched 0x%08lX).",
+                kGameMsgCooldownMs, kPrintScreenVa);
+        } else {
+            Log("ChatFix: VirtualProtect failed at 0x%08lX (error %lu).", kPrintScreenVa, GetLastError());
+        }
     }
-    DWORD o;
-    if (!VirtualProtect(p, sizeof kPrintScreenExpect, PAGE_EXECUTE_READWRITE, &o)) {
-        Log("ChatFix: VirtualProtect failed at 0x%08lX (error %lu).", kPrintScreenVa, GetLastError());
-        return;
+
+    BYTE* pSink = (BYTE*)kConsoleSinkVa;
+    if (memcmp(pSink, kConsoleSinkExpect, sizeof kConsoleSinkExpect) != 0) {
+        Log("ChatFix: VERIFY FAILED at 0x%08lX (ConsoleSink::OutputString).", kConsoleSinkVa);
+    } else {
+        DWORD o;
+        if (VirtualProtect(pSink, sizeof kConsoleSinkExpect, PAGE_EXECUTE_READWRITE, &o)) {
+            pSink[0] = 0xE9;
+            *(int32_t*)(pSink + 1) = (int32_t)((DWORD)(void*)&Hook_ConsoleSinkOutputString - (kConsoleSinkVa + 5));
+            for (size_t i = 5; i < sizeof kConsoleSinkExpect; ++i) {
+                pSink[i] = 0x90;
+            }
+            VirtualProtect(pSink, sizeof kConsoleSinkExpect, o, &o);
+            FlushInstructionCache(GetCurrentProcess(), pSink, sizeof kConsoleSinkExpect);
+            Log("ChatFix: armed %lu ms per-message cooldown on ReportSys gpscreen messages (patched 0x%08lX).",
+                kGameMsgCooldownMs, kConsoleSinkVa);
+        }
     }
-    p[0] = 0xE9;
-    *(int32_t*)(p + 1) = (int32_t)((DWORD)(void*)&Hook_PrintScreenMessage - (kPrintScreenVa + 5));
-    for (size_t i = 5; i < sizeof kPrintScreenExpect; ++i) {
-        p[i] = 0x90;
-    }
-    VirtualProtect(p, sizeof kPrintScreenExpect, o, &o);
-    FlushInstructionCache(GetCurrentProcess(), p, sizeof kPrintScreenExpect);
-    g_screenMsgHookOn = true;
-    Log("ChatFix: armed %lu ms per-message cooldown on all gameplay chat messages (patched 0x%08lX).",
-        kGameMsgCooldownMs, kPrintScreenVa);
 }
 
 extern "C" char __cdecl SiegeHost_ManaMsgAllowed() {
