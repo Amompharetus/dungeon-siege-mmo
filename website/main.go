@@ -2331,7 +2331,7 @@ func handleGMServerAction(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" && r.URL.Path != "/home" && r.URL.Path != "/realms" && r.URL.Path != "/world" && r.URL.Path != "/map" && r.URL.Path != "/world-map" && r.URL.Path != "/ladder" && r.URL.Path != "/gm" && r.URL.Path != "/gm-panel" {
+	if r.URL.Path != "/" && r.URL.Path != "/home" && r.URL.Path != "/realms" && r.URL.Path != "/world" && r.URL.Path != "/map" && r.URL.Path != "/world-map" && r.URL.Path != "/ladder" && r.URL.Path != "/gm" && r.URL.Path != "/gm-panel" && r.URL.Path != "/wiki" {
 		http.NotFound(w, r)
 		return
 	}
