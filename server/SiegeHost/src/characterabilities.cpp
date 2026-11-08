@@ -1701,12 +1701,30 @@ static void UpdateBuffUI() {
     }
 
     // 4. Update BuffUI title ("<Hero>'s active buffs (<N>)")
+    // GoCommon + 0x14 (m_ScreenName) is a GoWString (pointer to gpwstring, which itself holds wchar_t*).
     char heroName[64] = "Hero";
+    bool gotName = false;
     if (common && Readable(common, 0x20)) {
-        const wchar_t* wName = *(const wchar_t**)((char*)common + 0x14);
+        const wchar_t* const* ppName = *(const wchar_t* const**)((char*)common + 0x14);
+        const wchar_t* wName = (ppName && Readable(ppName, sizeof(void*))) ? *ppName : nullptr;
         if (wName && Readable(wName, sizeof(wchar_t)) && *wName) {
-            WideCharToMultiByte(CP_ACP, 0, wName, -1, heroName, sizeof(heroName) - 1, NULL, NULL);
-            heroName[sizeof(heroName) - 1] = '\0';
+            int n = WideCharToMultiByte(CP_ACP, 0, wName, -1, heroName, sizeof(heroName) - 1, NULL, NULL);
+            if (n > 1) {
+                heroName[sizeof(heroName) - 1] = '\0';
+                gotName = true;
+            }
+        }
+    }
+    if (!gotName && hero && Readable(hero, 0x80)) {
+        void* player = *(void**)((char*)hero + 0x78);
+        if (player && Readable(player, 0x60)) {
+            const wchar_t* wPlayerName = *(const wchar_t**)((char*)player + 0x58);
+            if (wPlayerName && Readable(wPlayerName, sizeof(wchar_t)) && *wPlayerName) {
+                int n = WideCharToMultiByte(CP_ACP, 0, wPlayerName, -1, heroName, sizeof(heroName) - 1, NULL, NULL);
+                if (n > 1) {
+                    heroName[sizeof(heroName) - 1] = '\0';
+                }
+            }
         }
     }
     size_t nameLen = strlen(heroName);

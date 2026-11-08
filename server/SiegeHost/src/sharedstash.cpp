@@ -1012,8 +1012,31 @@ uint32_t ComputeStashHash(void* stashGo) {
     return h;
 }
 
+bool IsValidHeroStashPair(void* hero, void* stashGo) {
+    if (!hero || !stashGo || hero == stashGo) return false;
+    if (!Readable(hero, 0x98) || !Readable(stashGo, 0x98)) return false;
+    if ((*((unsigned char*)hero + 0x96) & 8) != 0) return false; // hero marked for deletion
+    if ((*((unsigned char*)stashGo + 0x96) & 8) != 0) return false; // stashGo marked for deletion
+    if (*(void**)hero == nullptr) return false; // hero must have GoActor
+    if (*(void**)((char*)stashGo + 0x6C) != hero) return false; // stashGo->m_Parent must equal hero
+    const char* tmpl = s_templateName(stashGo);
+    if (!tmpl || _stricmp(tmpl, "dsx_backpack_empty") != 0) return false;
+    void* heroInv = *(void**)((char*)hero + 0x2C);
+    if (!heroInv || !Readable(heroInv, 0x90)) return false;
+    int loc = GetInventoryDbLocation(heroInv, stashGo);
+    if (loc != 0x11 && loc != 0x15) return false;
+    return true;
+}
+
 void SaveStashToFile(const std::string& account, void* stashGo) {
-    if (account.empty() || !stashGo || !Readable(stashGo, 0x90)) return;
+    if (account.empty() || !stashGo || !Readable(stashGo, 0x98)) return;
+    void* parentHero = *(void**)((char*)stashGo + 0x6C);
+    if (!IsValidHeroStashPair(parentHero, stashGo)) {
+        const char* tmpl = s_templateName(stashGo);
+        Log("SharedStash: REFUSED SaveStashToFile for account '%s' - stashGo %p (goid=0x%08lX tmpl='%s' parent=%p) failed hero/stash validation",
+            account.c_str(), stashGo, *(uint32_t*)((char*)stashGo + 0x4C), tmpl ? tmpl : "?", parentHero);
+        return;
+    }
     std::string path = GetStashFilePath(account);
     FILE* f = fopen(path.c_str(), "w");
     if (!f) {
@@ -1300,12 +1323,13 @@ void* GetOrCreateServerStash(const std::string& account, void* hero) {
     auto it = g_serverStashes.find(account);
     if (it != g_serverStashes.end()) {
         void* resolvedStash = ResolveGo(it->second.stashGoid);
-        if (it->second.heroGoid == currentHeroGoid && resolvedStash && Readable(resolvedStash, 0x80)) {
+        void* oldHero = ResolveGo(it->second.heroGoid);
+        if (it->second.heroGoid == currentHeroGoid && IsValidHeroStashPair(hero, resolvedStash)) {
             it->second.stashGo = resolvedStash;
             return resolvedStash;
         }
-        // Different hero or invalid stashGo - persist and replace
-        if (resolvedStash) {
+        // Different hero or invalid stashGo - persist only if still a valid hero/stash pair
+        if (IsValidHeroStashPair(oldHero, resolvedStash)) {
             SaveStashToFile(account, resolvedStash);
             if (godb && Readable(godb, 0x340)) {
                 s_sMarkGoAndChildrenForDeletion(godb, resolvedStash);
@@ -1364,13 +1388,16 @@ void* GetOrCreateServerStash(const std::string& account, void* hero) {
 
     // Populate with saved items
     LoadStashFromFile(account, hero, stashGo);
+    ZeroStashGoFootprint(heroInv, stashGo);
 
-    // Ensure stashInv has a valid gridbox on server for item storage and loot pickup
-    void* stashInv = *(void**)((char*)stashGo + 0x2C);
-    if (stashInv && Readable(stashInv, 0xA0)) {
-        if (*(void**)((char*)stashInv + 0x98) == nullptr) {
-            typedef void(__thiscall* CreateGridboxFn)(void*);
-            ((CreateGridboxFn)0x00579B0A)(stashInv);
+    // Ensure stashInv has a valid gridbox on local host / singleplayer
+    if (hero == GetLocalScreenHero()) {
+        void* stashInv = *(void**)((char*)stashGo + 0x2C);
+        if (stashInv && Readable(stashInv, 0xA0)) {
+            if (*(void**)((char*)stashInv + 0x98) == nullptr) {
+                typedef void(__thiscall* CreateGridboxFn)(void*);
+                ((CreateGridboxFn)0x00579B0A)(stashInv);
+            }
         }
     }
 
@@ -1491,6 +1518,9 @@ extern "C" void __fastcall Hook_UIPartyManager_ToggleBackpack(void* uiPartyMgr, 
                 if (stashInv && Readable(stashInv, 0x90)) {
                     *((char*)stashInv + 0x86) = 1;
                 }
+                if (!wasStashOpen && !s_isServerLocal()) {
+                    SendStashPacketToServer(*(uint32_t*)((char*)hero + 0x4C), kPkt_ReqOpen);
+                }
             } else if (selectedBpGo != stashGo) {
                 // Player opened a regular backpack instead of Shared Stash
                 CleanupClientStashUI();
@@ -1519,13 +1549,23 @@ extern "C" void __fastcall Hook_UIPartyManager_ToggleBackpack(void* uiPartyMgr, 
             return;
         } else {
             // Closed alongside Character Inventory (open == 0 && unk == 0):
-            // Keep Shared Stash active internally so it reopens next time Character Inventory is opened.
+            // Hide stashGo at 0x11 and notify server it is closed so 'Z' loot ignores closed stash,
+            // while keeping selectedBpGo/partySlot set so reopening Character Inventory reopens Shared Stash.
             void* hero = GetLocalScreenHero();
             void* stashGo = ResolveGo(g_localStashGoid);
             if (hero && stashGo && Readable(hero, 0x80)) {
                 void* heroInv = *(void**)((char*)hero + 0x2C);
                 if (heroInv && Readable(heroInv, 0xB0)) {
+                    SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
+                    ZeroStashGoFootprint(heroInv, stashGo);
                     *(void**)((char*)heroInv + 0xA4) = stashGo;
+                }
+                void* stashInv = *(void**)((char*)stashGo + 0x2C);
+                if (stashInv && Readable(stashInv, 0x90)) {
+                    *((char*)stashInv + 0x86) = 0;
+                }
+                if (wasStashOpen && !s_isServerLocal()) {
+                    SendStashPacketToServer(*(uint32_t*)((char*)hero + 0x4C), kPkt_ReqClose);
                 }
             }
             if (uiPartyMgr && Readable(uiPartyMgr, 0x60)) {
@@ -1755,7 +1795,31 @@ static int s_hideStashDepth = 0;
 static HiddenStashEntry s_hiddenStashes[40] = {};
 static int s_hiddenStashCount = 0;
 
-static void HideSingleStashForLoot(void* heroInv, void* stashGo) {
+static bool IsStashOpenForHero(void* heroInv, void* stashGo) {
+    if (!heroInv || !stashGo || !Readable(heroInv, 0xB0) || !Readable(stashGo, 0x98)) return false;
+    if ((*((unsigned char*)stashGo + 0x96) & 8) != 0) return false;
+    void* ownerGo = *(void**)((char*)heroInv + 0x04);
+    if (!ownerGo || ownerGo == stashGo || !Readable(ownerGo, 0x80)) return false;
+    if (GetInventoryDbLocation(heroInv, stashGo) != 0x15 /*il_main*/) return false;
+    if (*(void**)((char*)heroInv + 0xA4) != stashGo) return false;
+    void* stashInv = *(void**)((char*)stashGo + 0x2C);
+    if (!stashInv || !Readable(stashInv, 0xA0) || *((char*)stashInv + 0x86) == 0) return false;
+    if (Cfg().role != Role::Server && ownerGo == GetLocalScreenHero()) {
+        if (!g_sharedStashActive || !eng::InterfaceVisible("DSX_backpack_ui")) return false;
+        if (g_localStashGoid == 0 || stashGo != ResolveGo(g_localStashGoid)) return false;
+        if (*(void**)((char*)stashInv + 0x98) == nullptr) {
+            void* gb = eng::FindWindow("gridbox_backpack", "DSX_backpack_ui");
+            if (gb) {
+                *(void**)((char*)stashInv + 0x98) = gb;
+            } else {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+static void HideSingleStashForLoot(void* heroInv, void* stashGo, bool keepLoc = false) {
     if (!heroInv || !stashGo || s_hiddenStashCount >= 40) return;
     if (!Readable(heroInv, 0xA0) || !Readable(stashGo, 0x98)) return;
     if ((*((unsigned char*)stashGo + 0x96) & 8) != 0) return; // marked for deletion
@@ -1769,19 +1833,17 @@ static void HideSingleStashForLoot(void* heroInv, void* stashGo) {
         }
     }
 
-    int prevLoc = GetInventoryDbLocation(heroInv, stashGo);
+    int prevLoc = keepLoc ? 0x11 : GetInventoryDbLocation(heroInv, stashGo);
     void* stashInv = *(void**)((char*)stashGo + 0x2C);
     char prevIsBp = (stashInv && Readable(stashInv, 0x90)) ? *((char*)stashInv + 0x86) : 0;
-    int wasActive = (*(void**)((char*)heroInv + 0xA4) == stashGo) ? 1 : 0;
+    int wasActive = (!keepLoc && *(void**)((char*)heroInv + 0xA4) == stashGo) ? 1 : 0;
     if (prevLoc == 0x11 /*il_invalid*/ && prevIsBp == 0 && !wasActive) return;
 
     s_hiddenStashes[s_hiddenStashCount++] = { heroInv, stashGo, stashInv, prevLoc, prevIsBp, wasActive };
-    // The engine's auto-add (0x0057940C) tries the ACTIVE backpack (heroInv+0xA4) first. While the stash
-    // is open that is the stash, so looted items were being sent into the hidden stash and lost.
     if (wasActive) {
         *(void**)((char*)heroInv + 0xA4) = nullptr;
     }
-    if (prevLoc != 0x11) {
+    if (!keepLoc && prevLoc != 0x11) {
         SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
     }
     if (prevIsBp != 0 && stashInv && Readable(stashInv, 0x90)) {
@@ -1789,9 +1851,37 @@ static void HideSingleStashForLoot(void* heroInv, void* stashGo) {
     }
 }
 
+static void HandleHeroStashForLoot(void* heroInv, void* stashGo, bool hideEvenIfOpen) {
+    if (!heroInv || !stashGo || !Readable(heroInv, 0xB0) || !Readable(stashGo, 0x98)) return;
+    if (!hideEvenIfOpen && IsStashOpenForHero(heroInv, stashGo)) {
+        // Shared Stash is currently OPEN for this hero: keep stashGo active at 0x15 (+0x86 = 1),
+        // and temporarily mask any OTHER backpack in heroInv (+0x86 = 0) so client and server
+        // serialize/unpack the exact same single 8x12 pack (stashGo) and overflow goes into stashGo.
+        ZeroStashGoFootprint(heroInv, stashGo);
+        void* ownerGo = *(void**)((char*)heroInv + 0x04);
+        if (ownerGo && Readable(ownerGo, 0x90)) {
+            void** b = *(void***)((char*)ownerGo + 0x88);
+            void** e = *(void***)((char*)ownerGo + 0x8C);
+            if (b && e && e > b && (size_t)(e - b) <= 4096) {
+                for (void** it = b; it != e; ++it) {
+                    void* child = *it;
+                    if (!child || child == stashGo || !Readable(child, 0x98)) continue;
+                    if ((*((unsigned char*)child + 0x96) & 8) != 0) continue;
+                    void* childInv = *(void**)((char*)child + 0x2C);
+                    if (childInv && Readable(childInv, 0x90) && *((char*)childInv + 0x86) != 0) {
+                        HideSingleStashForLoot(heroInv, child, true /*keepLoc*/);
+                    }
+                }
+            }
+        }
+    } else {
+        HideSingleStashForLoot(heroInv, stashGo, false);
+    }
+}
+
 struct ScopedHideStashesForLoot {
     bool enabled;
-    explicit ScopedHideStashesForLoot(void* extraInv = nullptr, bool enable = true) : enabled(enable) {
+    explicit ScopedHideStashesForLoot(void* extraInv = nullptr, bool enable = true, bool hideEvenIfOpen = false) : enabled(enable) {
         if (!enabled) return;
         if (s_hideStashDepth++ == 0) {
             s_hiddenStashCount = 0;
@@ -1801,11 +1891,11 @@ struct ScopedHideStashesForLoot {
                 if (stashGo && Readable(stashGo, 0x80)) {
                     void* hero = GetLocalScreenHero();
                     if (hero && Readable(hero, 0x80)) {
-                        HideSingleStashForLoot(*(void**)((char*)hero + 0x2C), stashGo);
+                        HandleHeroStashForLoot(*(void**)((char*)hero + 0x2C), stashGo, hideEvenIfOpen);
                     }
                     void* parentGo = *(void**)((char*)stashGo + 0x6C);
                     if (parentGo && parentGo != stashGo && Readable(parentGo, 0x80)) {
-                        HideSingleStashForLoot(*(void**)((char*)parentGo + 0x2C), stashGo);
+                        HandleHeroStashForLoot(*(void**)((char*)parentGo + 0x2C), stashGo, hideEvenIfOpen);
                     }
                 }
             }
@@ -1815,11 +1905,11 @@ struct ScopedHideStashesForLoot {
                 if (stashGo && Readable(stashGo, 0x80)) {
                     void* hero = ResolveGo(kv.second.heroGoid);
                     if (hero && Readable(hero, 0x80)) {
-                        HideSingleStashForLoot(*(void**)((char*)hero + 0x2C), stashGo);
+                        HandleHeroStashForLoot(*(void**)((char*)hero + 0x2C), stashGo, hideEvenIfOpen);
                     }
                     void* parentGo = *(void**)((char*)stashGo + 0x6C);
                     if (parentGo && parentGo != stashGo && Readable(parentGo, 0x80)) {
-                        HideSingleStashForLoot(*(void**)((char*)parentGo + 0x2C), stashGo);
+                        HandleHeroStashForLoot(*(void**)((char*)parentGo + 0x2C), stashGo, hideEvenIfOpen);
                     }
                 }
             }
@@ -1827,7 +1917,7 @@ struct ScopedHideStashesForLoot {
             if (extraInv && Readable(extraInv, 0xA0)) {
                 void* extraStash = FindHeroStashGo(extraInv);
                 if (extraStash) {
-                    HideSingleStashForLoot(extraInv, extraStash);
+                    HandleHeroStashForLoot(extraInv, extraStash, hideEvenIfOpen);
                 }
             }
         }
@@ -1877,7 +1967,26 @@ extern "C" void __fastcall Hook_GoInventory_SerializeGridboxes(void* inv, void* 
     if (!inv || !packer || !Readable(inv, 0xA0)) return;
     typedef void* (__thiscall* GetGridboxFn)(void*);
     if (((GetGridboxFn)0x00579717)(inv) == nullptr) return;
-    ScopedHideStashesForLoot guard(inv);
+    ScopedHideStashesForLoot guard(inv, true, false);
+    // Safety: 0x0057B502 calls UIGridbox::XferBitPacker(childInv->GetGridbox(), packer) without null-checking ecx.
+    // Ensure any child at 0x15 with +0x86 != 0 whose UIGridbox* (+0x98) is null is masked for this call.
+    void* ownerGo = *(void**)((char*)inv + 0x04);
+    if (ownerGo && Readable(ownerGo, 0x90)) {
+        void** b = *(void***)((char*)ownerGo + 0x88);
+        void** e = *(void***)((char*)ownerGo + 0x8C);
+        if (b && e && e > b && (size_t)(e - b) <= 4096) {
+            for (void** it = b; it != e; ++it) {
+                void* child = *it;
+                if (!child || !Readable(child, 0x98)) continue;
+                void* childInv = *(void**)((char*)child + 0x2C);
+                if (childInv && Readable(childInv, 0xA0) && *((char*)childInv + 0x86) != 0) {
+                    if (*(void**)((char*)childInv + 0x98) == nullptr) {
+                        HideSingleStashForLoot(inv, child, true /*keepLoc*/);
+                    }
+                }
+            }
+        }
+    }
     Orig_GoInventory_SerializeGridboxes(inv, unused_edx, packer);
 }
 
@@ -1909,8 +2018,30 @@ extern "C" uint32_t __fastcall Hook_AIAction_RSCollectLootMp(void* aiAction, voi
     }
     bool isLocalSrv = s_isServerLocal();
     void* heroInv = (isLocalSrv && hero && Readable(hero, 0x80)) ? *(void**)((char*)hero + 0x2C) : nullptr;
-    ScopedHideStashesForLoot guard(heroInv, isLocalSrv);
-    return Orig_AIAction_RSCollectLootMp(aiAction, unused_edx, goid, data, len);
+    ScopedHideStashesForLoot guard(heroInv, isLocalSrv, false);
+    uint32_t res = Orig_AIAction_RSCollectLootMp(aiAction, unused_edx, goid, data, len);
+    // Clean up temporary server-side backpack/stash gridboxes created by RSCollectLootMp (0x005F36FD)
+    // for remote players, matching how 0x005F37D4..0x005F37EC cleans up heroInv's temp gridbox.
+    if (isLocalSrv && hero && hero != GetLocalScreenHero() && Readable(hero, 0x90)) {
+        void** b = *(void***)((char*)hero + 0x88);
+        void** e = *(void***)((char*)hero + 0x8C);
+        if (b && e && e > b && (size_t)(e - b) <= 4096) {
+            typedef void(__thiscall* ResetGridboxFn)(void*);
+            for (void** it = b; it != e; ++it) {
+                void* child = *it;
+                if (!child || !Readable(child, 0x98)) continue;
+                void* childInv = *(void**)((char*)child + 0x2C);
+                if (childInv && Readable(childInv, 0xA0)) {
+                    void* gb = *(void**)((char*)childInv + 0x98);
+                    if (gb && Readable(gb, 0x100)) {
+                        ((ResetGridboxFn)0x0070EBAE)(gb);
+                        *(void**)((char*)childInv + 0x98) = nullptr;
+                    }
+                }
+            }
+        }
+    }
+    return res;
 }
 
 extern "C" uint32_t __fastcall Orig_AIAction_CollectLoot(void* aiAction, void* unused_edx, void* goidColl);
@@ -1942,7 +2073,7 @@ extern "C" uint32_t __fastcall Hook_AIAction_CollectLoot(void* aiAction, void* u
             }
         }
     }
-    ScopedHideStashesForLoot guard;
+    ScopedHideStashesForLoot guard(nullptr, true, false);
     return Orig_AIAction_CollectLoot(aiAction, unused_edx, goidColl);
 }
 
@@ -1961,7 +2092,7 @@ __asm__(
 );
 
 extern "C" char __fastcall Hook_GoInventory_SAutoGive(void* inv, void* unused_edx, uint32_t actorGoid, uint32_t itemGoid, int autoPlace) {
-    ScopedHideStashesForLoot guard(inv);
+    ScopedHideStashesForLoot guard(inv, true, false);
     return Orig_GoInventory_SAutoGive(inv, unused_edx, actorGoid, itemGoid, autoPlace);
 }
 
@@ -1981,9 +2112,38 @@ __asm__(
 
 extern "C" char __fastcall Hook_GoInventory_Add(void* inv, void* unused_edx, void* itemGo, int loc, int origin, int autoPlace, int tryBackpacks, int unk) {
     void* ownerGo = (inv && Readable(inv, 0x10)) ? *(void**)((char*)inv + 0x04) : nullptr;
-    bool hideStash = (tryBackpacks != 0) && !SharedStash_IsStashGo(ownerGo) && !SharedStash_IsStashGo(itemGo);
-    ScopedHideStashesForLoot guard(inv, hideStash);
-    return Orig_GoInventory_Add(inv, unused_edx, itemGo, loc, origin, autoPlace, tryBackpacks, unk);
+    bool isOwnerStash = SharedStash_IsStashGo(ownerGo);
+    if (isOwnerStash && itemGo && Readable(itemGo, 0x80)) {
+        // Never allow gold or backpacks inside Shared Stash
+        if (*(void**)((char*)itemGo + 0x24) != nullptr || SharedStash_IsStashGo(itemGo)) {
+            return 0;
+        }
+        void* itemInv = *(void**)((char*)itemGo + 0x2C);
+        if (itemInv && Readable(itemInv, 0x90) && *((unsigned char*)itemInv + 0x86) != 0) {
+            return 0;
+        }
+    }
+    bool hideStash = (tryBackpacks != 0) && !isOwnerStash && !SharedStash_IsStashGo(itemGo);
+    ScopedHideStashesForLoot guard(inv, hideStash, true /*hideEvenIfOpen*/);
+    char ok = Orig_GoInventory_Add(inv, unused_edx, itemGo, loc, origin, autoPlace, tryBackpacks, unk);
+    if (ok && isOwnerStash && Cfg().role == Role::Server && ownerGo && Readable(ownerGo, 0x90)) {
+        uint32_t stashGoid = *(uint32_t*)((char*)ownerGo + 0x4C);
+        for (auto& kv : g_serverStashes) {
+            if (kv.second.stashGoid == stashGoid) {
+                void* hero = ResolveGo(kv.second.heroGoid);
+                if (IsValidHeroStashPair(hero, ownerGo)) {
+                    kv.second.lastHash = ComputeStashHash(ownerGo);
+                    void** b = *(void***)((char*)ownerGo + 0x88);
+                    void** e = *(void***)((char*)ownerGo + 0x8C);
+                    kv.second.lastItemCount = (b && e && e >= b) ? (int)(e - b) : 0;
+                    SaveStashToFile(kv.second.account, ownerGo);
+                    kv.second.lastSavedMs = GetTickCount();
+                }
+                break;
+            }
+        }
+    }
+    return ok;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -2333,15 +2493,13 @@ void SharedStash_OnPlayerLeave(DWORD mach) {
         auto stIt = g_serverStashes.find(account);
         if (stIt != g_serverStashes.end()) {
             void* stashGo = ResolveGo(stIt->second.stashGoid);
-            if (stashGo) {
+            void* hero = ResolveGo(stIt->second.heroGoid);
+            if (IsValidHeroStashPair(hero, stashGo)) {
                 SaveStashToFile(account, stashGo);
-                void* hero = ResolveGo(stIt->second.heroGoid);
-                if (hero && Readable(hero, 0x80)) {
-                    void* heroInv = *(void**)((char*)hero + 0x2C);
-                    if (heroInv && Readable(heroInv, 0xB0)) {
-                        if (*(void**)((char*)heroInv + 0xA4) == stashGo) {
-                            *(void**)((char*)heroInv + 0xA4) = nullptr;
-                        }
+                void* heroInv = *(void**)((char*)hero + 0x2C);
+                if (heroInv && Readable(heroInv, 0xB0)) {
+                    if (*(void**)((char*)heroInv + 0xA4) == stashGo) {
+                        *(void**)((char*)heroInv + 0xA4) = nullptr;
                     }
                 }
             }
@@ -2349,6 +2507,19 @@ void SharedStash_OnPlayerLeave(DWORD mach) {
             Log("SharedStash: saved and cleaned up stash for account '%s'", account.c_str());
         }
         FlushAccountUpload(account, 1000);
+    }
+
+    // Also sweep any orphaned stashes whose hero/stash is no longer valid
+    for (auto stIt = g_serverStashes.begin(); stIt != g_serverStashes.end(); ) {
+        void* stashGo = ResolveGo(stIt->second.stashGoid);
+        void* hero = ResolveGo(stIt->second.heroGoid);
+        if (!IsValidHeroStashPair(hero, stashGo)) {
+            Log("SharedStash: cleaned up orphaned server stash for account '%s' on player leave",
+                stIt->second.account.c_str());
+            stIt = g_serverStashes.erase(stIt);
+        } else {
+            ++stIt;
+        }
     }
 }
 
@@ -2425,7 +2596,7 @@ void SharedStash_Tick() {
                             void* stashInv = *(void**)((char*)stashGo + 0x2C);
                             if (stashInv && Readable(stashInv, 0x90)) {
                                 *((char*)stashInv + 0x86) = 1;
-                                if (*(void**)((char*)stashInv + 0x98) == nullptr) {
+                                if (hero == GetLocalScreenHero() && *(void**)((char*)stashInv + 0x98) == nullptr) {
                                     typedef void(__thiscall* CreateGridboxFn)(void*);
                                     ((CreateGridboxFn)0x00579B0A)(stashInv);
                                 }
@@ -2588,15 +2759,15 @@ void SharedStash_Tick() {
                     }
                     CleanupClientStashUI();
                 } else {
-                    // Maintain stash connection at 0x15, active container pointer, and open flag (both when visible and when dormant alongside closed inventory)
+                    // Maintain stash connection: only expose stashGo at 0x15 (+0x86 = 1) while DSX_backpack_ui is actually visible
                     if (heroInv && Readable(heroInv, 0xB0)) {
                         ZeroStashGoFootprint(heroInv, stashGo);
-                        SetInventoryDbLocation(heroInv, stashGo, 0x15 /*il_main*/);
+                        SetInventoryDbLocation(heroInv, stashGo, bpVis ? 0x15 /*il_main*/ : 0x11 /*il_invalid*/);
                         *(void**)((char*)heroInv + 0xA4) = stashGo;
                     }
                     void* stashInv = *(void**)((char*)stashGo + 0x2C);
                     if (stashInv && Readable(stashInv, 0x90)) {
-                        *((char*)stashInv + 0x86) = 1;
+                        *((char*)stashInv + 0x86) = bpVis ? 1 : 0;
                     }
                     if (partySlot && Readable(partySlot, 0x10)) {
                         *((char*)partySlot + 2) = 1;
@@ -2631,34 +2802,37 @@ void SharedStash_Tick() {
     static DWORD s_lastServerCheck = 0;
     if (now - s_lastServerCheck >= 1000) {
         s_lastServerCheck = now;
-        for (auto& kv : g_serverStashes) {
-            AccountStash& st = kv.second;
+        for (auto it = g_serverStashes.begin(); it != g_serverStashes.end(); ) {
+            AccountStash& st = it->second;
             void* stashGo = ResolveGo(st.stashGoid);
-            if (!stashGo || !Readable(stashGo, 0x90)) continue;
+            void* hero = ResolveGo(st.heroGoid);
+            if (!IsValidHeroStashPair(hero, stashGo)) {
+                Log("SharedStash: removing stale/disconnected server stash entry for account '%s' (hero=0x%08lX stash=0x%08lX)",
+                    st.account.c_str(), st.heroGoid, st.stashGoid);
+                it = g_serverStashes.erase(it);
+                continue;
+            }
             st.stashGo = stashGo;
 
-            void* hero = ResolveGo(st.heroGoid);
-            if (hero && Readable(hero, 0x80)) {
-                unsigned srvLoc = 0, srvGrp = 0;
-                void* aspect = *(void**)((char*)hero + 0x04);
-                bool isDead = (aspect && Readable(aspect, 0xC0) && *(float*)((char*)aspect + 0xB0) <= 0.0f);
-                if (!IsHeroInTown(hero, &srvLoc, &srvGrp) || isDead) {
-                    void* heroInv = *(void**)((char*)hero + 0x2C);
-                    if (heroInv && Readable(heroInv, 0x90)) {
-                        int loc = GetInventoryDbLocation(heroInv, stashGo);
-                        if (loc == 0x15) {
-                            SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
-                            ZeroStashGoFootprint(heroInv, stashGo);
-                            if (*(void**)((char*)heroInv + 0xA4) == stashGo) {
-                                *(void**)((char*)heroInv + 0xA4) = nullptr;
-                            }
-                            void* stashInv = *(void**)((char*)stashGo + 0x2C);
-                            if (stashInv && Readable(stashInv, 0x90)) {
-                                *((char*)stashInv + 0x86) = 0;
-                            }
-                            Log("SharedStash: server auto-closed stash for hero 0x%08lX (%s)",
-                                st.heroGoid, isDead ? "hero died" : "outside town");
+            unsigned srvLoc = 0, srvGrp = 0;
+            void* aspect = *(void**)((char*)hero + 0x04);
+            bool isDead = (aspect && Readable(aspect, 0xC0) && *(float*)((char*)aspect + 0xB0) <= 0.0f);
+            if (!IsHeroInTown(hero, &srvLoc, &srvGrp) || isDead) {
+                void* heroInv = *(void**)((char*)hero + 0x2C);
+                if (heroInv && Readable(heroInv, 0x90)) {
+                    int loc = GetInventoryDbLocation(heroInv, stashGo);
+                    if (loc == 0x15) {
+                        SetInventoryDbLocation(heroInv, stashGo, 0x11 /*il_invalid*/);
+                        ZeroStashGoFootprint(heroInv, stashGo);
+                        if (*(void**)((char*)heroInv + 0xA4) == stashGo) {
+                            *(void**)((char*)heroInv + 0xA4) = nullptr;
                         }
+                        void* stashInv = *(void**)((char*)stashGo + 0x2C);
+                        if (stashInv && Readable(stashInv, 0x90)) {
+                            *((char*)stashInv + 0x86) = 0;
+                        }
+                        Log("SharedStash: server auto-closed stash for hero 0x%08lX (%s)",
+                            st.heroGoid, isDead ? "hero died" : "outside town");
                     }
                 }
             }
@@ -2674,6 +2848,7 @@ void SharedStash_Tick() {
                 SaveStashToFile(st.account, stashGo);
                 st.lastSavedMs = now;
             }
+            ++it;
         }
     }
 }
