@@ -1564,12 +1564,52 @@ static void UpdateAbilityUI() {
 }
 
 // ---- Native BuffUI Update (Drives [BuffUI] from GoActor::m_GenericStateMap + Active Aegis of Renewal Buffs) ----
+static bool  s_wasBuffUiVisible   = false;
+static bool  s_wasInGameForBuffUi = false;
+static DWORD s_lastBuffUiTick     = 0;
+
+static void PlayBuffUISfx() {
+    if (Cfg().role == Role::Server) return;
+    static DWORD s_lastPlayed = 0;
+    DWORD now = GetTickCount();
+    if (s_lastPlayed != 0 && (DWORD)(now - s_lastPlayed) < 50) return;
+    s_lastPlayed = now ? now : 1;
+
+    void* soundMgr = *(void**)0x007ACFD8;
+    if (!soundMgr || !Readable(soundMgr, 0x180)) return;
+    eng::GpStr soundName("s_e_gui_element_small");
+    typedef int (__thiscall* PlaySampleFn)(void* mgr, const eng::gpstring* name, int p1, int p2, int p3);
+    ((PlaySampleFn)0x0063AD8B)(soundMgr, &soundName.s, 0, 1, 0);
+}
+
 static void UpdateBuffUI() {
     const char* ws = eng::CurrentWorldState();
-    if (!ws || !strstr(ws, "_ingame")) return;
-    if (!eng::InterfaceVisible("BuffUI")) return;
+    if (!ws || !strstr(ws, "_ingame")) {
+        s_wasInGameForBuffUi = false;
+        s_wasBuffUiVisible   = false;
+        return;
+    }
 
-    static DWORD s_lastBuffUiTick = 0;
+    bool curVis = eng::InterfaceVisible("BuffUI");
+    if (!s_wasInGameForBuffUi) {
+        s_wasInGameForBuffUi = true;
+        s_wasBuffUiVisible   = curVis;
+    } else if (curVis != s_wasBuffUiVisible) {
+        s_wasBuffUiVisible = curVis;
+        s_lastBuffUiTick   = 0;
+        if (eng::InterfaceVisible("data_bar")) {
+            PlayBuffUISfx();
+        }
+    }
+
+    if (void* btn = eng::FindWindow("buffui_button", "data_bar")) {
+        if (Readable(btn, 0x1B0)) {
+            *((uint8_t*)btn + 0x1A1) = curVis ? 1 : 0;
+        }
+    }
+
+    if (!curVis) return;
+
     DWORD nowTick = GetTickCount();
     if (s_lastBuffUiTick != 0 && (DWORD)(nowTick - s_lastBuffUiTick) < 200) {
         return;
@@ -1957,14 +1997,24 @@ bool CharacterAbilities_FilterKey(LPMSG msg) {
     if (msg->wParam == VK_OEM_1 && (GetKeyState(VK_SHIFT) & 0x8000) != 0) {
         if ((msg->lParam & 0x40000000) == 0) {
             bool vis = eng::InterfaceVisible("BuffUI");
+            bool newVis = !vis;
             if (vis) {
                 eng::HideInterface("BuffUI");
             } else {
                 eng::ShowInterface("BuffUI");
             }
             void* btn = eng::FindWindow("buffui_button", "data_bar");
-            if (btn) {
-                eng::UICheckbox_SetCheckState(btn, !vis);
+            if (btn && Readable(btn, 0x1B0)) {
+                // Update UICheckbox::m_bChecked (+0x1A1) directly without firing MSG_ONCHECK/MSG_ONUNCHECK,
+                // which would invoke toggle_interface_BuffUI$() in data_bar.gas and undo Show/HideInterface!
+                *((uint8_t*)btn + 0x1A1) = newVis ? 1 : 0;
+            }
+            s_wasInGameForBuffUi = true;
+            s_wasBuffUiVisible   = newVis;
+            s_lastBuffUiTick     = 0;
+            PlayBuffUISfx();
+            if (newVis) {
+                UpdateBuffUI();
             }
         }
         msg->message = WM_NULL;
