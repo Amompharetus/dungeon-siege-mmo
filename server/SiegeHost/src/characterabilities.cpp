@@ -456,8 +456,7 @@ void ApplyRadialAoE(void* hero, uint32_t heroGoid, const SiegePos* heroPos, int 
             float reduction = def / (def + 150.0f);
             if (piercing) {
                 // W (slot 1): ignores 30% of enemy armor reduction
-                // R (slot 3): ignores 50% of enemy armor reduction
-                float armorIgnore = (slot == 1) ? 0.30f : 0.50f;
+                float armorIgnore = 0.30f;
                 reduction *= (1.0f - armorIgnore);
             }
             float finalDmg = rawDamage * (1.0f - reduction);
@@ -912,7 +911,7 @@ void ExecuteCharacterAbility(int slot, void* hero, float level, bool isServerAut
                 float extraLevel = (level > 30.0f) ? (level - 30.0f) : 0.0f;
                 float damage = 277.5f + extraLevel * 7.5f;
                 float radius = 8.5f; // Aligned with the 8.5m outer reach of the 360-degree flame nova
-                ApplyRadialAoE(hero, heroGoid, pos, 3, radius, damage, true, isServerAuth);
+                ApplyRadialAoE(hero, heroGoid, pos, 3, radius, damage, false, isServerAuth);
             }
             Log("Flame Nova activated. Level=%.1f.", level);
             break;

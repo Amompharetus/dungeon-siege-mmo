@@ -22,7 +22,7 @@ The following mods are currently delivered to players via the update manifest:
 | **Difficulty Patch** | `DS1_Difficulty_Patch.dsres` | `DSLOA/` | Server & Client | Adjusts multiplayer encounter scaling and difficulty progression. |
 | **Clone Duping Fix** | `Clone Item Duping Fix.dsres` | `DSLOA/` | Server & Client | Fixes multiplayer item and gold duplication exploit on Clone spell death. |
 | **UberUI** | `UberUI_LoA_v0.02.dsres` | `DSLOA/` | Client-Only | Quality-of-life interface tweaks and layout improvements for Legends of Aranna. |
-| **Character Abilities & Shared Stash UI** | `Z_CharacterAbilities_UI.dsres` | `DSLOA/` | Server & Client | Top-left HUD action dock with Q/W/E/R ability buttons, cooldown indicators, and Shared Stash button (gold treasury icon). |
+| **Character Abilities & Shared Stash UI** | `Z_CharacterAbilities_UI.dsres` | `DSLOA/` | Server & Client | Top-left HUD action dock with Q/W/E/R ability buttons, cooldown indicators, and Shared Stash button (golden star key). |
 | **BuffUI** | `BufUI_LoA_v3.00.dsres` (or integrated in `Z_CharacterAbilities_UI.dsres`) | `DSLOA/` | Client-Only | Real-time active buffs monitoring panel with dynamic 12-24 slot expansion, duration sorting, custom MMO buffs (Aegis of Renewal), and single-press hotkey toggle (`Shift+;`). |
 | **Fairy Companion Fix** | `fairyfix.dsres` | `Resources/` | Server & Client | Fixes pathing and state issues for fairy companion summons. |
 | **SeeFar ResolutionFix** | `sf_ResolutionFix.dsres` | `Resources/` | Client-Only | Corrects paperdoll positions and interface scaling at high modern resolutions. |
