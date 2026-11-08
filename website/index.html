@@ -1134,8 +1134,6 @@
             flex-shrink: 0;
         }
 
-
-
         /* LADDER VIEW */
         .ladder-card-wrapper {
             width: 100%;
@@ -2600,12 +2598,1042 @@
             color: #000;
         }
 
+        /* WIKI SECTION NAVIGATION (ITEMS vs ABILITIES) */
+        .wiki-section-nav {
+            padding: 14px 24px;
+            background: linear-gradient(180deg, rgba(22, 26, 34, 0.95) 0%, rgba(14, 17, 22, 0.98) 100%);
+            border-bottom: 1.5px solid var(--ds-card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .wiki-section-tabs {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .wiki-section-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 18px;
+            border-radius: 8px;
+            border: 1.5px solid var(--ds-border-gold);
+            background: rgba(22, 26, 34, 0.85);
+            color: #c9d1d9;
+            font-family: "Cinzel", serif;
+            font-size: 13.5px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.22s ease;
+            user-select: none;
+        }
+
+        .wiki-section-tab:hover {
+            border-color: var(--ds-gold);
+            color: #fff;
+            background: rgba(36, 42, 54, 0.92);
+            box-shadow: 0 0 12px rgba(229, 184, 92, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .wiki-section-tab.active {
+            border-color: var(--ds-gold);
+            color: var(--ds-gold);
+            background: linear-gradient(180deg, rgba(229, 184, 92, 0.18) 0%, rgba(22, 26, 36, 0.95) 100%);
+            box-shadow: 0 0 16px rgba(229, 184, 92, 0.3);
+        }
+
+        .wiki-tab-icon {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 3px rgba(229, 184, 92, 0.4));
+        }
+
+        .wiki-tab-badge {
+            font-family: "Inter", sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #8b949e;
+            letter-spacing: 0;
+            transition: all 0.2s ease;
+        }
+
+        .wiki-section-tab.active .wiki-tab-badge {
+            background: rgba(229, 184, 92, 0.25);
+            color: var(--ds-gold);
+        }
+
+        .wiki-tab-badge-gold {
+            background: rgba(229, 184, 92, 0.2) !important;
+            color: var(--ds-gold) !important;
+            border: 1px solid rgba(229, 184, 92, 0.35);
+        }
+
+        .wiki-section-tagline {
+            font-size: 12.5px;
+            color: var(--ds-gray);
+            font-family: "Inter", sans-serif;
+            font-style: italic;
+        }
+
+        /* CHARACTER ABILITIES VIEW STYLES */
+        .abilities-hero-panel {
+            padding: 24px;
+            background: linear-gradient(180deg, rgba(24, 29, 38, 0.7) 0%, rgba(14, 17, 22, 0.85) 100%);
+            border-bottom: 1px solid var(--ds-card-border);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .abilities-hero-header {
+            max-width: 900px;
+        }
+
+        .abilities-hero-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-family: "Inter", sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+            color: var(--ds-gold);
+            background: rgba(229, 184, 92, 0.12);
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid rgba(229, 184, 92, 0.3);
+            margin-bottom: 8px;
+        }
+
+        .abilities-hero-title {
+            font-family: "Cinzel", serif;
+            font-size: 24px;
+            color: var(--ds-gold);
+            margin: 0 0 8px 0;
+            text-shadow: 0 0 10px rgba(229, 184, 92, 0.3);
+            letter-spacing: 0.5px;
+        }
+
+        .abilities-hero-desc {
+            font-size: 13.5px;
+            line-height: 1.6;
+            color: #c9d1d9;
+            margin: 0;
+            font-family: "Inter", sans-serif;
+        }
+
+        .abilities-hero-desc strong {
+            color: var(--ds-gold);
+        }
+
+        /* LEVEL SCALING SIMULATOR */
+        .abilities-simulator-box {
+            background: rgba(10, 12, 16, 0.85);
+            border: 1.5px solid var(--ds-border-gold);
+            border-radius: 8px;
+            padding: 16px 20px;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
+        }
+
+        .sim-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .sim-title {
+            font-family: "Cinzel", serif;
+            font-size: 15px;
+            color: var(--ds-gold);
+            font-weight: 700;
+            display: block;
+        }
+
+        .sim-subtitle {
+            font-size: 11.5px;
+            color: #8b949e;
+            font-family: "Inter", sans-serif;
+        }
+
+        .sim-level-display {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(229, 184, 92, 0.12);
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid rgba(229, 184, 92, 0.35);
+        }
+
+        .sim-level-label {
+            font-size: 12px;
+            color: #c9d1d9;
+            font-family: "Inter", sans-serif;
+            font-weight: 600;
+        }
+
+        .sim-level-val {
+            font-family: "Cinzel", serif;
+            font-size: 20px;
+            color: var(--ds-gold);
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(229, 184, 92, 0.5);
+            min-width: 32px;
+            text-align: right;
+        }
+
+        .sim-controls-row {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .sim-slider-wrap {
+            flex: 1 1 300px;
+        }
+
+        .sim-slider-wrap input[type=range] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #21262d;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        .sim-slider-wrap input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--ds-gold);
+            box-shadow: 0 0 8px rgba(229, 184, 92, 0.6);
+            border: 2px solid #161a22;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        .sim-slider-wrap input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .sim-slider-marks {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10.5px;
+            color: #6e7681;
+            margin-top: 6px;
+            font-family: "Inter", sans-serif;
+        }
+
+        .sim-presets-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .sim-preset-label {
+            font-size: 12px;
+            color: #8b949e;
+            font-family: "Inter", sans-serif;
+            margin-right: 4px;
+        }
+
+        .sim-preset-btn {
+            padding: 5px 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #c9d1d9;
+            border-radius: 4px;
+            font-size: 11.5px;
+            font-family: "Inter", sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sim-preset-btn:hover {
+            border-color: var(--ds-gold);
+            color: var(--ds-gold);
+            background: rgba(229, 184, 92, 0.1);
+        }
+
+        .sim-preset-btn.active {
+            border-color: var(--ds-gold);
+            color: #000;
+            background: var(--ds-gold);
+            font-weight: 600;
+        }
+
+        .sim-custom-input-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: 6px;
+        }
+
+        .sim-custom-input-wrap label {
+            font-size: 11.5px;
+            color: #8b949e;
+        }
+
+        .sim-custom-input-wrap input {
+            width: 58px;
+            padding: 4px 6px;
+            background: #161a22;
+            border: 1px solid var(--ds-border-gold);
+            color: var(--ds-gold);
+            border-radius: 4px;
+            font-size: 12px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        /* ABILITIES CARDS GRID */
+        .abilities-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+            gap: 22px;
+            padding: 24px;
+        }
+
+        @media (max-width: 600px) {
+            .abilities-cards-grid {
+                grid-template-columns: 1fr;
+                padding: 16px;
+                gap: 16px;
+            }
+        }
+
+        .ability-card {
+            background: linear-gradient(180deg, rgba(22, 26, 34, 0.95) 0%, rgba(14, 16, 21, 0.98) 100%);
+            border: 1.5px solid var(--ds-card-border);
+            border-radius: 8px;
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            position: relative;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .ability-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
+        }
+
+        .ability-card.card-melee {
+            border-left: 4px solid #c0392b;
+        }
+        .ability-card.card-melee:hover {
+            border-color: rgba(192, 57, 43, 0.6);
+        }
+
+        .ability-card.card-ranged {
+            border-left: 4px solid #2ecc71;
+        }
+        .ability-card.card-ranged:hover {
+            border-color: rgba(46, 204, 113, 0.6);
+        }
+
+        .ability-card.card-nature {
+            border-left: 4px solid #00bcd4;
+        }
+        .ability-card.card-nature:hover {
+            border-color: rgba(0, 188, 212, 0.6);
+        }
+
+        .ability-card.card-combat {
+            border-left: 4px solid #ff7043;
+        }
+        .ability-card.card-combat:hover {
+            border-color: rgba(255, 112, 67, 0.6);
+        }
+
+        .ability-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .ability-header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .ability-icon-frame {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            border-radius: 6px;
+            background: #0d1117;
+            border: 1.5px solid var(--ds-border-gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .ability-icon-frame img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+        }
+
+        .ability-title-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .ability-name-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ability-name {
+            font-family: "Cinzel", serif;
+            font-size: 19px;
+            color: #fff;
+            margin: 0;
+            letter-spacing: 0.3px;
+        }
+
+        .ability-hotkey-badge {
+            font-family: "Inter", monospace, sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 2px 7px;
+            background: rgba(229, 184, 92, 0.15);
+            border: 1px solid var(--ds-gold);
+            color: var(--ds-gold);
+            border-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .ability-discipline-tag {
+            font-size: 11.5px;
+            font-family: "Inter", sans-serif;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tag-melee { color: #e74c3c; }
+        .tag-ranged { color: #2ecc71; }
+        .tag-nature { color: #00bcd4; }
+        .tag-combat { color: #ff7043; }
+
+        .ability-header-pills {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .ability-pill {
+            font-size: 11px;
+            font-family: "Inter", sans-serif;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .pill-req {
+            background: rgba(229, 184, 92, 0.1);
+            color: var(--ds-gold);
+            border-color: rgba(229, 184, 92, 0.3);
+        }
+
+        .pill-cd {
+            background: rgba(139, 148, 158, 0.12);
+            color: #c9d1d9;
+        }
+
+        .ability-desc {
+            font-size: 13px;
+            line-height: 1.55;
+            color: #c9d1d9;
+            margin: 0;
+            font-family: "Inter", sans-serif;
+        }
+
+        .ability-desc strong {
+            color: #fff;
+        }
+
+        .ability-desc code {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 1px 5px;
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--ds-gold);
+            font-size: 11px;
+        }
+
+        /* HERO STAT BOXES */
+        .ability-stat-hero {
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .stat-hero-left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .stat-hero-label {
+            font-size: 11.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #8b949e;
+            font-family: "Inter", sans-serif;
+            font-weight: 600;
+        }
+
+        .stat-hero-number-wrap {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+
+        .stat-hero-number {
+            font-family: "Cinzel", serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--ds-gold);
+            text-shadow: 0 0 10px rgba(229, 184, 92, 0.4);
+            line-height: 1;
+        }
+
+        .stat-hero-unit {
+            font-size: 12px;
+            font-weight: 700;
+            color: #8b949e;
+            font-family: "Inter", sans-serif;
+        }
+
+        .stat-hero-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+
+        .stat-formula-tag {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #8b949e;
+            font-family: "Inter", sans-serif;
+        }
+
+        .stat-formula-code {
+            font-family: monospace;
+            font-size: 12px;
+            color: #79c0ff;
+            background: rgba(121, 192, 255, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(121, 192, 255, 0.25);
+        }
+
+        /* NATURE DUAL STAT HERO */
+        .ability-dual-stat-hero {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 520px) {
+            .ability-dual-stat-hero {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .stat-hero-dual-item {
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .dual-stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-mini-formula {
+            font-family: monospace;
+            font-size: 10px;
+            color: #79c0ff;
+        }
+
+        /* DETAILS LIST ACCORDION */
+        .ability-details-accordion {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 10px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ability-detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 12px;
+            line-height: 1.4;
+            font-family: "Inter", sans-serif;
+        }
+
+        .detail-label {
+            color: #8b949e;
+            min-width: 110px;
+        }
+
+        .detail-value {
+            color: #d1d5db;
+            text-align: right;
+        }
+
+        .detail-value strong {
+            color: #fff;
+        }
+
+        .detail-value code {
+            font-size: 11px;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 1px 4px;
+            border-radius: 3px;
+            color: var(--ds-gold);
+        }
+
+        .highlight-pierce { color: #7ee787 !important; }
+        .highlight-interrupt { color: #56d364 !important; }
+        .highlight-flame { color: #ffa657 !important; }
+
+        /* XP RULES BOX */
+        .ability-xp-rule-box {
+            background: rgba(14, 18, 24, 0.85);
+            border: 1px solid rgba(229, 184, 92, 0.25);
+            border-radius: 6px;
+            padding: 12px 14px;
+        }
+
+        .xp-rule-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-family: "Cinzel", serif;
+            font-weight: 700;
+            color: var(--ds-gold);
+            margin-bottom: 6px;
+        }
+
+        .xp-icon {
+            width: 14px;
+            height: 14px;
+            fill: var(--ds-gold);
+        }
+
+        .xp-rule-list {
+            margin: 0;
+            padding-left: 18px;
+            font-size: 11.5px;
+            line-height: 1.5;
+            color: #abb2bf;
+            font-family: "Inter", sans-serif;
+        }
+
+        .xp-rule-list strong {
+            color: #fff;
+        }
+
+        /* PROGRESSION TABLE */
+        .abilities-table-container {
+            margin: 0 24px 24px;
+            background: rgba(18, 22, 28, 0.85);
+            border: 1.5px solid var(--ds-border-gold);
+            border-radius: 8px;
+            padding: 20px 24px;
+        }
+
+        .abilities-table-header {
+            margin-bottom: 16px;
+        }
+
+        .abilities-table-title {
+            font-family: "Cinzel", serif;
+            font-size: 18px;
+            color: var(--ds-gold);
+            margin: 0 0 4px 0;
+        }
+
+        .abilities-table-subtitle {
+            font-size: 12px;
+            color: #8b949e;
+            font-family: "Inter", sans-serif;
+        }
+
+        .abilities-table-scroll {
+            overflow-x: auto;
+        }
+
+        .abilities-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: "Inter", sans-serif;
+            font-size: 12.5px;
+        }
+
+        .abilities-table th {
+            text-align: left;
+            padding: 10px 12px;
+            color: var(--ds-gold);
+            font-family: "Cinzel", serif;
+            font-size: 12px;
+            border-bottom: 1.5px solid var(--ds-border-gold);
+            background: rgba(10, 12, 16, 0.6);
+            white-space: nowrap;
+        }
+
+        .abilities-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #c9d1d9;
+            white-space: nowrap;
+        }
+
+        .abilities-table tr:hover td {
+            background: rgba(229, 184, 92, 0.05);
+        }
+
+        .table-ability-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .table-key {
+            font-weight: 700;
+            color: var(--ds-gold);
+            font-family: monospace;
+        }
+
+        .badge-mini {
+            display: inline-block;
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .badge-melee { background: rgba(192, 57, 43, 0.2); color: #e74c3c; border: 1px solid rgba(192, 57, 43, 0.4); }
+        .badge-ranged { background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.4); }
+        .badge-nature { background: rgba(0, 188, 212, 0.2); color: #00bcd4; border: 1px solid rgba(0, 188, 212, 0.4); }
+        .badge-combat { background: rgba(255, 112, 67, 0.2); color: #ff7043; border: 1px solid rgba(255, 112, 67, 0.4); }
+
+        .text-pierce { color: #7ee787; font-weight: 600; }
+        .text-fire { color: #ffa657; font-weight: 600; }
+
+        .abilities-table-footnote {
+            font-size: 11px;
+            color: #6e7681;
+            font-style: italic;
+            margin-top: 10px;
+        }
+
+        /* HUD CONTROLS EXPLANATION */
+        .abilities-hud-card {
+            margin: 0 24px 24px;
+            background: rgba(18, 22, 28, 0.85);
+            border: 1.5px solid var(--ds-card-border);
+            border-radius: 8px;
+            padding: 20px 24px;
+        }
+
+        .hud-card-header {
+            margin-bottom: 16px;
+        }
+
+        .hud-card-title {
+            font-family: "Cinzel", serif;
+            font-size: 18px;
+            color: #fff;
+            margin: 0 0 4px 0;
+        }
+
+        .hud-card-sub {
+            font-size: 12px;
+            color: #8b949e;
+            font-family: "Inter", sans-serif;
+        }
+
+        .hud-features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .hud-feature-item {
+            background: rgba(10, 12, 16, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 14px 16px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .hud-feature-icon {
+            font-size: 22px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+        }
+        .hud-feature-svg {
+            width: 22px;
+            height: 22px;
+            fill: var(--ds-gold);
+            opacity: 0.9;
+            flex-shrink: 0;
+        }
+
+        .hud-feature-content h4 {
+            font-family: "Cinzel", serif;
+            font-size: 13.5px;
+            color: var(--ds-gold);
+            margin: 0 0 6px 0;
+        }
+
+        .hud-feature-content p {
+            font-size: 11.5px;
+            line-height: 1.5;
+            color: #abb2bf;
+            margin: 0;
+            font-family: "Inter", sans-serif;
+        }
+
+        .hud-feature-content code, .hud-feature-content kbd {
+            background: rgba(229, 184, 92, 0.15);
+            color: var(--ds-gold);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-family: monospace;
+            border: 1px solid rgba(229, 184, 92, 0.3);
+        }
+
+
+        /* MOBILE VIEW OPTIMIZATIONS FOR CHARACTER ABILITIES & WIKI */
+        @media (max-width: 650px) {
+            .wiki-section-nav {
+                padding: 10px 12px;
+            }
+            .wiki-section-tabs {
+                width: 100%;
+                gap: 8px;
+            }
+            .wiki-section-tab {
+                flex: 1 1 0;
+                justify-content: center;
+                padding: 8px 10px;
+                font-size: 12px;
+                gap: 6px;
+                white-space: nowrap;
+            }
+            .wiki-section-tab .wiki-tab-icon {
+                width: 16px;
+                height: 16px;
+            }
+
+            .abilities-hero-panel {
+                padding: 16px 14px;
+                gap: 14px;
+            }
+            .abilities-hero-title {
+                font-size: 20px;
+            }
+            .abilities-hero-desc {
+                font-size: 12.5px;
+                line-height: 1.5;
+            }
+
+            .abilities-simulator-box {
+                padding: 14px 12px;
+            }
+            .sim-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .sim-level-display {
+                width: 100%;
+                justify-content: space-between;
+                padding: 6px 12px;
+            }
+            .sim-controls-row {
+                gap: 14px;
+            }
+            .sim-slider-wrap {
+                flex: 1 1 100%;
+                width: 100%;
+            }
+            .sim-presets-wrap {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 6px;
+            }
+            .sim-preset-label {
+                width: 100%;
+                margin-bottom: 2px;
+            }
+            .sim-preset-btn {
+                flex: 1 1 calc(25% - 6px);
+                min-width: 55px;
+                text-align: center;
+                padding: 6px 4px;
+                font-size: 11px;
+            }
+            .sim-custom-input-wrap {
+                width: 100%;
+                justify-content: flex-end;
+                margin-top: 4px;
+            }
+
+            .abilities-cards-grid {
+                grid-template-columns: 1fr;
+                padding: 14px 12px;
+                gap: 14px;
+            }
+            .ability-card {
+                padding: 16px 14px;
+                gap: 14px;
+            }
+            .ability-name {
+                font-size: 17px;
+            }
+            .ability-stat-hero {
+                padding: 12px 14px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .stat-hero-right {
+                align-items: flex-start;
+                width: 100%;
+            }
+            .ability-detail-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 3px;
+            }
+            .ability-detail-row .detail-value {
+                text-align: left;
+            }
+
+            .abilities-table-container {
+                margin: 0 12px 16px;
+                padding: 14px 12px;
+            }
+            .abilities-table-title {
+                font-size: 16px;
+            }
+            .abilities-table-scroll {
+                -webkit-overflow-scrolling: touch;
+            }
+            .abilities-table th, .abilities-table td {
+                padding: 8px 10px;
+                font-size: 11.5px;
+            }
+
+            .abilities-hud-card {
+                margin: 0 12px 20px;
+                padding: 16px 14px;
+            }
+            .hud-card-title {
+                font-size: 16px;
+            }
+            .hud-features-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .hud-feature-item {
+                padding: 12px 14px;
+                gap: 10px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .wiki-section-tab {
+                font-size: 11px;
+                padding: 7px 6px;
+                gap: 4px;
+            }
+            .wiki-section-tab .wiki-tab-title {
+                letter-spacing: 0;
+            }
+            .abilities-hero-title {
+                font-size: 18px;
+            }
+            .stat-hero-number {
+                font-size: 24px;
+            }
+        }
+
         /* TOP RIGHT RUNESTONE SEAL BUTTON (GAME MASTER) */
         .top-admin-container {
             position: fixed;
             top: 25px;
             right: 28px;
             z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
         }
 
         .admin-seal-btn {
@@ -2654,26 +3682,25 @@
         }
 
         .admin-seal-btn .admin-seal-svg {
-            width: 26px;
-            height: 26px;
+            width: 28px;
+            height: 28px;
+            filter: drop-shadow(0 0 4px rgba(229, 184, 92, 0.35));
             transition: transform 0.3s ease, filter 0.3s ease;
-            filter: drop-shadow(0 0 4px rgba(229, 184, 92, 0.3));
         }
 
         .admin-seal-btn:hover .admin-seal-svg {
-            filter: drop-shadow(0 0 8px rgba(229, 184, 92, 0.7));
+            transform: scale(1.06);
+            filter: drop-shadow(0 0 8px rgba(229, 184, 92, 0.6));
         }
 
-        /* Logged in state (Emerald Warden Seal) */
         .admin-seal-btn.admin-active {
-            border-color: rgba(86, 211, 100, 0.6);
+            border-color: #56d364;
             color: #56d364;
-            background: radial-gradient(circle at 35% 35%, #15291b 0%, #0c1410 80%);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 18px rgba(86, 211, 100, 0.35), inset 0 0 10px rgba(0, 0, 0, 0.8);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 18px rgba(86, 211, 100, 0.4), inset 0 0 10px rgba(0, 0, 0, 0.8);
         }
 
         .admin-seal-btn.admin-active::before {
-            border-color: rgba(86, 211, 100, 0.4);
+            border-color: rgba(86, 211, 100, 0.45);
         }
 
         .admin-seal-btn.admin-active:hover {
@@ -2690,20 +3717,23 @@
             filter: drop-shadow(0 0 6px rgba(86, 211, 100, 0.5));
         }
 
+        
+
         @media (max-width: 800px) {
             .top-admin-container {
                 position: fixed;
                 top: 12px;
                 right: 12px;
                 z-index: 2000;
+                gap: 9px;
             }
             .admin-seal-btn {
                 width: 42px;
                 height: 42px;
             }
             .admin-seal-btn .admin-seal-svg {
-                width: 22px;
-                height: 22px;
+                width: 24px;
+                height: 24px;
             }
         }
 
@@ -3491,7 +4521,7 @@
                         <span>JOIN OUR DISCORD SERVER</span>
                     </a>
                 </div>
-            </div>
+                </div>
         </div>
 
         <!-- VIEW: REALMS (Adventurer Rosters) -->
@@ -3651,13 +4681,29 @@
                     <div class="card-header wiki-header">
                         <div class="card-title-group">
                             <img src="/static/wiki_icons/gui/scroll.png?v=4" class="nav-icon" style="width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 0 3px rgba(229, 184, 92, 0.45));" alt="Wiki">
-                            <div class="server-name">MMO Wiki</div>
+                            <div class="server-name" id="wiki-header-title">MMO Wiki</div>
                         </div>
-                        <div class="header-adventurers">
+                        <div class="header-adventurers" id="wiki-header-count-box">
                             Items: <span class="count-highlight" id="wiki-count-total">0</span>
                         </div>
                     </div>
 
+                    <!-- WIKI SECTION SELECTOR (Items vs Character Abilities) -->
+                    <div class="wiki-section-nav">
+                        <div class="wiki-section-tabs">
+                            <button class="wiki-section-tab active" id="wiki-tab-items" onclick="switchWikiSection('items')">
+                                <img src="/static/wiki_icons/gui/wiki_tab_items.png?v=2" class="wiki-tab-icon" alt="Items">
+                                <span class="wiki-tab-title">Items</span>
+                            </button>
+                            <button class="wiki-section-tab" id="wiki-tab-abilities" onclick="switchWikiSection('abilities')">
+                                <img src="/static/wiki_icons/gui/wiki_tab_abilities.png?v=3" class="wiki-tab-icon" alt="Character Abilities">
+                                <span class="wiki-tab-title">Character Abilities</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- WIKI SUBVIEW: ITEMS COMPENDIUM -->
+                    <div id="wiki-items-section" class="wiki-subview">
                     <!-- WIKI CONTROLS & FILTERS -->
                     <div class="wiki-toolbar">
                         <div class="wiki-search-row">
@@ -3808,6 +4854,490 @@
                         <div class="wiki-page-info" id="wiki-page-info">Page 1 of 1</div>
                         <button class="wiki-page-btn" id="wiki-btn-next">Next &raquo;</button>
                     </div>
+                    </div><!-- /#wiki-items-section -->
+
+                    <!-- WIKI SUBVIEW: CHARACTER ABILITIES -->
+                    <div id="wiki-abilities-section" class="wiki-subview" style="display: none;">
+                        <!-- HERO / OVERVIEW & INTERACTIVE LEVEL SIMULATOR -->
+                        <div class="abilities-hero-panel">
+                            <div class="abilities-hero-header">
+                                <h2 class="abilities-hero-title">Character Abilities</h2>
+                                <p class="abilities-hero-desc">
+                                    Character abilities are active skills unlocked at <strong>Level 30</strong> in Melee, Ranged, Nature Magic, and Combat Magic. You can activate them using the <strong>[Q]</strong>, <strong>[W]</strong>, <strong>[E]</strong>, and <strong>[R]</strong> hotkeys to perform area attacks, piercing shots, or party healing. All abilities share a <strong>30-second cooldown</strong> and scale in power as your skill level increases.
+                                </p>
+                            </div>
+
+                            <!-- Interactive Level Scaling Simulator -->
+                            <div class="abilities-simulator-box">
+                                <div class="sim-header">
+                                    <div class="sim-title-group">
+                                        <span class="sim-title">Level Scaling Simulator</span>
+                                        <span class="sim-subtitle">Select or slide a skill level to preview damage, healing, and armor scaling</span>
+                                    </div>
+                                    <div class="sim-level-display">
+                                        <span class="sim-level-label">Simulated Skill Level:</span>
+                                        <span class="sim-level-val" id="sim-level-val-text">30</span>
+                                    </div>
+                                </div>
+
+                                <div class="sim-controls-row">
+                                    <div class="sim-slider-wrap">
+                                        <input type="range" id="ability-level-slider" min="30" max="150" value="30" step="1" oninput="onAbilitySliderChange(this.value)">
+                                        <div class="sim-slider-marks">
+                                            <span>Lvl 30</span>
+                                            <span>Lvl 60</span>
+                                            <span>Lvl 90</span>
+                                            <span>Lvl 120</span>
+                                            <span>Lvl 150</span>
+                                        </div>
+                                    </div>
+                                    <div class="sim-presets-wrap">
+                                        <span class="sim-preset-label">Quick Presets:</span>
+                                        <button class="sim-preset-btn active" id="sim-preset-30" onclick="setAbilityLevel(30)">Lvl 30</button>
+                                        <button class="sim-preset-btn" id="sim-preset-50" onclick="setAbilityLevel(50)">Lvl 50</button>
+                                        <button class="sim-preset-btn" id="sim-preset-75" onclick="setAbilityLevel(75)">Lvl 75</button>
+                                        <button class="sim-preset-btn" id="sim-preset-100" onclick="setAbilityLevel(100)">Lvl 100</button>
+                                        <div class="sim-custom-input-wrap">
+                                            <label for="ability-level-input">Level:</label>
+                                            <input type="number" id="ability-level-input" min="30" max="150" value="30" onchange="setAbilityLevel(this.value)">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ABILITIES CARDS GRID (4 HEROIC ABILITIES) -->
+                        <div class="abilities-cards-grid">
+                            <!-- 1. WHIRLING CLEAVE (MELEE) -->
+                            <div class="ability-card card-melee">
+                                <div class="ability-card-header">
+                                    <div class="ability-header-left">
+                                        <div class="ability-icon-frame frame-melee">
+                                            <img src="/static/wiki_icons/gui/melee.png?v=4" alt="Melee">
+                                        </div>
+                                        <div class="ability-title-meta">
+                                            <div class="ability-name-row">
+                                                <h3 class="ability-name">Whirling Cleave</h3>
+                                                <span class="ability-hotkey-badge">[Q]</span>
+                                            </div>
+                                            <div class="ability-discipline-tag tag-melee">Melee &middot; Slot 1</div>
+                                        </div>
+                                    </div>
+                                    <div class="ability-header-pills">
+                                        <span class="ability-pill pill-req">Req: Melee Lvl 30</span>
+                                        <span class="ability-pill pill-cd">30s Cooldown</span>
+                                    </div>
+                                </div>
+
+                                <p class="ability-desc">
+                                    Performs a 360-degree spinning melee sweep that hits all surrounding enemies in a <strong>5.8-meter radius</strong> with physical damage.
+                                </p>
+
+                                <div class="ability-stat-hero stat-hero-melee">
+                                    <div class="stat-hero-left">
+                                        <span class="stat-hero-label">Physical Damage (AoE)</span>
+                                        <div class="stat-hero-number-wrap">
+                                            <span class="stat-hero-number" id="val-cleave-dmg">225</span>
+                                            <span class="stat-hero-unit">DMG</span>
+                                        </div>
+                                    </div>
+                                    <div class="stat-hero-right">
+                                        <span class="stat-formula-tag">Formula</span>
+                                        <code class="stat-formula-code">225 + (Level - 30) × 6</code>
+                                    </div>
+                                </div>
+
+                                <div class="ability-details-accordion">
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Area of Effect:</span>
+                                        <span class="detail-value"><strong>5.8 meters</strong> radial blast centered on the caster</span>
+                                    </div>
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Damage Type:</span>
+                                        <span class="detail-value">Physical Damage</span>
+                                    </div>
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Armor Penetration:</span>
+                                        <span class="detail-value">None (Reduced by enemy armor)</span>
+                                    </div>
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Visual Effects:</span>
+                                        <span class="detail-value"><code>fury_spin</code> + <code>fury_earth_stomp</code> on caster, <code>star_sparks</code> on targets</span>
+                                    </div>
+                                </div>
+
+                                <div class="ability-xp-rule-box">
+                                    <div class="xp-rule-header">
+                                        <svg viewBox="0 0 24 24" class="xp-icon"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                                        <span>Melee Experience (XP) Rules & Diminishing Returns</span>
+                                    </div>
+                                    <ul class="xp-rule-list">
+                                        <li><strong>100% XP</strong> awarded on the first <strong>2 targets</strong> struck.</li>
+                                        <li><strong>25% XP</strong> awarded on each subsequent target beyond the first two.</li>
+                                        <li>Hard capped at <strong>2.5%</strong> of the total XP needed for your next melee level per activation.</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- 2. SHRAPNEL BLAST (RANGED) -->
+                            <div class="ability-card card-ranged">
+                                <div class="ability-card-header">
+                                    <div class="ability-header-left">
+                                        <div class="ability-icon-frame frame-ranged">
+                                            <img src="/static/wiki_icons/gui/ranged.png?v=4" alt="Ranged">
+                                        </div>
+                                        <div class="ability-title-meta">
+                                            <div class="ability-name-row">
+                                                <h3 class="ability-name">Shrapnel Blast</h3>
+                                                <span class="ability-hotkey-badge">[W]</span>
+                                            </div>
+                                            <div class="ability-discipline-tag tag-ranged">Ranged &middot; Slot 2</div>
+                                        </div>
+                                    </div>
+                                    <div class="ability-header-pills">
+                                        <span class="ability-pill pill-req">Req: Ranged Lvl 30</span>
+                                        <span class="ability-pill pill-cd">30s Cooldown</span>
+                                    </div>
+                                </div>
+
+                                <p class="ability-desc">
+                                    Fires an explosive burst of metal shards in a <strong>6.5-meter radius</strong> around you, damaging all nearby enemies and ignoring 30% of their armor.
+                                </p>
+
+                                <div class="ability-stat-hero stat-hero-ranged">
+                                    <div class="stat-hero-left">
+                                        <span class="stat-hero-label">Piercing Damage (30% Armor Bypass)</span>
+                                        <div class="stat-hero-number-wrap">
+                                            <span class="stat-hero-number" id="val-shrapnel-dmg">162.5</span>
+                                            <span class="stat-hero-unit">DMG</span>
+                                        </div>
+                                    </div>
+                                    <div class="stat-hero-right">
+                                        <span class="stat-formula-tag">Formula</span>
+                                        <code class="stat-formula-code">162.5 + (Level - 30) × 4.5</code>
+                                    </div>
+                                </div>
+
+                                <div class="ability-details-accordion">
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Area of Effect:</span>
+                                        <span class="detail-value"><strong>6.5 meters</strong> radial blast around the caster</span>
+                                    </div>
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Damage Type:</span>
+                                        <span class="detail-value">Piercing Ranged Damage</span>
+                                    </div>
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Armor Penetration:</span>
+                                        <span class="detail-value highlight-pierce"><strong>Ignores 30%</strong> of enemy armor reduction</span>
+                                    </div>
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Visual Effects:</span>
+                                        <span class="detail-value"><code>dust_explosion_large</code> + <code>trap_dust_explosion</code>, <code>arrow_tracer</code> + <code>metal_shard_dust</code> on hit</span>
+                                    </div>
+                                </div>
+
+                                <div class="ability-xp-rule-box">
+                                    <div class="xp-rule-header">
+                                        <svg viewBox="0 0 24 24" class="xp-icon"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                                        <span>Ranged Experience (XP) Rules & Diminishing Returns</span>
+                                    </div>
+                                    <ul class="xp-rule-list">
+                                        <li><strong>100% XP</strong> awarded on the first <strong>2 targets</strong> struck.</li>
+                                        <li><strong>25% XP</strong> awarded on each subsequent target beyond the first two.</li>
+                                        <li>Hard capped at <strong>2.5%</strong> of the total XP needed for your next ranged level per activation.</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- 3. AEGIS OF RENEWAL (NATURE MAGIC) -->
+                            <div class="ability-card card-nature">
+                                <div class="ability-card-header">
+                                    <div class="ability-header-left">
+                                        <div class="ability-icon-frame frame-nature">
+                                            <img src="/static/wiki_icons/gui/nature_magic.png?v=4" alt="Nature Magic">
+                                        </div>
+                                        <div class="ability-title-meta">
+                                            <div class="ability-name-row">
+                                                <h3 class="ability-name">Aegis of Renewal</h3>
+                                                <span class="ability-hotkey-badge">[E]</span>
+                                            </div>
+                                            <div class="ability-discipline-tag tag-nature">Nature Magic &middot; Slot 3</div>
+                                        </div>
+                                    </div>
+                                    <div class="ability-header-pills">
+                                        <span class="ability-pill pill-req">Req: Nature Lvl 30</span>
+                                        <span class="ability-pill pill-cd">30s Cooldown</span>
+                                    </div>
+                                </div>
+
+                                <p class="ability-desc">
+                                    Heals yourself and all party members within <strong>10 meters</strong>, grants bonus armor for 10 seconds, and interrupts nearby enemy attacks with a <strong>7-meter pulse</strong>.
+                                </p>
+
+                                <div class="ability-dual-stat-hero">
+                                    <div class="stat-hero-dual-item stat-hero-nature-armor">
+                                        <div class="dual-stat-header">
+                                            <span class="stat-hero-label">Armor Boost (10s)</span>
+                                            <code class="stat-mini-formula">80 + (Lvl × 6)</code>
+                                        </div>
+                                        <div class="stat-hero-number-wrap">
+                                            <span class="stat-hero-number" id="val-aegis-armor">+260</span>
+                                            <span class="stat-hero-unit">DEF</span>
+                                        </div>
+                                    </div>
+                                    <div class="stat-hero-dual-item stat-hero-nature-heal">
+                                        <div class="dual-stat-header">
+                                            <span class="stat-hero-label">Burst Heal (At 1,500 Max HP)</span>
+                                            <code class="stat-mini-formula">40% HP + (Lvl × 8)</code>
+                                        </div>
+                                        <div class="stat-hero-number-wrap">
+                                            <span class="stat-hero-number" id="val-aegis-heal">840</span>
+                                            <span class="stat-hero-unit">HP</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="ability-details-accordion">
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Ally Radius:</span>
+                                        <span class="detail-value"><strong>10.0 meters</strong> (heals and buffs party members)</span>
+                                    </div>
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Enemy Interrupt:</span>
+                                        <span class="detail-value highlight-interrupt"><strong>7.0m radial pulse</strong> staggers foes and cancels active attack swings</span>
+                                    </div>
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Buff Duration:</span>
+                                        <span class="detail-value"><strong>10 seconds</strong> (tracked in the BuffUI panel)</span>
+                                    </div>
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Visual Effects:</span>
+                                        <span class="detail-value"><code>recharge_party</code>, <code>armor_boost</code>, and <code>shield</code> VFX</span>
+                                    </div>
+                                </div>
+
+                                <div class="ability-xp-rule-box">
+                                    <div class="xp-rule-header">
+                                        <svg viewBox="0 0 24 24" class="xp-icon"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                                        <span>Nature Magic Experience (XP) Rules & Diminishing Returns</span>
+                                    </div>
+                                    <ul class="xp-rule-list">
+                                        <li>Awards nature magic XP at <strong>0.25× actual life healed</strong>.</li>
+                                        <li>Hard capped at <strong>1.5%</strong> of the XP needed for your next nature magic level per activation.</li>
+                                        <li>Distribution cap: <strong>1.0%</strong> maximum for self-heals, and <strong>0.5%</strong> total across all healed allies.</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- 4. FLAME NOVA (COMBAT MAGIC) -->
+                            <div class="ability-card card-combat">
+                                <div class="ability-card-header">
+                                    <div class="ability-header-left">
+                                        <div class="ability-icon-frame frame-combat">
+                                            <img src="/static/wiki_icons/gui/combat_magic.png?v=4" alt="Combat Magic">
+                                        </div>
+                                        <div class="ability-title-meta">
+                                            <div class="ability-name-row">
+                                                <h3 class="ability-name">Flame Nova</h3>
+                                                <span class="ability-hotkey-badge">[R]</span>
+                                            </div>
+                                            <div class="ability-discipline-tag tag-combat">Combat Magic &middot; Slot 4</div>
+                                        </div>
+                                    </div>
+                                    <div class="ability-header-pills">
+                                        <span class="ability-pill pill-req">Req: Combat Lvl 30</span>
+                                        <span class="ability-pill pill-cd">30s Cooldown</span>
+                                    </div>
+                                </div>
+
+                                <p class="ability-desc">
+                                    Releases an expanding ring of fire in an <strong>8.5-meter radius</strong> around your character, dealing heavy fire damage to all surrounding enemies.
+                                </p>
+
+                                <div class="ability-stat-hero stat-hero-combat">
+                                    <div class="stat-hero-left">
+                                        <span class="stat-hero-label">Radial Fire Damage</span>
+                                        <div class="stat-hero-number-wrap">
+                                            <span class="stat-hero-number" id="val-nova-dmg">277.5</span>
+                                            <span class="stat-hero-unit">DMG</span>
+                                        </div>
+                                    </div>
+                                    <div class="stat-hero-right">
+                                        <span class="stat-formula-tag">Formula</span>
+                                        <code class="stat-formula-code">277.5 + (Level - 30) × 7.5</code>
+                                    </div>
+                                </div>
+
+                                <div class="ability-details-accordion">
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Area of Effect:</span>
+                                        <span class="detail-value"><strong>8.5 meters</strong> wide radial explosion expanding in all directions</span>
+                                    </div>
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Damage Type:</span>
+                                        <span class="detail-value">Radial Fire Combat Magic Damage</span>
+                                    </div>
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Armor Penetration:</span>
+                                        <span class="detail-value">None (Reduced by enemy armor)</span>
+                                    </div>
+                                    <div class="ability-detail-row">
+                                        <span class="detail-label">Visual Effects:</span>
+                                        <span class="detail-value">Radial fire blast and death shockwave</span>
+                                    </div>
+                                </div>
+
+                                <div class="ability-xp-rule-box">
+                                    <div class="xp-rule-header">
+                                        <svg viewBox="0 0 24 24" class="xp-icon"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                                        <span>Combat Magic Experience (XP) Rules & Diminishing Returns</span>
+                                    </div>
+                                    <ul class="xp-rule-list">
+                                        <li><strong>100% XP</strong> awarded on the first <strong>2 targets</strong> struck.</li>
+                                        <li><strong>25% XP</strong> awarded on each subsequent target beyond the first two.</li>
+                                        <li>Hard capped at <strong>2.5%</strong> of the total XP needed for your next combat magic level per activation.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- COMPARISON & PROGRESSION REFERENCE TABLE -->
+                        <div class="abilities-table-container">
+                            <div class="abilities-table-header">
+                                <h3 class="abilities-table-title">Abilities Progression & Scaling Reference</h3>
+                                <span class="abilities-table-subtitle">Base damage, healing, and defense values across key level milestones</span>
+                            </div>
+                            <div class="abilities-table-scroll">
+                                <table class="abilities-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Ability</th>
+                                            <th>Discipline</th>
+                                            <th>Cooldown</th>
+                                            <th>Radius</th>
+                                            <th>Level 30</th>
+                                            <th>Level 50</th>
+                                            <th>Level 75</th>
+                                            <th>Level 100</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <div class="table-ability-cell">
+                                                    <span class="table-key">[Q]</span>
+                                                    <strong>Whirling Cleave</strong>
+                                                </div>
+                                            </td>
+                                            <td><span class="badge-mini badge-melee">Melee</span></td>
+                                            <td>30s</td>
+                                            <td>5.8m</td>
+                                            <td><strong>225</strong> dmg</td>
+                                            <td>345 dmg</td>
+                                            <td>495 dmg</td>
+                                            <td>645 dmg</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="table-ability-cell">
+                                                    <span class="table-key">[W]</span>
+                                                    <strong>Shrapnel Blast</strong>
+                                                </div>
+                                            </td>
+                                            <td><span class="badge-mini badge-ranged">Ranged</span></td>
+                                            <td>30s</td>
+                                            <td>6.5m</td>
+                                            <td><strong>162.5</strong> pierce</td>
+                                            <td>252.5 pierce</td>
+                                            <td>365.0 pierce</td>
+                                            <td>477.5 pierce</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="table-ability-cell">
+                                                    <span class="table-key">[E]</span>
+                                                    <strong>Aegis of Renewal</strong>
+                                                </div>
+                                            </td>
+                                            <td><span class="badge-mini badge-nature">Nature Magic</span></td>
+                                            <td>30s</td>
+                                            <td>10m ally / 7m int</td>
+                                            <td><strong>+260 def</strong> / 840 hp*</td>
+                                            <td>+380 def / 1000 hp*</td>
+                                            <td>+530 def / 1200 hp*</td>
+                                            <td>+680 def / 1400 hp*</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="table-ability-cell">
+                                                    <span class="table-key">[R]</span>
+                                                    <strong>Flame Nova</strong>
+                                                </div>
+                                            </td>
+                                            <td><span class="badge-mini badge-combat">Combat Magic</span></td>
+                                            <td>30s</td>
+                                            <td>8.5m</td>
+                                            <td><strong>277.5</strong> fire</td>
+                                            <td>427.5 fire</td>
+                                            <td>615.0 fire</td>
+                                            <td>802.5 fire</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="abilities-table-footnote">
+                                * Aegis of Renewal heal values modeled at 1,500 maximum life (formula: 40% max life + [Nature Level × 8]). Armor boost lasts 10 seconds.
+                            </div>
+                        </div>
+
+                        <!-- HUD & CONTROLS EXPLANATION -->
+                        <div class="abilities-hud-card">
+                            <div class="hud-card-header">
+                                <h3 class="hud-card-title">In-Game HUD Integration & Controls</h3>
+                                <span class="hud-card-sub">Client HUD controls introduced in DSLOA Character Abilities & BuffUI Patch</span>
+                            </div>
+                            <div class="hud-features-grid">
+                                <div class="hud-feature-item">
+                                    <div class="hud-feature-icon">
+                                        <svg viewBox="0 0 24 24" class="hud-feature-svg"><path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/></svg>
+                                    </div>
+                                    <div class="hud-feature-content">
+                                        <h4>Direct Hotkeys [Q], [W], [E], [R]</h4>
+                                        <p>Abilities activate instantly when pressing their assigned key, without swapping your equipped weapon or active spell.</p>
+                                    </div>
+                                </div>
+                                <div class="hud-feature-item">
+                                    <div class="hud-feature-icon">
+                                        <svg viewBox="0 0 24 24" class="hud-feature-svg"><path d="M4 4h16v16H4V4zm2 4h12V6H6v2zm0 4h12v-2H6v2zm0 4h7v-2H6v2z"/></svg>
+                                    </div>
+                                    <div class="hud-feature-content">
+                                        <h4>Top-Left Action Dock</h4>
+                                        <p>Ability slots 1 through 4 sit directly beside your weapon slots in the top-left HUD. You can click them or hover to view tooltips.</p>
+                                    </div>
+                                </div>
+                                <div class="hud-feature-item">
+                                    <div class="hud-feature-icon">
+                                        <svg viewBox="0 0 24 24" class="hud-feature-svg"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/></svg>
+                                    </div>
+                                    <div class="hud-feature-content">
+                                        <h4>Shared Cooldown Sweeps</h4>
+                                        <p>Activating any ability places all four slots on a shared 30-second cooldown, shown with a dark sweep shade and countdown timer.</p>
+                                    </div>
+                                </div>
+                                <div class="hud-feature-item">
+                                    <div class="hud-feature-icon">
+                                        <svg viewBox="0 0 24 24" class="hud-feature-svg"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
+                                    </div>
+                                    <div class="hud-feature-content">
+                                        <h4>BuffUI Panel</h4>
+                                        <p>Press <kbd>Shift + ;</kbd> or click the book icon on the bottom data bar to open BuffUI, tracking Aegis of Renewal and other active buffs in combat.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div><!-- /#wiki-abilities-section -->
+
                 </section>
             </div>
         </div>
@@ -5125,7 +6655,92 @@
     let wikiListenersBound = false;
     let wikiSearchDebounce = null;
 
-    function initWikiView() {
+        // ---- WIKI SECTION SWITCHING & ABILITIES SIMULATOR ----
+        let currentWikiSection = "items";
+    let currentSimLevel = 30;
+
+    function switchWikiSection(section) {
+        currentWikiSection = section;
+        const tabItems = document.getElementById("wiki-tab-items");
+        const tabAbilities = document.getElementById("wiki-tab-abilities");
+        const secItems = document.getElementById("wiki-items-section");
+        const secAbilities = document.getElementById("wiki-abilities-section");
+        const headerTitle = document.getElementById("wiki-header-title");
+        const headerCount = document.getElementById("wiki-header-count-box");
+
+        if (section === "abilities") {
+            if (tabItems) tabItems.classList.remove("active");
+            if (tabAbilities) tabAbilities.classList.add("active");
+            if (secItems) secItems.style.display = "none";
+            if (secAbilities) secAbilities.style.display = "block";
+            if (headerTitle) headerTitle.innerText = "MMO Wiki \u00b7 Character Abilities";
+            if (headerCount) headerCount.innerHTML = 'Abilities: <span class="count-highlight">4</span>';
+            setAbilityLevel(30);
+        } else {
+            if (tabItems) tabItems.classList.add("active");
+            if (tabAbilities) tabAbilities.classList.remove("active");
+            if (secItems) secItems.style.display = "block";
+            if (secAbilities) secAbilities.style.display = "none";
+            if (headerTitle) headerTitle.innerText = "MMO Wiki";
+            if (headerCount) headerCount.innerHTML = 'Items: <span class="count-highlight" id="wiki-count-total">' + (wikiItems ? wikiItems.length.toLocaleString() : '0') + '</span>';
+        }
+    }
+
+    function onAbilitySliderChange(val) {
+        setAbilityLevel(parseInt(val, 10) || 30);
+    }
+
+    function setAbilityLevel(lvl) {
+        lvl = Math.max(30, Math.min(150, parseInt(lvl, 10) || 30));
+        currentSimLevel = lvl;
+
+        const slider = document.getElementById("ability-level-slider");
+        const input = document.getElementById("ability-level-input");
+        const valText = document.getElementById("sim-level-val-text");
+
+        if (slider) slider.value = lvl;
+        if (input) input.value = lvl;
+        if (valText) valText.innerText = lvl;
+
+        const presets = [30, 50, 75, 100];
+        presets.forEach(p => {
+            const btn = document.getElementById(`sim-preset-${p}`);
+            if (btn) btn.classList.toggle("active", p === lvl);
+        });
+
+        updateAbilitySim();
+    }
+
+    function updateAbilitySim() {
+        const lvl = currentSimLevel;
+
+        // 1. Whirling Cleave: 225 + (level - 30) * 6
+        const cleaveDmg = Math.round(225 + (lvl - 30) * 6);
+        const cleaveEl = document.getElementById("val-cleave-dmg");
+        if (cleaveEl) cleaveEl.innerText = cleaveDmg.toLocaleString();
+
+        // 2. Shrapnel Blast: 162.5 + (level - 30) * 4.5
+        const shrapnelDmg = (162.5 + (lvl - 30) * 4.5).toFixed(1);
+        const shrapnelEl = document.getElementById("val-shrapnel-dmg");
+        if (shrapnelEl) shrapnelEl.innerText = shrapnelDmg;
+
+        // 3. Aegis of Renewal:
+        // Armor: 80 + (nature level * 6)
+        // Heal: 40% of 1500 + (nature level * 8) = 600 + (nature level * 8)
+        const aegisArmor = Math.round(80 + (lvl * 6));
+        const aegisHeal = Math.round(600 + (lvl * 8));
+        const armorEl = document.getElementById("val-aegis-armor");
+        const healEl = document.getElementById("val-aegis-heal");
+        if (armorEl) armorEl.innerText = `+${aegisArmor}`;
+        if (healEl) healEl.innerText = aegisHeal.toLocaleString();
+
+        // 4. Flame Nova: 277.5 + (combat level - 30) * 7.5
+        const novaDmg = (277.5 + (lvl - 30) * 7.5).toFixed(1);
+        const novaEl = document.getElementById("val-nova-dmg");
+        if (novaEl) novaEl.innerText = novaDmg;
+    }
+
+function initWikiView() {
         if (!wikiLoaded && !wikiLoading) {
             fetchWikiData();
         } else if (wikiLoaded) {
@@ -5192,6 +6807,8 @@
         const countAllEl = document.getElementById('cat-count-all');
         const searchInputEl = document.getElementById('wiki-search-input');
         if (countTotalEl) countTotalEl.innerText = total.toLocaleString();
+        const tabBadgeItems = document.getElementById("wiki-tab-badge-items");
+        if (tabBadgeItems) tabBadgeItems.innerText = total.toLocaleString();
         if (countAllEl) countAllEl.innerText = total.toLocaleString();
         if (searchInputEl) searchInputEl.placeholder = `Search ${total.toLocaleString()} items...`;
 
