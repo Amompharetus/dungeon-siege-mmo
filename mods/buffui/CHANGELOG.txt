@@ -1,0 +1,50 @@
+--------------------------
+Mod:     BufUI / BufUI_LoA
+Version: 3.00
+Status:  Stable
+Author:  Lokiswaq / Update by Sabedig
+Date:    16-Jan-2026
+--------------------------
+ChangeLog
+--------------------------
+
+3.00    16-Jan-2026 (stable)
+--------------------------
+New:    Increased visible buff icons from 12 to 24
+New:    Buff icons now dynamically expand and hide to save screen space
+Change: Buff icons are now sorted by remaining duration (soonest to expire shown first)
+Note:   Changes apply to icon-based buff display only (text list unchanged)
+Credit: Community update by Sabedig
+
+2.00	5-Dec-2004 (stable)
+--------------------------
+New:	Implemented ui_manager deamon idea (thanks Ikkyo) in order to avoid changing the actors' templates
+New:    BufUI now also works for restored games that were saved without BufUI in place
+New:	BufUI visual state is also restored when a game is loaded
+Change: Removed overriden actors' templates and obsolete files
+Change:	Made some minor code tweaks and optimizations on some files...
+BugFix: Active buffs counter now decrements correctly when an imbued item is equipped in LoA (and a corresponding active buff is gone)
+
+1.01	25-Apr-2004 (stable)
+--------------------------
+BugFix: Now it works for Dwarf party members and (half-giants in LoA)
+
+1.00	19-Apr-2004 (stable)
+--------------------------
+Change: Took off hidden dockbar and moved functionality to the button
+Change:	Button is now always visible and acts as a twin toggle
+Change:	Swapped left and right click functionality (show/hide and icons/text respectively)
+
+0.99	10-Apr-2004 (beta)
+------------------------
+New:	Added active buffs counter on BufUI panel title
+BugFix:	BufUI button now moves along with dockbar when it's docked on top of the screen
+BugFix:	Took off a couple of debug messages
+
+0.98	7-Apr-2004 (beta)
+-----------------------
+BugFix:	Timers no longer stay on after exiting MP game.
+
+0.97	6-Apr-2004 (beta)
+-----------------------
+New:	First released beta.

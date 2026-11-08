@@ -1,0 +1,936 @@
+[BuffUI]
+{
+  intended_resolution_height = 600;
+  intended_resolution_width = 800;
+  interface = true;
+
+  // Text panel background
+  [t:dialog_box,n:t_background]
+  {
+    f alpha = 0.700000;                   // transparency (1.0 is opaque)
+    b common_control = true;              // uses predefined template?
+    common_template = cpbox;              // which template?
+    i draw_order = 5;                     // draw order
+    is_bottom_anchor = true;              // bottom anchored
+    bottom_anchor = 208;                  // distance from bottom of screen
+    rect = 5,392,179,557;                 // left, top, right, bottom
+    //texture = ;                         // image or "none"
+    //uvcoords = 0.0, 0.0, 1.0, 1.0;      // region of texture to be used (left,bottom,right,top)
+    wrap_mode = clamp;                    // textures tiling
+    pass_through = true;                  // can player click under?
+    visible = false;                      // will be visible when created?
+    group = BuffUI_text;          // used with UIShell.ShiftGroup for moving parts of interface
+  }
+  // Text panel title
+  [t:text,n:t_title]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    common_template = ;
+    draw_order = 10;
+    is_bottom_anchor = true;
+    bottom_anchor = 206;
+    rect = 10,394,174,407;
+    font_color = 0xFF00FF40;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    text = "Active buffs";
+    wrap_mode = clamp;
+    pass_through = true;
+    visible = false;
+    group = BuffUI_text;
+  }
+  // Text panel countdowns
+  [t:text_box,n:t_times]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    common_template = ;
+    draw_order = 11;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 194;
+    rect = 10,406,48,555;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    show_first_line = false;
+    wrap_mode = clamp;
+    pass_through = true;
+    x text_color = -1;
+    visible = false;
+    group = BuffUI_text;
+  }
+  // Text panel buffs list
+  [t:text_box,n:t_buffs]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    common_template = ;
+    draw_order = 12;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 194;
+    rect = 52,406,174,555;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = left;
+    show_first_line = false;
+    wrap_mode = clamp;
+    pass_through = true;
+    x text_color = -1;
+    visible = false;
+    group = BuffUI_text;
+  }
+  //
+  //
+  // Icons panel background artwork
+  [t:window,n:i_background]
+  {
+    alpha = 0.700000;
+    common_control = false;
+    draw_order = 21;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 130;
+    rect = 1,470,229,562;
+    texture = b_gui_ig_mnu_bufui;
+    uvcoords = 0.0,0.0,0.890625,0.71875;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  // Icons panel background artwork - extension
+  [t:window,n:j_background]
+  {
+    alpha = 0.700000;
+    common_control = false;
+    draw_order = 21;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 130;
+    rect = 221,470,449,562;
+    texture = b_gui_ig_mnu_bufui_empty; // initialize empty extension
+    uvcoords = 0.0,0.0,0.890625,0.71875;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  // Icons panel title
+  [t:text,n:i_title]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    common_template = ;
+    draw_order = 22;
+    is_bottom_anchor = true;
+    bottom_anchor = 123;
+    rect = 11,477,231,489;
+    font_color = 0xFF00FF40;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    text = "Active buffs";
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  // icon 0
+  [t:window,n:i_icon0]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 31;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 8,494,23,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  // icon 0 time
+  [t:text_box,n:i_time0]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 32;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 8,529,23,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon1]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 33;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 26,494,41,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time1]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 34;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 26,529,41,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon2]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 33;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 44,494,59,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time2]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 34;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 44,529,59,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon3]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 35;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 62,494,77,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time3]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 36;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 62,529,77,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon4]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 37;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 80,494,95,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time4]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 38;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 80,529,95,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon5]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 98,494,113,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time5]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 98,529,113,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon6]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 116,494,131,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time6]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 116,529,131,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon7]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 134,494,149,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time7]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 134,529,149,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon8]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 152,494,167,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time8]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 152,529,167,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon9]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 170,494,185,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time9]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 170,529,185,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon10]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 188,494,203,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time10]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 188,529,203,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon11]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 206,494,221,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time11]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 206,529,221,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  // 12 more icons  
+  [t:window,n:i_icon12]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 228,494,243,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time12]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 228,529,243,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon13]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 246,494,261,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time13]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 246,529,261,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon14]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 264,494,279,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time14]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 264,529,279,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon15]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 282,494,297,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time15]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 282,529,297,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon16]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 300,494,315,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time16]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 300,529,315,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon17]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 318,494,333,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time17]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 319,529,333,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon18]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 336,494,351,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time18]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 336,529,351,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon19]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 354,494,369,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time19]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 354,529,369,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon20]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 372,494,387,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time20]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 372,529,387,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon21]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 390,494,405,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time21]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 390,529,405,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon22]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 408,494,423,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time22]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 408,529,423,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:window,n:i_icon23]
+  {
+    alpha = 0.800000;
+    common_control = false;
+    draw_order = 39;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 106;
+    rect = 426,494,441,525;
+    texture = b_gui_ig_mnu_bufui_empty;
+    uvcoords = 0.0,0.0,1.0,1.0;
+    wrap_mode = clamp;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+  [t:text_box,n:i_time23]
+  {
+    f alpha = 0.700000;
+    b common_control = false;
+    draw_order = 40;
+    b center_height = false;
+    b fixed_location = true;
+    is_bottom_anchor = true;
+    bottom_anchor = 71;
+    rect = 426,529,441,555;
+    show_first_line = false;
+    font_color = -1;
+    font_size = 11;
+    font_type = b_gui_fnt_11p_chat;
+    justify = right;
+    pass_through = true;
+    group = BuffUI_icons;
+  }
+}

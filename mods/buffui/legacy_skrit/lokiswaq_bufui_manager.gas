@@ -1,0 +1,16 @@
+// $Created_by: Lokiswaq
+// $Mod: BufUI
+// $Revision: 2.00
+// $Date: 5/12/2004
+
+// Based on the "ui manager" idea of Jason 'Ikkyo' Gripp
+
+// This is a major change to the BufUI, since it no longer depends on changing
+// the heroes templates in order to work. A permanent "deamon" go does the job
+// of refreshing the bufui panel instead of a component bound to the hero's go's.
+
+[t:template,n:lokiswaq_bufui_manager]
+{
+  doc = "Lokiswaq BufUI Manager";
+  [lokiswaq_bufui_manager] {}
+}

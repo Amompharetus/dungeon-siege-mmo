@@ -1,0 +1,79 @@
+// $Created_by: Lokiswaq
+// $Mod: BufUI
+// $Revision: 2.00
+// $Date: 5/12/2004
+// $Comments: 2.00: This replaces the (now obsolete) lokiswaq_bufui_heroes.skrit of the previous versions
+
+owner = GoSkritComponent;
+property bool _server_only$ = false;
+
+// Startup state! :)
+// -----------------
+// Not much to do here actually, just get to the eternal refresh state
+//
+startup state Startup$
+{
+  event OnEnterState$
+  {
+      setstate Refresh_UI$;
+  }
+}
+
+// Restore_UI trigger
+// -----------------
+// Restore panel state after a game reload and proceed.
+//
+trigger OnGoHandleMessage$(WE_POST_RESTORE_GAME)
+{
+  // restore BufUI panel state when loading a saved game
+  if ( GameAuditor.GetDB.GetBool( "Lokiswaq_BufUI_Visible" ) == true )
+  {
+    if ( GameAuditor.GetDB.GetBool( "Lokiswaq_BufUI_Text" ) == true )
+    {
+      UIShell.ShowGroup( "Lokiswaq_BufUI_text", true, true, "Lokiswaq_BufUI");
+      UIShell.ShowGroup( "Lokiswaq_BufUI_icons", false, true, "Lokiswaq_BufUI");
+    }
+    else
+    {
+      UIShell.ShowGroup( "Lokiswaq_BufUI_text", false, true, "Lokiswaq_BufUI");
+      UIShell.ShowGroup( "Lokiswaq_BufUI_icons", true, true, "Lokiswaq_BufUI");
+    }
+    UIShell.ShowInterface( "Lokiswaq_BufUI" );
+  }
+}
+
+// Refresh_UI state
+// ----------------
+// Will stay in this state forever and update BufUI when:
+// - The clock ticks :) and
+// - BufUI is visible :)
+//
+// We use a recycled timer to trigger the update process:
+// Since on our UI we display buffs and their countdowns (in seconds)
+// we need not update the UI very often, and surely not each time an
+// OnGoUpdate event fires (this happens many times a second).
+// Since the basic "frequency" of the UI changes is 1 second (because
+// of the countdown), our update "frequency" has to be at least double
+// than that and high enough so as to compensate for the phase differences
+// between the buffs (and prevent them from appearing synchronised).
+// However, the truth is that we do not really need much precision, so:
+// Do not update UI if last update was less than 1/2 a second ago.
+//
+state Refresh_UI$
+{
+  event OnEnterState$
+  {
+    this.CreateTimer( 1, .5 );  // start ticking :)
+  }
+
+  trigger OnTimer$( 1 )
+  {
+    // only update UI when it is visible
+    if ( UIShell.IsInterfaceVisible( "Lokiswaq_BufUI" ) )
+    {
+      // send a message that would never arrive otherwise to the BufUI
+      UIShell.SendUIMessage( msg_onstartanim, "main", "Lokiswaq_BufUI" );
+    }
+    this.CreateTimer( 1, .5 );
+  }
+}
