@@ -60,6 +60,9 @@ static const auto s_showCharInventoryGrid = (ShowCharInventoryGridFn)0x0049C5AC;
 typedef int (__thiscall* ToggleSpellbookFn)(void* uiPartyMgr, int open);
 static const auto s_toggleSpellbook = (ToggleSpellbookFn)0x0049CB29;
 
+typedef void (__thiscall* CloseSpellbookFn)(void* uiPartyMgr);
+static const auto s_closeSpellbook = (CloseSpellbookFn)0x0049D061;
+
 typedef void (__thiscall* ToggleBackpackFn)(void* uiPartyMgr, int open, char unk);
 static const auto s_toggleBackpack = (ToggleBackpackFn)0x0049D0F6;
 
@@ -510,28 +513,61 @@ void OpenClientInventoryForStash(void* hero) {
         partySlot = *(void**)((char*)uiPartyMgr + slotIdx * 4);
     }
 
-    if (partySlot && Readable(partySlot, 0x90)) {
-        *((char*)partySlot + 0) = 1; // inventory grid open
-        *((char*)partySlot + 3) = 1; // character paperdoll open
-        *((char*)partySlot + 1) = 0; // spellbook closed
-        if (!g_sharedStashActive) {
-            *((char*)partySlot + 2) = 0; // regular backpack closed
-        }
-    }
-
-    // 1. Open character + inventory panel if not already open
+    // 1. Open character + inventory panel if not already open.
+    //    Only zero partySlot+1 (spellbook) / partySlot+2 (backpack) BEFORE s_openCharInventory
+    //    when "character" is closed so s_openCharInventory doesn't auto-reopen an old window.
+    //    Never zero partySlot+1 while "spell" is open, because CloseSpellbook (0x0049D061) and
+    //    ToggleSpellbook(0) (0x0049CCF1) check partySlot+1 != 0 before hiding "spell"!
     if (!eng::InterfaceVisible("character")) {
+        if (partySlot && Readable(partySlot, 0x90)) {
+            *((char*)partySlot + 0) = 1; // inventory grid open
+            *((char*)partySlot + 3) = 1; // character paperdoll open
+            if (!eng::InterfaceVisible("spell")) {
+                *((char*)partySlot + 1) = 0; // spellbook closed
+            }
+            if (!g_sharedStashActive && !eng::InterfaceVisible("DSX_backpack_ui")) {
+                *((char*)partySlot + 2) = 0; // regular backpack closed
+            }
+        }
         s_openCharInventory(uiPartyMgr, slotIdx, 1, 0);
     } else {
+        if (partySlot && Readable(partySlot, 0x90)) {
+            *((char*)partySlot + 0) = 1; // inventory grid open
+            *((char*)partySlot + 3) = 1; // character paperdoll open
+        }
         // Ensure the inventory gridbox is expanded if only the paperdoll was open
         if (*((char*)uiPartyMgr + 0x5F) == 0) {
             s_showCharInventoryGrid(uiPartyMgr, 1, 0);
         }
     }
 
-    // 2. Replace spellbook if open
+    // 2. Replace spellbook if open (matching ToggleBackpack(1, 0) at 0x0049D179 -> CloseSpellbook 0x0049D061)
     if (eng::InterfaceVisible("spell") || (partySlot && Readable(partySlot, 0x10) && *((char*)partySlot + 1) != 0)) {
-        s_toggleSpellbook(uiPartyMgr, 0);
+        void* heroInv = *(void**)((char*)hero + 0x2C);
+        bool hadOpenSpellbookGo = (heroInv && Readable(heroInv, 0xB0) && *(void**)((char*)heroInv + 0xA0) != nullptr);
+        if (partySlot && Readable(partySlot, 0x10)) {
+            *((char*)partySlot + 1) = 1; // ensure ToggleSpellbook(0) runs its full close path (0x0049CCF1)
+        }
+        s_closeSpellbook(uiPartyMgr);
+        if (eng::InterfaceVisible("spell") || (partySlot && Readable(partySlot, 0x10) && *((char*)partySlot + 1) != 0)) {
+            if (partySlot && Readable(partySlot, 0x10)) {
+                *((char*)partySlot + 1) = 1;
+            }
+            s_toggleSpellbook(uiPartyMgr, 0);
+        }
+        if (eng::InterfaceVisible("spell")) {
+            eng::HideInterface("spell");
+        }
+        if (partySlot && Readable(partySlot, 0x10)) {
+            *((char*)partySlot + 1) = 0;
+        }
+        *(uint32_t*)((char*)uiPartyMgr + 0x1DC) = *(uint32_t*)0x007ADC88;
+        if (heroInv && Readable(heroInv, 0xB0)) {
+            *(void**)((char*)heroInv + 0xA0) = nullptr;
+        }
+        if (hadOpenSpellbookGo) {
+            g_suppressBackpackSfx = true;
+        }
     }
 
     // 3. Replace regular backpack if open
@@ -1622,8 +1658,45 @@ extern "C" const eng::gpstring* __fastcall Hook_GoGui_GetToolTipColorName(void* 
 // -------------------------------------------------------------------------------------------------
 // Backpack in Shared Stash rejection message fix ("inside Shared Stash" instead of "inside another backpack")
 // -------------------------------------------------------------------------------------------------
-static const char* kMsgBpInBp    = "$MSG$You may not place a backpack inside another backpack.\n";
-static const char* kMsgBpInStash = "$MSG$You may not place a backpack inside Shared Stash.\n";
+static const char* kMsgBpInBp           = "$MSG$You may not place a backpack inside another backpack.\n";
+static const char* kMsgBpInStash        = "$MSG$You may not place a backpack inside Shared Stash.\n";
+static const char* kMsgOneOrMoreInBp    = "$MSG$One or more items were placed in a backpack.\n";
+static const char* kMsgOneOrMoreInStash = "$MSG$One or more items were placed in Shared Stash.\n";
+static const char* kMsgItemInBp         = "$MSG$The item was placed in a backpack.";
+static const char* kMsgItemInStash      = "$MSG$The item was placed in Shared Stash.";
+static const char* kMsgWontFitBp        = "$MSG$This item will not fit in this backpack.\n";
+static const char* kMsgWontFitStash     = "$MSG$This item will not fit in Shared Stash.\n";
+
+static bool IsSharedStashDisplayed() {
+    if (!g_sharedStashActive || g_localStashGoid == 0) return false;
+    if (!eng::InterfaceVisible("DSX_backpack_ui")) return false;
+    void* uiPartyMgr = *(void**)0x007ACF90;
+    if (uiPartyMgr && Readable(uiPartyMgr, 0x1E8)) {
+        uint32_t activeBpGoid = *(uint32_t*)((char*)uiPartyMgr + 0x1E0);
+        if (activeBpGoid == g_localStashGoid) return true;
+    }
+    void* hero = GetLocalScreenHero();
+    if (hero && Readable(hero, 0x80)) {
+        void* heroInv = *(void**)((char*)hero + 0x2C);
+        void* stashGo = ResolveGo(g_localStashGoid);
+        if (heroInv && stashGo && Readable(heroInv, 0xB0) && *(void**)((char*)heroInv + 0xA4) == stashGo) {
+            return true;
+        }
+    }
+    return false;
+}
+
+extern "C" const char* __cdecl DetermineBackpackMsg_OneOrMore() {
+    return IsSharedStashDisplayed() ? kMsgOneOrMoreInStash : kMsgOneOrMoreInBp;
+}
+
+extern "C" const char* __cdecl DetermineBackpackMsg_ItemPlaced() {
+    return IsSharedStashDisplayed() ? kMsgItemInStash : kMsgItemInBp;
+}
+
+extern "C" const char* __cdecl DetermineBackpackMsg_WontFit() {
+    return IsSharedStashDisplayed() ? kMsgWontFitStash : kMsgWontFitBp;
+}
 
 extern "C" const char* __cdecl DetermineBackpackMsg_Drop(void* param2, void* param3) {
     if (g_sharedStashActive && g_localStashGoid != 0) {
@@ -1677,6 +1750,50 @@ __asm__(
     "  call _DetermineBackpackMsg_Hover\n"
     "  pushl %eax\n"
     "  movl $0x004FF318, %edx\n"
+    "  jmp *%edx\n"
+);
+
+extern "C" void Hook_PushBackpackMsg_OneOrMore();
+__asm__(
+    ".text\n"
+    ".globl _Hook_PushBackpackMsg_OneOrMore\n"
+    "_Hook_PushBackpackMsg_OneOrMore:\n"
+    "  call _DetermineBackpackMsg_OneOrMore\n"
+    "  pushl %eax\n"
+    "  movl $0x005F4AD2, %edx\n"
+    "  jmp *%edx\n"
+);
+
+extern "C" void Hook_PushBackpackMsg_ItemPlaced();
+__asm__(
+    ".text\n"
+    ".globl _Hook_PushBackpackMsg_ItemPlaced\n"
+    "_Hook_PushBackpackMsg_ItemPlaced:\n"
+    "  call _DetermineBackpackMsg_ItemPlaced\n"
+    "  pushl %eax\n"
+    "  movl $0x00575991, %edx\n"
+    "  jmp *%edx\n"
+);
+
+extern "C" void Hook_PushBackpackMsg_WontFit1();
+__asm__(
+    ".text\n"
+    ".globl _Hook_PushBackpackMsg_WontFit1\n"
+    "_Hook_PushBackpackMsg_WontFit1:\n"
+    "  call _DetermineBackpackMsg_WontFit\n"
+    "  pushl %eax\n"
+    "  movl $0x004FF07C, %edx\n"
+    "  jmp *%edx\n"
+);
+
+extern "C" void Hook_PushBackpackMsg_WontFit2();
+__asm__(
+    ".text\n"
+    ".globl _Hook_PushBackpackMsg_WontFit2\n"
+    "_Hook_PushBackpackMsg_WontFit2:\n"
+    "  call _DetermineBackpackMsg_WontFit\n"
+    "  pushl %eax\n"
+    "  movl $0x005009CD, %edx\n"
     "  jmp *%edx\n"
 );
 
@@ -2460,6 +2577,14 @@ void SharedStash_Init() {
     const BYTE kCollectLootExpect[9] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x68, 0x01, 0x00, 0x00 };
     const BYTE kSAutoGiveExpect[6]   = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x2C };
     const BYTE kAddExpect[6]         = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x48 };
+    const BYTE kPushOneOrMoreExpect[5] = { 0x68, 0xC0, 0xBA, 0x79, 0x00 };
+    const BYTE kPushItemInBpExpect[5]  = { 0x68, 0x9C, 0x1B, 0x79, 0x00 };
+    const BYTE kPushWontFitExpect[5]   = { 0x68, 0x4C, 0xB8, 0x78, 0x00 };
+
+    installJmpHook(0x005F4ACD, kPushOneOrMoreExpect, 5, (void*)&Hook_PushBackpackMsg_OneOrMore,  "RCDisplayLootMessages OneOrMoreInStash");
+    installJmpHook(0x0057598C, kPushItemInBpExpect,  5, (void*)&Hook_PushBackpackMsg_ItemPlaced, "GoInventory::Add ItemPlacedInStash");
+    installJmpHook(0x004FF077, kPushWontFitExpect,   5, (void*)&Hook_PushBackpackMsg_WontFit1,   "UIGridbox WontFitInStash(1)");
+    installJmpHook(0x005009C8, kPushWontFitExpect,   5, (void*)&Hook_PushBackpackMsg_WontFit2,   "UIGridbox WontFitInStash(2)");
 
     installJmpHook(0x0057B4AF, kSerializeExpect,   6, (void*)&Hook_GoInventory_SerializeGridboxes, "GoInventory::SerializeGridboxesToBitPacker");
     // Hook at +3 (0x005F34DE) so byte +0 of PE export 0x005F34DB stays 0x55 (!= 0xE9);
