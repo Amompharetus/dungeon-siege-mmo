@@ -3423,6 +3423,7 @@
             border-radius: 6px;
             padding: 14px 16px;
             display: flex;
+            align-items: flex-start;
             gap: 12px;
         }
 
@@ -3431,6 +3432,9 @@
             line-height: 1;
             display: flex;
             align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
         }
         .hud-feature-svg {
             width: 22px;
@@ -4681,7 +4685,7 @@
                     <div class="card-header wiki-header">
                         <div class="card-title-group">
                             <img src="/static/wiki_icons/gui/scroll.png?v=4" class="nav-icon" style="width: 22px; height: 22px; object-fit: contain; filter: drop-shadow(0 0 3px rgba(229, 184, 92, 0.45));" alt="Wiki">
-                            <div class="server-name" id="wiki-header-title">MMO Wiki</div>
+                            <div class="server-name" id="wiki-header-title">MMO Wiki · Items</div>
                         </div>
                         <div class="header-adventurers" id="wiki-header-count-box">
                             Items: <span class="count-highlight" id="wiki-count-total">0</span>
@@ -6681,7 +6685,7 @@
             if (tabAbilities) tabAbilities.classList.remove("active");
             if (secItems) secItems.style.display = "block";
             if (secAbilities) secAbilities.style.display = "none";
-            if (headerTitle) headerTitle.innerText = "MMO Wiki";
+            if (headerTitle) headerTitle.innerText = "MMO Wiki \u00b7 Items";
             if (headerCount) headerCount.innerHTML = 'Items: <span class="count-highlight" id="wiki-count-total">' + (wikiItems ? wikiItems.length.toLocaleString() : '0') + '</span>';
         }
     }
