@@ -1,0 +1,261 @@
+// $Edited_by: Sabedig
+// $Created_by: Lokiswaq
+// $Mod: BufUI
+// $Revision: 2.00
+// $Date: 4/12/2004
+// $Comments: 0.99: Added support for active buffs count
+// $Comments: 2.00: Just some minor code tweaks (MakeInt of GoIDs)
+
+// Included by spell_effect type skrits for various spells
+//
+// Used for storing active buffs info into global variables (slots)
+// that will be retrieved later, when displaying the GUI.
+// I take advantage of the ability to store different types of variables
+// with the same name, although GameAuditor.RCSet only supports int and
+// bool types. And I can't use GameAuditor.DB.SetString for example
+// because I found out that it won't work for clients in MP.
+//
+// The variable names used are of the form: "Lokiswaq_BufUI_heroGoID_An"
+// where n is the slot number (starting from 0). Each player has his
+// own set of variables (slots) up to a maximum of <see below>.
+//
+// Three things are stored for each buff:
+// 1. An active/inactive flag (bool)
+// 2. The spell GoID (int)
+// 3. The spell expiration moment (int) <- float * 100 to store precision
+
+// insert ordered - insert before the first spell with more duration
+void Insert_ActBuff_Ordered$(int mySpellInt$, int max_slots$, string myVarCount$, string myVarPrefix$, int myExpireMoment$)
+{  
+  string myVarA$ = "";      // on/off AND spell_GoID
+  string myVarB$ = "";      // expire time
+  int iter$ = 0;
+  while ( iter$ < max_slots$ )
+    {
+      myVarA$ = myVarPrefix$;
+      myVarB$ = myVarPrefix$;
+      StringTool.AppendF( myVarA$, "_A%d", iter$ );
+      StringTool.AppendF( myVarB$, "_B%d", iter$ );
+      // this is the longest buff, fill an empty place
+      if (GameAuditor.GetDB.GetBool( myVarA$ ) != true )
+      {
+        GameAuditor.RCSetBool( myVarA$, true );     // on/off
+        GameAuditor.RCSet( myVarA$, mySpellInt$ );  // spell goid
+        GameAuditor.RCSet( myVarB$, myExpireMoment$);  // expire moment
+        GameAuditor.RCSet( myVarCount$, GameAuditor.GetDB.GetInt( myVarCount$ ) + 1 );  // counter
+        iter$ = max_slots$;  // break loop
+      }
+      else if ( GameAuditor.GetDB.GetInt(myVarB$) > myExpireMoment$ )
+      {
+        // get the new spell at this slot if possible
+        int insertPoint$ = iter$;
+        int lastUsedSlot$ = iter$;
+        // 1. look if there is enough space
+        iter$ += 1;
+        while( iter$ < max_slots$ )
+        {          
+          myVarA$ = myVarPrefix$;
+          StringTool.AppendF( myVarA$, "_A%d", iter$ );
+          if ( GameAuditor.GetDB.GetBool( myVarA$ ) != true )
+          {
+            iter$ = max_slots$;  // break loop  
+          }
+          else
+          {
+            lastUsedSlot$ = iter$;
+          }
+          iter$ += 1;
+        }
+        if (lastUsedSlot$ < max_slots$ - 1 )
+        {
+          // 2. move all entries, beginning from insertPoint
+          iter$ = lastUsedSlot$;
+          string newMyVarA$ = ""; // target of copy of myVarA
+          string newMyVarB$ = ""; // target of copy of myVarB
+          while ( iter$ > (insertPoint$ - 1) )
+          { 
+            myVarA$ = myVarPrefix$;
+            myVarB$ = myVarPrefix$;
+            StringTool.AppendF( myVarA$, "_A%d", iter$ );
+            StringTool.AppendF( myVarB$, "_B%d", iter$ );
+            newMyVarA$ = myVarPrefix$;
+            newMyVarB$ = myVarPrefix$;
+            StringTool.AppendF( newMyVarA$, "_A%d", iter$+1 );
+            StringTool.AppendF( newMyVarB$, "_B%d", iter$+1 ); 
+            // copy iter to iter + 1
+            GameAuditor.RCSetBool( newMyVarA$, true );
+            GameAuditor.RCSet( newMyVarA$, GameAuditor.GetDB.GetInt( myVarA$ ) );  // spell goid
+            GameAuditor.RCSet( newMyVarB$, GameAuditor.GetDB.GetInt( myVarB$ ) );  // expire moment
+
+            iter$ -= 1;
+          }
+          // 3. insert new spell in insertPoint
+          myVarA$ = myVarPrefix$;
+          myVarB$ = myVarPrefix$;
+          StringTool.AppendF( myVarA$, "_A%d", insertPoint$ );
+          StringTool.AppendF( myVarB$, "_B%d", insertPoint$ );
+          GameAuditor.RCSet( myVarA$, mySpellInt$ );  // spell goid
+          GameAuditor.RCSet( myVarB$, myExpireMoment$ );  // expire moment
+          GameAuditor.RCSet( myVarCount$, GameAuditor.GetDB.GetInt( myVarCount$ ) + 1 );  // counter
+        }
+        iter$ = max_slots$;  // break loop        
+      }
+      iter$ += 1;
+    }
+}
+
+// delete ordered - move all spells after the deleted one, to close the slot gap in DB
+void Delete_ActBuff_Ordered$(int mySpellInt$, int max_slots$, string myVarCount$, string myVarPrefix$)
+{
+  string myVarA$ = "";      // on/off AND spell_GoID
+  string myVarB$ = "";      // expire time
+  int iter$ = 0;
+
+  // 1. find buff which should be deleted (deletedSlot)
+  int deletedSlot$ = max_slots$; // init with max_slots, so nothing weird will be done if buff is not found. 
+  while ( iter$ < max_slots$ )
+  {
+    myVarA$ = myVarPrefix$;
+    myVarB$ = myVarPrefix$;
+    StringTool.AppendF( myVarA$, "_A%d", iter$ );
+    StringTool.AppendF( myVarB$, "_B%d", iter$ );     
+    if ( GameAuditor.GetDB.GetInt( myVarA$ ) == mySpellInt$ )
+    {
+      deletedSlot$ = iter$;
+      iter$ = max_slots$;  // break loop
+    }
+    iter$ += 1;
+  }
+  // 2. move all buffs after deletedSlot (and overwrite deletedSlot), if deletedSlot was found (it is not found if a not recognized buff is deleted, e.g. due to max_slots limit)
+  if ( deletedSlot$ != max_slots$ )
+  {
+    iter$ = deletedSlot$;
+    int lastMovedBuff$ = deletedSlot$;
+    string oldMyVarA$ = ""; // source of copy of myVarA
+    string oldMyVarB$ = ""; // source of copy of myVarB
+    while ( iter$ < max_slots$ )
+    {
+      oldMyVarA$ = myVarPrefix$;
+      oldMyVarB$ = myVarPrefix$;
+      StringTool.AppendF( oldMyVarA$, "_A%d", iter$+1 );
+      StringTool.AppendF( oldMyVarB$, "_B%d", iter$+1 );
+      if ( GameAuditor.GetDB.GetBool( oldMyVarA$ ) == true )
+      { 
+        myVarA$ = myVarPrefix$;
+        myVarB$ = myVarPrefix$;
+        StringTool.AppendF( myVarA$, "_A%d", iter$ );
+        StringTool.AppendF( myVarB$, "_B%d", iter$ ); 
+        // copy iter + 1 to iter
+        GameAuditor.RCSet( myVarA$, GameAuditor.GetDB.GetInt( oldMyVarA$ ) );  // spell goid
+        GameAuditor.RCSet( myVarB$, GameAuditor.GetDB.GetInt( oldMyVarB$ ) );  // expire moment
+        iter$ += 1;
+      }
+      else
+      {
+        lastMovedBuff$ = iter$;
+        iter$ = max_slots$; // break loop
+      }
+    }
+    // 3. delete lastMovedBuff
+    myVarA$ = myVarPrefix$;
+    myVarB$ = myVarPrefix$;
+    StringTool.AppendF( myVarA$, "_A%d", lastMovedBuff$ );
+    StringTool.AppendF( myVarB$, "_B%d", lastMovedBuff$ ); 
+    GameAuditor.RCSetBool( myVarA$, false );
+    GameAuditor.RCSet( myVarA$, 0 );
+    GameAuditor.RCSet( myVarB$, 0 );
+    GameAuditor.RCSet( myVarCount$, GameAuditor.GetDB.GetInt( myVarCount$ ) - 1 );  // counter
+  }
+}
+
+// Main function
+void Set_ActBuff_List$( string myAction$, GoID myTarget$, GoID mySpell$, float myExpireTime$ )
+{
+  string myVarPrefix$ = "Lokiswaq_BufUI";
+  string myVarCount$ = "";  // buff counter
+  string myVarA$ = "";      // on/off AND spell_GoID
+  string myVarB$ = "";      // expire time
+  int max_slots$ = 24;      // this is how many states are saved
+  int mySpellInt$ = 0;
+  int iter$ = 0;
+
+  // append hero's goID to variables' prefix
+  StringTool.AppendF( myVarPrefix$, "_%d", MakeInt(myTarget$) );
+  myVarCount$ = myVarPrefix$;
+
+  // search for an empty slot to fill, or an existing to update/delete
+  mySpellInt$ = MakeInt( mySpell$ );
+
+  if ( myAction$ == "insert")
+  {
+    Insert_ActBuff_Ordered$( mySpellInt$, max_slots$, myVarCount$, myVarPrefix$, Math.Round((WorldTime.Time + myExpireTime$)*100) )
+  }  
+  // update an existing buff
+  else if ( myAction$ == "update" )
+  { 
+    // change the slot of the buff, according to new expire moment
+    Delete_ActBuff_Ordered$( mySpellInt$, max_slots$, myVarCount$, myVarPrefix$ )
+    Insert_ActBuff_Ordered$( mySpellInt$, max_slots$, myVarCount$, myVarPrefix$, Math.Round((WorldTime.Time + myExpireTime$)*100) )
+  }
+  // if deleting an existing buff
+  else if ( myAction$ == "delete" )
+  {    
+    Delete_ActBuff_Ordered$( mySpellInt$, max_slots$, myVarCount$, myVarPrefix$ )
+  }
+}
+
+/* original
+void Set_ActBuff_List$( string myAction$, GoID myTarget$, GoID mySpell$, float myExpireTime$ )
+{
+  string myVarPrefix$ = "Lokiswaq_BufUI";
+  string myVarCount$ = "";  // buff counter
+  string myVarA$ = "";      // on/off AND spell_GoID
+  string myVarB$ = "";      // expire time
+  int max_slots$ = 20;      // this is how many states are saved
+  int mySpellInt$ = 0;
+  int iter$ = 0;
+
+  // append hero's goID to variables' prefix
+  StringTool.AppendF( myVarPrefix$, "_%d", MakeInt(myTarget$) );
+  myVarCount$ = myVarPrefix$;
+
+  // search for an empty slot to fill, or an existing to update/delete
+  mySpellInt$ = MakeInt( mySpell$ );
+  while ( iter$ < max_slots$ )
+  {
+    myVarA$ = myVarPrefix$;
+    myVarB$ = myVarPrefix$;
+    StringTool.AppendF( myVarA$, "_A%d", iter$ );
+    StringTool.AppendF( myVarB$, "_B%d", iter$ );
+
+    // if setting a new buff
+    if ( myAction$ == "insert" && GameAuditor.GetDB.GetBool( myVarA$ ) != true )
+    {
+      GameAuditor.RCSetBool( myVarA$, true );     // on/off
+      GameAuditor.RCSet( myVarA$, mySpellInt$ );  // spell goid
+      GameAuditor.RCSet( myVarB$, Math.Round((WorldTime.Time + myExpireTime$)*100));  // expire moment
+      GameAuditor.RCSet( myVarCount$, GameAuditor.GetDB.GetInt( myVarCount$ ) + 1 );  // counter
+      iter$ = max_slots$;  // break loop
+    }
+
+    // if deleting an existing buff
+    if ( myAction$ == "delete" && GameAuditor.GetDB.GetInt( myVarA$ ) == mySpellInt$ )
+    {
+      GameAuditor.RCSetBool( myVarA$, false );
+      GameAuditor.RCSet( myVarA$, 0 );
+      GameAuditor.RCSet( myVarB$, 0 );
+      GameAuditor.RCSet( myVarCount$, GameAuditor.GetDB.GetInt( myVarCount$ ) - 1 );  // counter
+      iter$ = max_slots$;  // break loop
+    }
+
+    // if updating an existing buff
+    if ( myAction$ == "update" && GameAuditor.GetDB.GetInt( myVarA$ ) == mySpellInt$ )
+    {
+      GameAuditor.RCSet( myVarB$, Math.Round((WorldTime.Time + myExpireTime$)*100));
+      iter$ = max_slots$;  // break loop
+    }
+
+    iter$ += 1;
+  }
+}
+*/

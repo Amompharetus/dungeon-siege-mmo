@@ -22,7 +22,8 @@ The following mods are currently delivered to players via the update manifest:
 | **Difficulty Patch** | `DS1_Difficulty_Patch.dsres` | `DSLOA/` | Server & Client | Adjusts multiplayer encounter scaling and difficulty progression. |
 | **Clone Duping Fix** | `Clone Item Duping Fix.dsres` | `DSLOA/` | Server & Client | Fixes multiplayer item and gold duplication exploit on Clone spell death. |
 | **UberUI** | `UberUI_LoA_v0.02.dsres` | `DSLOA/` | Client-Only | Quality-of-life interface tweaks and layout improvements for Legends of Aranna. |
-| **Character Abilities & Shared Stash UI** | Z_CharacterAbilities_UI.dsres | DSLOA/ | Server & Client | Top-left HUD action dock with Q/W/E/R ability buttons, cooldown indicators, and Shared Stash button (gold treasury icon). |
+| **Character Abilities & Shared Stash UI** | `Z_CharacterAbilities_UI.dsres` | `DSLOA/` | Server & Client | Top-left HUD action dock with Q/W/E/R ability buttons, cooldown indicators, and Shared Stash button (gold treasury icon). |
+| **BuffUI** | `BufUI_LoA_v3.00.dsres` (or integrated in `Z_CharacterAbilities_UI.dsres`) | `DSLOA/` | Client-Only | Real-time active buffs monitoring panel with dynamic 12-24 slot expansion, duration sorting, custom MMO buffs (Aegis of Renewal), and single-press hotkey toggle (`Shift+;`). |
 | **Fairy Companion Fix** | `fairyfix.dsres` | `Resources/` | Server & Client | Fixes pathing and state issues for fairy companion summons. |
 | **SeeFar ResolutionFix** | `sf_ResolutionFix.dsres` | `Resources/` | Client-Only | Corrects paperdoll positions and interface scaling at high modern resolutions. |
 
@@ -132,6 +133,44 @@ Provides interface refinements specifically tailored for Legends of Aranna:
 - Enhanced health and mana bar visibility with clearer text readouts.
 - Improved party member status frame alignment and buff icon positioning.
 - Cleaner inventory grid rendering and compact spellbook slot borders.
+
+## Character Abilities & Shared Stash UI
+
+Top-left HUD action dock with Q/W/E/R ability buttons, cooldown indicators, and Shared Stash button.
+
+| | |
+|---|---|
+| Files | `Z_CharacterAbilities_UI.dsres` |
+| Installed to | `DSLOA/` |
+| Requires | Legends of Aranna 1.50 |
+| Scope | Top-left HUD action bar, cooldown sweeps, Shared Stash button, BuffUI data bar integration |
+
+Provides the integrated MMO HUD controls:
+- **Action Dock:** 4 dedicated ability slots docked directly beside the active weapon slots panel in the top-left HUD ([Q] Whirling Cleave, [W] Shrapnel Blast, [E] Aegis of Renewal, [R] Flame Nova).
+- **Cooldown Sweeps & Counters:** Real-time radial cooldown sweep animations and countdown second timers driven by SiegeHost C++.
+- **Shared Stash Button:** Golden Star Key icon (`b_gui_ig_i_it_key-star`) positioned beside ability slots to quickly access the account-wide shared stash (`/stash`).
+- **Illuminated Highlights:** Golden hover highlight frames matching the weapon dock theme.
+- **Unified Package:** Bundles the clean BuffUI panel layout, data bar toggle button, and user education tooltips.
+
+## BuffUI (Active Buffs Monitor)
+
+Real-time active buffs monitoring panel with dynamic slot expansion and duration sorting.
+
+| | |
+|---|---|
+| Files | `BufUI_LoA_v3.00.dsres` (or integrated in `Z_CharacterAbilities_UI.dsres`) |
+| Installed to | `DSLOA/` |
+| Requires | Legends of Aranna 1.50 |
+| Scope | Client-Only UI & Native SiegeHost Memory Driver |
+
+Displays the player's active spell buffs, potion effects, and custom MMO blessings in a clean, readable on-screen panel:
+- **Dynamic Slot Expansion:** Shows 12 buff icon slots by default, dynamically expanding to 24 slots when additional buffs are active, and collapsing back to 12 as they expire.
+- **Duration-Based Sorting:** Buffs expiring soonest appear first for immediate combat awareness.
+- **Dual Display Modes:**
+  - **Icon View (Default):** Compact spell icons with `mm:ss` countdown timers (turning red when 10 seconds or less remain; `99:++` for buffs >100 min).
+  - **Text View:** Comprehensive spell descriptions with `h:mm:ss` timers. Right-click the data bar button to switch views.
+- **Native C++ Engine (SiegeHost):** Driven directly from client memory in `characterabilities.cpp`, eliminating legacy Skrit overrides and avoiding network message floods (`GameAuditor.RCSet`).
+- **MMO Integration:** Supports custom buffs like Aegis of Renewal (+Armor), displays the player's true character name, plays native UI audio (`s_e_gui_element_small`) on open/close, and toggles cleanly with single-press `Shift + ;`.
 
 ## Fairy Companion Fix
 

@@ -1,0 +1,36 @@
+// $Created_by: Lokiswaq
+// $Mod: BufUI
+// $Revision: 0.98
+// $Date: 6/4/2004
+// $Comments: 0.97: Not needed for the BufUI mod. I just re-enabled a disabled book for fun!
+// $Comments: 0.98: Put back equip_requirements that was missing
+
+[t:template,n:book_glb_magic_09]
+{
+  doc = "book_magic_lips";
+  specializes = base_book_spell;
+  [aspect]
+  {
+    [textures]
+    {
+      0 = b_i_glb_book-magic-09;
+    }
+  }
+  [gui]
+  {
+    equip_requirements = intelligence:19;
+    inventory_icon = b_gui_ig_i_it_magic-book-09;
+  }
+  [magic]
+  {
+    pcontent_level = 60;
+  }
+  [pcontent]
+  {
+    [base]
+    {
+      f modifier_max = 6;
+      f modifier_min = 1;
+    }
+  }
+}

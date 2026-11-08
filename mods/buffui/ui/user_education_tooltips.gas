@@ -1,0 +1,5 @@
+// BuffUI Rollover Tooltip
+[gui_rollover]
+{
+	buffui_button = "Click to show/hide active buffs panel (Hotkey: Shift+;)\nRight-click to toggle graphical/text view";
+}

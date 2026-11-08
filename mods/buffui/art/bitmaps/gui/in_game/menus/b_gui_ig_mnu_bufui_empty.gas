@@ -1,0 +1,12 @@
+// $Created_by: Lokiswaq
+// $Mod: BufUI
+// $Revision: 0.97
+// $Date: 6/4/2004
+
+[t:tsd,n:b_gui_ig_mnu_bufui_empty]
+{
+  b dither = true;
+  b hasalpha = true;
+  layer1texture1 = b_gui_ig_mnu_bufui_empty;
+  i texturedetail = 0;
+}

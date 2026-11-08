@@ -1,0 +1,95 @@
+  skrit =
+  [[
+    property bool _server_only$ = false;
+    owner = UIWindow;
+
+    void move_button_BuffUI$( void )
+    {
+      if ( World.IsSinglePlayer )
+      {
+        UIWindow w$ = UIShell.FindUIWindow( "buffui_button", "data_bar" );
+        w$.SetRect( 133, 151, UIShell.ScreenHeight-480+437, UIShell.ScreenHeight-480+472, false );
+      }
+    }
+
+    void activate_interface_BuffUI$( void )
+    {
+      UIShell.ActivateInterface( "ui:interfaces:backend:buffui:BuffUI", false );
+      move_button_BuffUI$();
+    }
+
+    void deactivate_interface_BuffUI$( void )
+    {
+      UIShell.DeactivateInterface( "BuffUI" );
+    }
+
+    void hide_interface_BuffUI$( void )
+    {
+      UIShell.HideInterface( "BuffUI" );
+    }
+
+    void toggle_interface_BuffUI$( void )
+    {
+      if ( UIShell.IsInterfaceVisible( "BuffUI" ) )
+      {
+        UIShell.HideInterface( "BuffUI" );
+      }
+      else
+      {
+        UIShell.ShowInterface( "BuffUI" );
+      }
+    }
+
+    void swap_view_BuffUI$( void )
+    {
+      if ( UIShell.IsInterfaceVisible( "BuffUI" ) )
+      {
+        if ( UIShell.FindUIWindow( "t_background", "BuffUI" ).Visible == true )
+        {
+          UIShell.ShowGroup( "BuffUI_text", false, true, "BuffUI" );
+          UIShell.ShowGroup( "BuffUI_icons", true, true, "BuffUI" );
+        }
+        else
+        {
+          UIShell.ShowGroup( "BuffUI_text", true, true, "BuffUI" );
+          UIShell.ShowGroup( "BuffUI_icons", false, true, "BuffUI" );
+        }
+      }
+    }
+  ]];
+
+  [t:checkbox,n:buffui_button]
+  {
+    f alpha = 0.800000;
+    b common_control = false;
+    common_template = ;
+    dock_group = information_dockbar;
+    i draw_order = 2;
+    group = information_dockbar;
+    is_bottom_anchor = true;
+    bottom_anchor = 43;
+    rect = 97,437,115,472;
+    texture = b_gui_ig_i_it_magic-book-17;
+    uvcoords = 0.000000,0.000000,1.000000,1.000000;
+    wrap_mode = clamp;
+    rollover_help = buffui_button;
+    leftright_button = true;
+    [messages]
+    {
+      oncreated = call( activate_interface_BuffUI$ );
+      ondestroyed = call( deactivate_interface_BuffUI$ );
+      onhidden = call( hide_interface_BuffUI$ );
+      oncheck = call( toggle_interface_BuffUI$ );
+      onuncheck = call( toggle_interface_BuffUI$ );
+      onrbuttondown = setalpha(0.8) & call( swap_view_BuffUI$ );
+      onrbuttonup = setalpha(1.0);
+      onlbuttondown = setalpha(0.8);
+      onlbuttonup = setalpha(1.0);
+      onlbuttondownchecked = setalpha(0.8);
+      onlbuttonupchecked = setalpha(1.0);
+      onrolloff = setalpha(0.8);
+      onrollover = setalpha(1.0);
+      onrolloffchecked = setalpha(0.8);
+      onrolloverchecked = setalpha(1.0);
+    }
+  }
