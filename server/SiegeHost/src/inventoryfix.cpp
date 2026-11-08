@@ -634,6 +634,28 @@ void InvFixInstall() {
             n, kSiteCount);
     }
 
+    // has_go_in_inventory("local", ...) trigger condition (Pit of Despair skull door, Chamber of Stars).
+    // On a dedicated server "local" resolves to the ServerHost dummy hero, never to a connected player,
+    // so these doors can never open. Condition evaluator at 0x00630FAA: cmp byte [esi+0x50],0 /
+    // je 0x00630FED ("any" branch: every connected human player). Turning the je (74 3D) into a jmp
+    // (EB 3D) makes "local" behave like "any" on the server only.
+    if (!GetEnvironmentVariableA("SIEGEHOST_NO_LOCALINV_FIX", e, sizeof e)) {
+        BYTE* pLocal = (BYTE*)0x00630FAE;
+        if (pLocal[0] == 0x74 && pLocal[1] == 0x3D) {
+            DWORD o;
+            if (VirtualProtect(pLocal, 1, PAGE_EXECUTE_READWRITE, &o)) {
+                pLocal[0] = 0xEB;
+                VirtualProtect(pLocal, 1, o, &o);
+                FlushInstructionCache(GetCurrentProcess(), pLocal, 1);
+                Log("InvFix: has_go_in_inventory(\"local\") now checks every connected player at 0x00630FAE (Pit of Despair / Chamber of Stars doors).");
+            }
+        } else if (pLocal[0] == 0xEB) {
+            Log("InvFix: has_go_in_inventory local patch already applied.");
+        } else {
+            Log("InvFix: VERIFY FAILED at 0x00630FAE for has_go_in_inventory local patch");
+        }
+    }
+
     // Ground item and gold persistence across player logout / disconnect (server only)
     if (!GetEnvironmentVariableA("SIEGEHOST_NO_GROUND_PERSIST", e, sizeof e)) {
         // 1. Hook GoDb::PurgePlayerObjects at 0x0054C749 (9 bytes: 55 8B EC 81 EC 98 00 00 00)
