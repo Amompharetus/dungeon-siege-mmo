@@ -1382,9 +1382,13 @@ void CharacterAbilities_SetStashHover(bool hovered) {
     s_stashHovered = hovered;
 }
 
+static bool IsWorldStateInGame(const char* ws) {
+    return ws && (strstr(ws, "_ingame") != nullptr || strcmp(ws, "ws_mega_map") == 0);
+}
+
 static void UpdateAbilityUI() {
     const char* ws = eng::CurrentWorldState();
-    if (!strstr(ws, "_ingame")) return;
+    if (!IsWorldStateInGame(ws)) return;
 
     void* ui = eng::UI();
     if (!ui) return;
@@ -1583,7 +1587,7 @@ static void PlayBuffUISfx() {
 
 static void UpdateBuffUI() {
     const char* ws = eng::CurrentWorldState();
-    if (!ws || !strstr(ws, "_ingame")) {
+    if (!IsWorldStateInGame(ws)) {
         s_wasInGameForBuffUi = false;
         s_wasBuffUiVisible   = false;
         return;
@@ -1935,7 +1939,7 @@ static bool TriggerAbility(int slot) {
 
 static bool IsInGame() {
     const char* ws = eng::CurrentWorldState();
-    if (ws && strstr(ws, "_ingame") != nullptr) return true;
+    if (IsWorldStateInGame(ws)) return true;
     void* srv = *(void**)0x007ACF70;
     if (srv && Readable(srv, 0x20)) {
         void* hero = GetScreenHero(srv);
