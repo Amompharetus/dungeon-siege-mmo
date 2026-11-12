@@ -37,6 +37,8 @@ crash_*.dmp
 *.csv
 .env
 .env.*
+website/data/gm_users.json
+website/sessions.json
 
 # Backups and temporary files
 *.bak

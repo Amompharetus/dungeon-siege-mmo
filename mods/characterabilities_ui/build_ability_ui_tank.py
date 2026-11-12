@@ -25,7 +25,7 @@ if os.path.exists(uber_path):
     awp_text = t_uber['ui/interfaces/backend/character_awp/character_awp.gas'].decode('latin1')
     print("Loaded pristine character_awp.gas from UberUI_LoA_v0.02.dsres")
 else:
-    awp_path = r'c:\Users\Amompharetus\Desktop\Dungeon Siege\extracted_awp.gas'
+    awp_path = os.environ.get('EXTRACTED_AWP_PATH', 'extracted_awp.gas')
     awp_text = open(awp_path, 'r', encoding='latin1').read()
     print("Loaded character_awp.gas from extracted_awp.gas")
 

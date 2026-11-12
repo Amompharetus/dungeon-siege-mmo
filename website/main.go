@@ -28,27 +28,65 @@ import (
 	"time"
 )
 
-const (
-	portalURL    = "http://127.0.0.1:8440"
-	portalDir    = "/home/amp/.ampdata/instances/ADS01/localaux/ds1mmo_central"
-	webDir       = "/home/amp/.ampdata/instances/ADS01/localaux/ds1mmo_web"
-	tankdumpBin  = "/usr/local/bin/tankdump"
-	listenAddr   = "127.0.0.1:8088"
-	gmCookieName = "ds1mmo_gm_session"
-	awsCredsFile  = "/etc/ds1mmo/aws-eu.csv"
-	awsEURegion   = "eu-central-1"
-	awsEUInstance = "i-0b48befaf07854f49"
-	awsNARegion   = "us-east-1"
-	awsNAInstance = "i-0c0eebbb28fcafe2b"
+func getEnv(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
+}
+
+var (
+	portalURL     = getEnv("PORTAL_URL", "http://127.0.0.1:8440")
+	portalDir     = getEnv("PORTAL_DIR", filepath.Join("..", "ds1mmo_central"))
+	webDir        = getEnv("WEB_DIR", ".")
+	tankdumpBin   = getEnv("TANKDUMP_BIN", "/usr/local/bin/tankdump")
+	listenAddr    = getEnv("LISTEN_ADDR", "127.0.0.1:8088")
+	gmCookieName  = "ds1mmo_gm_session"
+	awsCredsFile  = getEnv("AWS_CREDS_FILE", "aws.csv")
+	awsEURegion   = getEnv("AWS_EU_REGION", "eu-central-1")
+	awsEUInstance = getEnv("AWS_EU_INSTANCE", "")
+	awsNARegion   = getEnv("AWS_NA_REGION", "us-east-1")
+	awsNAInstance = getEnv("AWS_NA_INSTANCE", "")
 )
 
-var gmUsers = map[string]bool{
-	"amompharetus": true,
-	"andreou":      true,
-	"ashley":       true,
+var (
+	gmUsersMu sync.RWMutex
+	gmUsers   = map[string]bool{}
+)
+
+func loadGMUsers() {
+	gmUsersMu.Lock()
+	defer gmUsersMu.Unlock()
+	gmUsers = make(map[string]bool)
+
+	// 1. From environment variable (comma-separated list)
+	if envList := os.Getenv("DS1MMO_GM_USERS"); envList != "" {
+		for _, u := range strings.Split(envList, ",") {
+			u = strings.ToLower(strings.TrimSpace(u))
+			if u != "" {
+				gmUsers[u] = true
+			}
+		}
+	}
+
+	// 2. From data/gm_users.json (if present)
+	gmFile := filepath.Join(webDir, "data", "gm_users.json")
+	if data, err := os.ReadFile(gmFile); err == nil {
+		var list []string
+		if err := json.Unmarshal(data, &list); err == nil {
+			for _, u := range list {
+				u = strings.ToLower(strings.TrimSpace(u))
+				if u != "" {
+					gmUsers[u] = true
+				}
+			}
+		}
+	}
 }
 
 func isAuthorizedGM(username string) bool {
+	gmUsersMu.RLock()
+	defer gmUsersMu.RUnlock()
 	return gmUsers[strings.ToLower(strings.TrimSpace(username))]
 }
 
@@ -697,8 +735,66 @@ func signV4(creds awsCreds, region, service, host, path string, params map[strin
 	return
 }
 
-func callEC2(region, action string, extraParams map[string]string) ([]byte, int, error) {
-	creds, err := loadAWSCreds(awsCredsFile)
+type portalOnDemandConfig struct {
+	InstanceID      string `json:"instance_id"`
+	Region          string `json:"region"`
+	CredentialsFile string `json:"credentials_file"`
+}
+
+type portalServerEntry struct {
+	ID       string               `json:"id"`
+	OnDemand portalOnDemandConfig `json:"on_demand"`
+}
+
+type portalConfigFile struct {
+	Servers []portalServerEntry `json:"servers"`
+}
+
+func getShardAWSConfig(shardID string) (region, instanceID, credsFile string) {
+	// 1. Check environment variable override
+	if shardID == "na" && awsNAInstance != "" {
+		return awsNARegion, awsNAInstance, awsCredsFile
+	}
+	if shardID == "eu" && awsEUInstance != "" {
+		return awsEURegion, awsEUInstance, awsCredsFile
+	}
+
+	// 2. Read dynamically from portal.json
+	cfgPath := filepath.Join(portalDir, "portal.json")
+	if data, err := os.ReadFile(cfgPath); err == nil {
+		var pCfg portalConfigFile
+		if err := json.Unmarshal(data, &pCfg); err == nil {
+			for _, s := range pCfg.Servers {
+				if strings.EqualFold(s.ID, shardID) {
+					reg := s.OnDemand.Region
+					if reg == "" {
+						if shardID == "na" {
+							reg = awsNARegion
+						} else {
+							reg = awsEURegion
+						}
+					}
+					creds := s.OnDemand.CredentialsFile
+					if creds == "" {
+						creds = awsCredsFile
+					}
+					return reg, s.OnDemand.InstanceID, creds
+				}
+			}
+		}
+	}
+
+	if shardID == "na" {
+		return awsNARegion, awsNAInstance, awsCredsFile
+	}
+	return awsEURegion, awsEUInstance, awsCredsFile
+}
+
+func callEC2(region, action, credsPath string, extraParams map[string]string) ([]byte, int, error) {
+	if credsPath == "" {
+		credsPath = awsCredsFile
+	}
+	creds, err := loadAWSCreds(credsPath)
 	if err != nil {
 		return nil, 0, fmt.Errorf("load credentials: %w", err)
 	}
@@ -731,8 +827,11 @@ func callEC2(region, action string, extraParams map[string]string) ([]byte, int,
 	return body, resp.StatusCode, err
 }
 
-func getEC2InstanceState(region, instanceId string) string {
-	body, code, err := callEC2(region, "DescribeInstances", map[string]string{
+func getEC2InstanceState(region, instanceId, credsPath string) string {
+	if instanceId == "" {
+		return "unknown"
+	}
+	body, code, err := callEC2(region, "DescribeInstances", credsPath, map[string]string{
 		"InstanceId.1": instanceId,
 	})
 	if err != nil || code != 200 {
@@ -750,13 +849,16 @@ func getEC2InstanceState(region, instanceId string) string {
 	return r.Instances[0].State
 }
 
-func executeEC2Action(region, instanceId, action string) error {
+func executeEC2Action(region, instanceId, action, credsPath string) error {
+	if instanceId == "" {
+		return errors.New("instance id not configured")
+	}
 	var ec2Action string
 	switch action {
 	case "start":
 		ec2Action = "StartInstances"
 	case "restart":
-		st := getEC2InstanceState(region, instanceId)
+		st := getEC2InstanceState(region, instanceId, credsPath)
 		if st == "stopped" {
 			ec2Action = "StartInstances"
 		} else {
@@ -767,7 +869,7 @@ func executeEC2Action(region, instanceId, action string) error {
 	default:
 		return fmt.Errorf("invalid action: %s", action)
 	}
-	body, code, err := callEC2(region, ec2Action, map[string]string{
+	body, code, err := callEC2(region, ec2Action, credsPath, map[string]string{
 		"InstanceId.1": instanceId,
 	})
 	if err != nil {
@@ -780,22 +882,27 @@ func executeEC2Action(region, instanceId, action string) error {
 }
 
 func getNAServerState() string {
-	return getEC2InstanceState(awsNARegion, awsNAInstance)
+	region, id, creds := getShardAWSConfig("na")
+	return getEC2InstanceState(region, id, creds)
 }
 
 func getEUServerState() string {
-	return getEC2InstanceState(awsEURegion, awsEUInstance)
+	region, id, creds := getShardAWSConfig("eu")
+	return getEC2InstanceState(region, id, creds)
 }
 
 func executeNAAction(action string) error {
-	return executeEC2Action(awsNARegion, awsNAInstance, action)
+	region, id, creds := getShardAWSConfig("na")
+	return executeEC2Action(region, id, action, creds)
 }
 
 func executeEUAction(action string) error {
-	return executeEC2Action(awsEURegion, awsEUInstance, action)
+	region, id, creds := getShardAWSConfig("eu")
+	return executeEC2Action(region, id, action, creds)
 }
 
 func main() {
+	loadGMUsers()
 	loadSessions()
 
 	mux := http.NewServeMux()
@@ -944,13 +1051,20 @@ func buildRealmStatus() RealmStatus {
 		}
 	}
 
-	// Also inspect local shard heartbeat files directly IF fresh and server is online
-	hbPaths := []struct {
+	// Also inspect local shard heartbeat files directly IF configured and server is online
+	hbDir := os.Getenv("SHARD_LOG_DIR")
+	var hbPaths []struct {
 		path string
 		id   string
-	}{
-		{path: "/home/amp/.ampdata/instances/ADS01/localaux/ds1mmo_na_server/game/SiegeHostLogs/heartbeat.txt", id: "na"},
-		{path: "/home/amp/.ampdata/instances/ADS01/localaux/ds1mmo_eu_server/game/SiegeHostLogs/heartbeat.txt", id: "eu"},
+	}
+	if hbDir != "" {
+		hbPaths = []struct {
+			path string
+			id   string
+		}{
+			{path: filepath.Join(hbDir, "ds1mmo_na_server", "game", "SiegeHostLogs", "heartbeat.txt"), id: "na"},
+			{path: filepath.Join(hbDir, "ds1mmo_eu_server", "game", "SiegeHostLogs", "heartbeat.txt"), id: "eu"},
+		}
 	}
 	for _, hb := range hbPaths {
 		srvOnline := false
@@ -1595,13 +1709,20 @@ func getLiveOnlineSnapshot() (map[string]string, map[string]string, map[string]s
 		}
 	}
 
-	// Also inspect local heartbeat file IF fresh and server is online
-	hbPaths := []struct {
+	// Also inspect local heartbeat file IF configured and server is online
+	hbDir := os.Getenv("SHARD_LOG_DIR")
+	var hbPaths []struct {
 		path string
 		id   string
-	}{
-		{path: "/home/amp/.ampdata/instances/ADS01/localaux/ds1mmo_na_server/game/SiegeHostLogs/heartbeat.txt", id: "na"},
-		{path: "/home/amp/.ampdata/instances/ADS01/localaux/ds1mmo_eu_server/game/SiegeHostLogs/heartbeat.txt", id: "eu"},
+	}
+	if hbDir != "" {
+		hbPaths = []struct {
+			path string
+			id   string
+		}{
+			{path: filepath.Join(hbDir, "ds1mmo_na_server", "game", "SiegeHostLogs", "heartbeat.txt"), id: "na"},
+			{path: filepath.Join(hbDir, "ds1mmo_eu_server", "game", "SiegeHostLogs", "heartbeat.txt"), id: "eu"},
+		}
 	}
 	for _, hb := range hbPaths {
 		if _, ok := activeServers[hb.id]; !ok {
