@@ -1,0 +1,29 @@
+1 ICON "app.ico"
+1 VERSIONINFO
+FILEVERSION 1,1,6,0
+PRODUCTVERSION 1,1,6,0
+FILEFLAGSMASK 0x3fL
+FILEFLAGS 0x0L
+FILEOS 0x40004L
+FILETYPE 0x1L
+FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "Dungeon Siege MMO Community"
+            VALUE "FileDescription", "Dungeon Siege MMO Launcher"
+            VALUE "FileVersion", "1.1.6.0"
+            VALUE "InternalName", "SiegeLauncher"
+            VALUE "LegalCopyright", "Dungeon Siege MMO"
+            VALUE "OriginalFilename", "SiegeLauncher.exe"
+            VALUE "ProductName", "Dungeon Siege MMO"
+            VALUE "ProductVersion", "1.1.6.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

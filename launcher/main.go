@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-const version = "1.1.5"
+const version = "1.1.6"
 
 type Settings struct {
 	PortalURL   string `json:"portal_url"` // e.g. http://my-server.example.com:8440
@@ -99,9 +99,9 @@ func settingsPath() string { return filepath.Join(gameDir, "launcher.json") }
 
 // The portal this launcher belongs to. Only used when launcher.json is missing or unreadable, so
 // that a player whose settings file is damaged is not stranded at a dead end with nobody to ask.
-const defaultPortalURL = "http://72.60.164.124:8440"
+const defaultPortalURL = "https://dungeonsiegemmo.online:8443"
 
-// 0.8.7. launcher.json turned into 330 bytes of zeros after the game was force-closed, and
+// 0.8.7. A user's launcher.json turned into 330 bytes of zeros after the game was force-closed, and
 // the launcher answered with "launcher.json is invalid" and a "send that file to the server admin"
 // that no ordinary player can act on. A launcher that can be bricked by its own settings file is not
 // shippable: anything wrong with that file is now repaired here and the launch continues.
@@ -124,8 +124,8 @@ func loadSettings() error {
 		logf("launcher.json could not be read (%v), writing a fresh one.", err)
 		return recoverSettings(b)
 	}
-	if settings.PortalURL == "" {
-		logf("launcher.json has no portal_url, filling in the default.")
+	if settings.PortalURL == "" || strings.HasPrefix(settings.PortalURL, "http://72.60.164.124:8440") || strings.HasPrefix(settings.PortalURL, "http://dungeonsiegemmo.online:8440") {
+		logf("launcher.json portal_url updated to secure endpoint %s", defaultPortalURL)
 		settings.PortalURL = defaultPortalURL
 		saveSettings()
 	}
@@ -182,7 +182,7 @@ func recoverSettings(bad []byte) error {
 
 // saveSettings writes through a temporary file in the same folder and renames it into place, so a
 // crash, a kill or a power cut can never leave a half-written or zero-filled launcher.json behind.
-// The old behaviour truncated the real file first, which could leave the file empty.
+// The old behaviour truncated the real file first, which is exactly how the settings file was destroyed.
 func saveSettings() {
 	b, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
@@ -581,7 +581,7 @@ func gameDecides() bool { return false }
 // machine where the working setup needs something specific (16-bit, a particular driver, a wrapper
 // like dgVoodoo or DDrawCompat) that guess fails and the player gets "D3D Initialization Failure:
 // Dungeon Siege was unable to properly create a 3D graphics device" — while the same game started
-// outside the launcher, on their normal profile, runs fine. Profile loading verification.
+// outside the launcher, on their normal profile, runs fine. 
 //
 // Only the keys above the first [section] are copied: those are the device settings. The
 // [multiplayer] block is deliberately left alone, because the source file may point at matchmaking
@@ -623,7 +623,7 @@ func seedDisplayConfig(profile string) {
 	logf("display: no existing DungeonSiege.ini found to seed from; the game will choose its own device")
 }
 
-// Keys deliberately NOT seeded from another profile (0.7.5, ): the launcher decides the
+// Keys deliberately NOT seeded from another profile (0.7.5): the launcher decides the
 // resolution and passes it on DSLOA.exe's command line, so a width/height copied out of some other
 // profile can only ever disagree with what we are about to pass. When it does, the game renders at
 // the ini's size and presents at the command line's, and the player sees the top-left corner of a
@@ -776,8 +776,17 @@ func displayArgs() ([]string, int, int) {
 		w, h = desktopResolution()
 		if w < 800 || h < 600 {
 			w, h = 1920, 1080
+		} else if w > 1920 || h > 1080 {
+			dw, dh := w, h
+			if float64(w)/float64(h) > 1.8 {
+				w, h = 2560, 1080
+			} else {
+				w, h = 1920, 1080
+			}
+			logf("display: desktop %dx%d capped to safe full screen %dx%d (prevents DirectDraw black screen)", dw, dh, w, h)
+		} else {
+			logf("display: full screen %dx%d (desktop)", w, h)
 		}
-		logf("display: full screen %dx%d (desktop)", w, h)
 	} else {
 		logf("display: full screen %dx%d (chosen)", w, h)
 	}
@@ -934,6 +943,20 @@ func doReq(method, path, token string, body io.Reader, ctype string) (*http.Resp
 	}
 	resp, err := c.Do(req)
 	if err != nil {
+		if strings.HasPrefix(settings.PortalURL, "https://") {
+			httpURL := strings.Replace(strings.Replace(settings.PortalURL, "https://", "http://", 1), ":8443", ":8440", 1)
+			if req2, err2 := http.NewRequest(method, httpURL+path, body); err2 == nil {
+				if token != "" {
+					req2.Header.Set("Authorization", "Bearer "+token)
+				}
+				if ctype != "" {
+					req2.Header.Set("Content-Type", ctype)
+				}
+				if resp2, err3 := c.Do(req2); err3 == nil {
+					return resp2, nil
+				}
+			}
+		}
 		return nil, err
 	}
 	if resp.StatusCode >= 400 {
@@ -1343,6 +1366,9 @@ var retiredFiles = []string{
 	"DSLOA/XPRes.dsres",
 	"Maps/XPMap.dsmap",
 	"Resources/XPRes.dsres",
+	"DSLOA/BuffedBuffsMod.dsres",
+	"DSLOA/BuffedBuffsMod - DSMMO.dsres",
+	"DSLOA/BuffedBuffsMod - DSMMO V1.01.dsres",
 }
 
 // isRetired compares on forward slashes so it behaves the same whichever way the path arrived and

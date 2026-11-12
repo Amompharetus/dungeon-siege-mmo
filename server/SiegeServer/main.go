@@ -75,7 +75,7 @@ type Config struct {
 	PickStartTown    *bool  `json:"pick_start_town,omitempty"` // players choose their start town in staging. Absent = true; false = everyone at start_location
 
 	// Shard mode (0.4.0): report this game server to the central portal instead of (or as well as) running one.
-	HubURL        string `json:"hub_url"`        // e.g. http://127.0.0.1:8440 or http://72.60.164.124:8440; empty = off
+	HubURL        string `json:"hub_url"`        // e.g. http://127.0.0.1:8440 or http://dungeonsiegemmo.online:8440; empty = off
 	ShardID       string `json:"shard_id"`       // must match an entry in the central portal's "servers"
 	ShardKey      string `json:"shard_key"`      // shared secret from that entry
 	PublicAddress string `json:"public_address"` // address clients join; "auto" = the hub uses the source IP it sees
