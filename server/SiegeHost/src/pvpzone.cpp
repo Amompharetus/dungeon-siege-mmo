@@ -44,7 +44,7 @@
 //       player, damage is allowed ONLY when the two players are currently PvP enemies. This also
 //       prevents stray/in-flight projectiles or AoE spells from hurting players who are in PvE.
 //   [E] Zone-scoped dio_nothing at 0x0057803C, 0x0057815E, and 0x005F0D46:
-//       Players keep all items and gold on death inside PvP zones, but drop them normally elsewhere.
+//       Players keep equipped gear inside PvP zones too (dio_nothing = 1 in PvP zones, dio_inventory = 3 elsewhere).
 //   [F] On-enter PvP Zone chat suffix at 0x0056BBD1 in Player::RCSetWorldLocation:
 //       Replaces "$MSG$%S has entered %S." with "$MSG$%S has entered %S (PvP Zone)." when entering a PvP zone.
 //
@@ -328,9 +328,9 @@ __asm__(
 //   * 0x005F0D46 in GoMind/GoFollower death handler:                        `esi` holds `Goid` at `[esi]`, resolved via `0x005207E1`.
 // If the dying character belongs to a human player currently inside a configured PvP zone (402, 409, 901),
 // return 1 (dio_nothing — keep all equipped items, inventory items, and gold). Otherwise return the
-// server's normal drop option (4 = dio_all — drop items and gold as usual in PvE zones).
+// server's normal drop option (3 = dio_inventory — drop inventory and gold in PvE zones; keep equipped gear).
 int GetDropInvOptionForGo(void* go) {
-    int defOpt = 4;  // dio_all (normal multiplayer drop)
+    int defOpt = 3;  // dio_inventory (drop inventory and gold; keep equipped gear)
     void* srv = *(void**)0x007ACF70;
     if (srv && Readable(srv, 0x30)) {
         int opt = *(int*)((char*)srv + 0x2C);
@@ -480,7 +480,7 @@ void PvpZoneInstall() {
             }
             g_dioOn = true;
             Log("PvpZone: zone-scoped dio_nothing armed - players keep all equipped items, inventory items, and gold "
-                "when dying inside PvP zones, and drop as usual everywhere else (patched 0x0057803C, 0x0057815E, 0x005F0D46).");
+                "when dying inside PvP zones, and drop inventory/gold everywhere else (patched 0x0057803C, 0x0057815E, 0x005F0D46).");
         }
     }
 
@@ -599,10 +599,10 @@ void PvpZoneTick() {
     void* srv = eng::Server_Singleton();
     if (!srv) return;
 
-    // Keep Server+0x2C set to dio_all (4) globally so PvE deaths outside PvP zones drop items as usual.
-    if (g_dioOn && *(int*)((char*)srv + 0x2C) != 4) {
-        eng::Server_RCSetDropInvOption(srv, 4);
-        Log("PvpZone: Server::RCSetDropInvOption(4 = dio_all outside PvP zones) -> Server+0x2C=%d", *(int*)((char*)srv + 0x2C));
+    // Keep Server+0x2C set to dio_inventory (3) globally so PvE deaths outside PvP zones drop inventory/gold while keeping equipped gear.
+    if (g_dioOn && *(int*)((char*)srv + 0x2C) != 3) {
+        eng::Server_RCSetDropInvOption(srv, 3);
+        Log("PvpZone: Server::RCSetDropInvOption(3 = dio_inventory outside PvP zones) -> Server+0x2C=%d", *(int*)((char*)srv + 0x2C));
     }
 
     if (!g_pvpOn) return;

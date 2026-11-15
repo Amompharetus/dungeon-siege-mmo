@@ -131,6 +131,8 @@ func formatTownName(s string) string {
 		return "Hiroth"
 	case "grescal":
 		return "Grescal"
+	case "fortress", "neener_emporium", "neeners_emporium", "neener's emporium":
+		return "Neener's Emporium"
 	default:
 		s = strings.TrimSpace(s)
 		if len(s) > 0 {
@@ -249,7 +251,7 @@ func regionToArea(region string) (string, string) {
 		return "Grescal", "grescal"
 	case "oasis_cave":
 		return "Grescal Oasis", "grescal"
-	case "dunes", "dunes2", "eg_seck_dungeon":
+	case "dunes", "dunes2", "eg_seck_dungeon", "endless_dunes", "the endless dunes", "endless dunes":
 		return "Endless Desert", "endless_desert"
 	case "dunes2hades", "hades":
 		return "Volcanic Caverns", "volcanic_caverns"
@@ -259,6 +261,32 @@ func regionToArea(region string) (string, string) {
 	// Central Hub
 	case "new_hub", "hub_quest_dun", "hub":
 		return "Utraean Basilicus", "utraean_basilicus"
+
+	// Legends of Aranna Expansion (accessible via Grescal Displacer)
+	case "fortress", "neener_emporium", "neeners_emporium", "neener's emporium":
+		return "Neener's Emporium", "neeners_emporium"
+	case "ramparts", "the ramparts":
+		return "The Ramparts", "ramparts"
+	case "a8_r1_ramparts", "stronghold gate", "the stronghold gate":
+		return "Stronghold Gate", "stronghold_gate"
+	case "a8_r1b_secretcave", "z_a8_r1b_to_a9_r2a", "stronghold tunnel", "the stronghold tunnel":
+		return "Stronghold Tunnel", "stronghold_tunnel"
+	case "stronghold", "zaurask stronghold", "the zaurask stronghold", "a8_r2_fortress", "the stronghold":
+		return "Zaurask Stronghold", "zaurask_stronghold"
+	case "a8_r2b_fortress", "inner stronghold", "the inner stronghold":
+		return "Inner Stronghold", "inner_stronghold"
+	case "a8_r3_tunnels", "stronghold caverns", "the stronghold caverns":
+		return "Stronghold Caverns", "stronghold_caverns"
+	case "a9_r1_mesa", "great clock wastelands", "the great clock wastelands":
+		return "Great Clock Wastelands", "clock_wastelands"
+	case "a9_r2_cave", "tunnels of the great clock", "the tunnels of the great clock":
+		return "Tunnels of the Great Clock", "clock_tunnels"
+	case "clock", "lands of the great clock", "the lands of the great clock":
+		return "Lands of the Great Clock", "clock_wastelands"
+	case "a9_r2a_clockdungeon", "halls of the great clock", "the halls of the great clock":
+		return "Halls of the Great Clock", "clock_halls"
+	case "a9_r3_clockroom", "great clock", "the great clock":
+		return "The Great Clock", "great_clock"
 
 	default:
 		clean := strings.TrimSpace(region)
@@ -409,10 +437,79 @@ var (
 	uberLvlRe    = regexp.MustCompile(`(?i)uber_level\s*=\s*([0-9.]+)`)
 	screenNmRe   = regexp.MustCompile(`(?i)screen_name\s*=\s*"([^"]+)"`)
 	templateRe   = regexp.MustCompile(`(?i)template_name\s*=\s*([^;\r\n]+);`)
-	startLocRe   = regexp.MustCompile(`(?i)multiplayer_world\s*=\s*"?([a-zA-Z0-9_]+)"?`)
-	regionRe     = regexp.MustCompile(`(?i)region\s*=\s*([a-zA-Z0-9_]+)`)
-	saveTimeRe   = regexp.MustCompile(`(?i)\bsave_time\s*=\s*([0-9]+)`)
+	startLocRe   = regexp.MustCompile(`(?i)multiplayer_world\s*=\s*"?([a-zA-Z0-9_' -]+)"?`)
+	regionRe       = regexp.MustCompile(`(?i)region\s*=\s*([a-zA-Z0-9_]+)`)
+	teleportNodeRe = regexp.MustCompile(`(?i)teleport\s*=\s*[^:;\r\n]*:[^:;\r\n]*:[^,]+,[^,]+,([^,]+),(0x[0-9a-fA-F]+)\s*;`)
+	saveTimeRe     = regexp.MustCompile(`(?i)\bsave_time\s*=\s*([0-9]+)`)
+
+	// Neener's Emporium shares region = a8_r2_fortress with Zaurask Stronghold;
+	// distinguish them by the saved teleport node inside the faction foyer/annex.
+	neenerEmporiumNodes = map[string]bool{
+		"0x01584f8f": true, "0x099f9811": true, "0x17012ff4": true, "0x24601e22": true,
+		"0x42d5c89e": true, "0x45ec90be": true, "0x59996a3e": true, "0x5d183cc1": true,
+		"0x73018fe1": true, "0x87144d12": true, "0x8d4db2ac": true, "0x9c9f2da6": true,
+		"0x9e8a2dcd": true, "0xa0c902d7": true, "0xb18e9c00": true, "0xb2f00001": true,
+		"0xb2f00002": true, "0xb2f00003": true, "0xb2f00004": true, "0xb2f00005": true,
+		"0xb2f00006": true, "0xb2f00007": true, "0xb2f00008": true, "0xb2f00009": true,
+		"0xb2f0000a": true, "0xb2f0000b": true, "0xb2f0000c": true, "0xb2f0000d": true,
+		"0xb2f0000e": true, "0xb2f0000f": true, "0xb2f00010": true, "0xb2f00011": true,
+		"0xb2f00012": true, "0xb2f00013": true, "0xb2f00014": true, "0xb2f00015": true,
+		"0xb2f00016": true, "0xb2f00017": true, "0xb2f00018": true, "0xb2f00019": true,
+		"0xbc135dde": true, "0xc3f55452": true, "0xcc4374aa": true, "0xce480eca": true,
+		"0xce8b49e4": true, "0xdff38506": true, "0xe385ac87": true, "0xe409a4db": true,
+		"0xef39b9aa": true, "0xf9dd8d8e": true,
+	}
 )
+
+func resolveFortressRegion(infoStr string) string {
+	tm := teleportNodeRe.FindStringSubmatch(infoStr)
+	if len(tm) > 2 {
+		node := strings.ToLower(strings.TrimSpace(tm[2]))
+		if neenerEmporiumNodes[node] {
+			return "neener_emporium"
+		}
+		if node == "0x7e13bba2" {
+			if lz, err := strconv.ParseFloat(strings.TrimSpace(tm[1]), 64); err == nil && lz > 0.13 {
+				return "neener_emporium"
+			}
+		}
+	}
+	return "a8_r2_fortress"
+}
+
+var oasisEndlessDunesNodes = map[string]bool{
+	"0xb0760001": true,
+	"0xb0760002": true,
+	"0x45251ca5": true,
+	"0x0b564081": true,
+	"0x199a544b": true,
+	"0x4a87e83e": true,
+	"0x6b3c29f9": true,
+	"0x7b8430e1": true,
+	"0x7dbea029": true,
+	"0xa58b325b": true,
+	"0xa5a825cd": true,
+	"0xb74b6738": true,
+	"0xc2b31546": true,
+	"0xd3184fc9": true,
+	"0xef4617cd": true,
+	"0xf8f76bd9": true,
+	"0x664556bd": true,
+	"0x8247bce7": true,
+	"0xaae7f3fa": true,
+	"0xc255164c": true,
+}
+
+func resolveOasisRegion(infoStr string) string {
+	tm := teleportNodeRe.FindStringSubmatch(infoStr)
+	if len(tm) > 2 {
+		node := strings.ToLower(strings.TrimSpace(tm[2]))
+		if oasisEndlessDunesNodes[node] {
+			return "dunes"
+		}
+	}
+	return "oasis"
+}
 
 func templateToRace(tpl string) string {
 	tpl = strings.ToLower(strings.TrimSpace(tpl))
@@ -1617,6 +1714,11 @@ func resolveCharacterDetails(account, charName, saveSHA string, rec *CharRec) Ca
 							if m := regionRe.FindStringSubmatch(infoStr); len(m) > 1 {
 								reg := strings.TrimSpace(m[1])
 								if reg != "" {
+									if strings.EqualFold(reg, "a8_r2_fortress") {
+										reg = resolveFortressRegion(infoStr)
+									} else if strings.EqualFold(reg, "oasis") {
+										reg = resolveOasisRegion(infoStr)
+									}
 									loc, mId := regionToArea(reg)
 									res.StartLoc = loc
 									res.MapAreaId = mId

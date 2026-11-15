@@ -202,3 +202,16 @@ The retail game interface was built for 4:3 resolutions (up to 1024x768). Runnin
 
 `sf_ResolutionFix` (part of the SeeFar mod suite) corrects the paperdoll anchor coordinates and layout parameters across all playable character races, ensuring inventory screens render properly at high widescreen resolutions.
 
+## Legends of Aranna World Expansion
+
+Integrates the Legends of Aranna stronghold and Great Clock endgame regions, templates, shops, quests, and world locations directly into the multiplayer Utraean Peninsula map (`multiplayer_world`).
+
+| | |
+|---|---|
+| Files | `Z_LoA_Expansion.dsres` (`priority=0x5500`, built by `loa-expansion/build_loa_expansion.py`) |
+| Installed to | `DSLOA/` |
+| Requires | Legends of Aranna 1.50 |
+| Scope | Map regions (`a8_*`, `a9_*`, `oasis` foyer), remapped templates & NPC shops, quests, start positions, elevators, moods, siege nodes |
+
+Combines remapped templates, 10 LoA regions plus the oasis connection foyer, world locations, start positions, quests, stitch index entries, elevators, moods, and siege node definitions without modifying stock retail `.dsmap`/`.dsres` archives, with end-to-end VFS verification in `loa-expansion/validate_loa_expansion.py`.
+

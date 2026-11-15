@@ -1,6 +1,5 @@
 // SiegeLauncher — friend-side launcher: login, download online save, start Dungeon Siege with SiegeHost
 // auto-join, upload the save while playing and after exit. Lives in the game folder next to DSLOA.exe.
-// Docs: launcher/README.md
 package main
 
 import (
@@ -27,7 +26,7 @@ import (
 	"time"
 )
 
-const version = "1.1.6"
+const version = "1.1.8"
 
 type Settings struct {
 	PortalURL   string `json:"portal_url"` // e.g. http://my-server.example.com:8440
@@ -412,7 +411,7 @@ func run() error {
 		endSession(sess.Session)
 		return fmt.Errorf("cannot resolve game address %q: %v", status.GameAddress, err)
 	}
-	// search the host's fixed port directly; a reply routed via dpnsvr (6073) comes from another port and home NATs drop it.
+	// Search the host's fixed port directly; a reply routed via dpnsvr (6073) comes from another port and home NATs drop it.
 	joinPort := status.GamePort
 	if joinPort == 0 {
 		joinPort = 2350
@@ -581,7 +580,7 @@ func gameDecides() bool { return false }
 // machine where the working setup needs something specific (16-bit, a particular driver, a wrapper
 // like dgVoodoo or DDrawCompat) that guess fails and the player gets "D3D Initialization Failure:
 // Dungeon Siege was unable to properly create a 3D graphics device" — while the same game started
-// outside the launcher, on their normal profile, runs fine. 
+// outside the launcher, on their normal profile, runs fine.
 //
 // Only the keys above the first [section] are copied: those are the device settings. The
 // [multiplayer] block is deliberately left alone, because the source file may point at matchmaking

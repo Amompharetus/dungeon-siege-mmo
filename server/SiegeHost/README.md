@@ -4,7 +4,7 @@ Runtime extension DLL for **Dungeon Siege: Legends of Aranna** (`DSLOA.exe` v1.5
 
 Built as `Mss32.dll`, a proxy for the game's Miles sound system DLL. The original Miles binary is renamed to `mss32_orig.dll` and all exports forward directly to it. When `DSLOA.exe` starts, Windows loads `Mss32.dll` from the game directory, hooking engine functions in memory without modifying retail game executables or tank archives.
 
-Current version: **1.5.9**
+Current version: **1.5.24**
 
 ---
 
@@ -18,7 +18,7 @@ Current version: **1.5.9**
 | **AutoJoin** | Client | Automatically joins the target shard IP from the launcher without manual menu navigation. |
 | **Join-in-Progress (JIP) Queue** | Both | Defers map-load freezes during late joins and manages a ready-first queue so players currently in the world are not interrupted. |
 | **Zone-Based PvP** | Both | Enables hostile player-vs-player combat only within designated world zones (The Endless Dunes, The Pit of Despair, The Eastern Island). Blocks cross-player damage elsewhere. |
-| **Death Drop Protection** | Server | Enforces `dio_nothing` inside PvP zones so players retain all equipped items, inventory, and gold on death. |
+| **Death Drop Protection** | Server | Enforces `dio_nothing` inside PvP zones so players retain all equipped items, inventory, and gold on death, and `dio_inventory` outside PvP zones so equipped gear stays equipped while unequipped inventory items and gold drop. |
 | **Veteran Level Override** | Both | Patches world level parsing in memory to permit characters meeting shard-specific level requirements (e.g. level 54+) into veteran tier maps. |
 | **Shared Quest Sync** | Both | Synchronizes active quest state across all players in the world, resetting cleanly when a world cycle restarts. |
 | **Inventory & Shop Fixes** | Server | Fixes inventory overflow so picked-up items properly route into backpacks; restocks merchant shelves once per world cycle; places the Fury Eye on the bandit boss. |
@@ -50,7 +50,7 @@ World=regular          ; regular | veteran | elite
 StartLocation=elddim
 AllowStartLocationSelection=1
 PvpLocations=402,409,901 ; Location IDs enabling PvP (Dunes=402, Pit=409, Island=901)
-DropInvNothing=1       ; 1 = keep items and gold on death in PvP zones
+DropInvNothing=1       ; 1 = keep items/gold in PvP zones, drop inventory only (keep equipped) outside
 
 [AutoJoin]             ; Role=client settings
 Address=127.0.0.1      ; Shard IP to connect to
@@ -105,6 +105,7 @@ To uninstall, remove `Mss32.dll` and restore `mss32_orig.dll`.
 
 ## Changelog Summary
 
+* **1.5.24**: Changed default PvE death drop penalty from `dio_all` to `dio_inventory` (players keep equipped gear and spells on death while dropping backpack inventory and gold; PvP zones retain `dio_nothing`). Added Legends of Aranna expansion area groups (`areagroups.h` groups 27–31).
 * **1.5.9**: Added zone-based PvP for Endless Dunes, Pit of Despair, and Eastern Island with `dio_nothing` death item protection. Added AutoHost dialog text hook and Yes/No auto-confirmation.
 * **1.5.5**: Added 3-second cooldown on out-of-mana chat notices and corrected player leave message grammar.
 * **1.5.2**: Added in-memory GAS parser override for veteran world required level (`VeteranRequiredLevel`).

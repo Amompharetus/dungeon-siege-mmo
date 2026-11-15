@@ -1,5 +1,5 @@
 // autohost.cpp — drives the DS1 front-end menus so a dedicated host starts a multiplayer game unattended.
-// Runs on the game's main thread (called from the PeekMessageA hook). 
+// Runs on the game's main thread (called from the PeekMessageA hook).
 #include <cstdint>
 #include "siegehost.h"
 #include "engine.h"
@@ -378,8 +378,8 @@ void AutoHostTick() {
             if (void* srv = eng::Server_Singleton()) {
                 eng::Server_RCSetAllowJIP(srv, true);
                 eng::Server_RCSetAllowPausing(srv, c.allowPausing != 0);
-                eng::Server_RCSetDropInvOption(srv, 4);
-                Log("AutoHost: Server::RCSetAllowJIP(true), RCSetAllowPausing(%d), RCSetDropInvOption(4) -> Server+0x28=%d Server+0x2C=%d",
+                eng::Server_RCSetDropInvOption(srv, 3);
+                Log("AutoHost: Server::RCSetAllowJIP(true), RCSetAllowPausing(%d), RCSetDropInvOption(3) -> Server+0x28=%d Server+0x2C=%d",
                     c.allowPausing, *((unsigned char*)srv + 0x28), *(int*)((char*)srv + 0x2C));
             }
         }
@@ -485,7 +485,7 @@ void AutoHostTick() {
             if (void* srv = eng::Server_Singleton()) {
                 eng::Server_RCSetAllowJIP(srv, true);
                 eng::Server_RCSetAllowPausing(srv, c.allowPausing != 0);
-                eng::Server_RCSetDropInvOption(srv, 4);
+                eng::Server_RCSetDropInvOption(srv, 3);
                 if (c.maxPlayers > 0) eng::Server_RCSetMaxPlayers(srv, (unsigned)c.maxPlayers);
                 Log("AutoHost: staging configured (AllowJIP=true, AllowPausing=%d, DropInvOption=%d, MaxPlayers=%d)",
                     c.allowPausing, *(int*)((char*)srv + 0x2C), c.maxPlayers);

@@ -123,6 +123,25 @@ const Entry kTable[] = {
 
     {  306, 26 },  // the Forgotten Mesas
     {  307, 26 },  // the Trial of Gallus
+
+    // Legends of Aranna expansion (group 27 town + groups 28..31 combat)
+    { 1500, 27 },  // Neener's Emporium (town - fortress wing sanctuary)
+
+    {  922, 28 },  // the Ramparts
+    { 1501, 28 },  // the Stronghold Gate (a8_r1_ramparts)
+    { 1502, 28 },  // the Stronghold Tunnel (a8_r1b_secretcave)
+
+    {  923, 29 },  // the Zaurask Stronghold
+    { 1503, 29 },  // the Stronghold (a8_r2_fortress)
+    { 1504, 29 },  // the Inner Stronghold (a8_r2b_fortress)
+    { 1505, 29 },  // the Stronghold Caverns (a8_r3_tunnels)
+
+    { 1506, 30 },  // the Great Clock Wastelands (a9_r1_mesa)
+    { 1507, 30 },  // the Tunnels of the Great Clock (a9_r2_cave)
+
+    {  924, 31 },  // the Lands of the Great Clock
+    { 1508, 31 },  // the Halls of the Great Clock (a9_r2a_clockdungeon)
+    { 1509, 31 },  // the Great Clock (a9_r3_clockroom)
 };
 const int kCount = (int)(sizeof(kTable) / sizeof(kTable[0]));
 
@@ -137,9 +156,9 @@ inline unsigned ForLocation(unsigned loc) {
     return loc / 100;
 }
 
-// True for the eight towns on Utraean Peninsula (groups 1..8, each town on its own group).
+// True for the eight towns on Utraean Peninsula (groups 1..8) and Neener's Emporium (group 27).
 inline bool IsTownGroup(unsigned group) {
-    return group >= 1 && group <= 8;
+    return (group >= 1 && group <= 8) || group == 27;
 }
 
 inline bool IsTownLocation(unsigned loc) {
