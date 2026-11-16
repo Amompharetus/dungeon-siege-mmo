@@ -6,6 +6,7 @@
 //   [R] Combat Magic Ability: Flame Nova (expanding elemental blast + heavy fire damage)
 
 #include "characterabilities.h"
+#include "buffui_helpers.h"
 #include "sharedstash.h"
 #include "siegehost.h"
 #include "engine.h"
@@ -1009,37 +1010,14 @@ extern "C" bool __fastcall Hook_UIPartyManager_IsPlayerPartyMemberBusy(void* thi
 }
 
 // ---- BuffUI State Icon Cache & GoActor::AddGenericState Hook ----
-struct StateIconCacheEntry {
-    char stateName[64];
-    char activeIcon[64];
-};
-static StateIconCacheEntry s_stateIconCache[64] = {};
-static int s_stateIconCacheCount = 0;
+static buffui::StateIconCache s_stateIconCache;
 
-static void CacheStateActiveIcon(const char* sName, const char* icon) {
-    if (!sName || !*sName || !icon || !*icon) return;
-    for (int i = 0; i < s_stateIconCacheCount; ++i) {
-        if (_stricmp(s_stateIconCache[i].stateName, sName) == 0) {
-            strncpy(s_stateIconCache[i].activeIcon, icon, 63);
-            s_stateIconCache[i].activeIcon[63] = '\0';
-            return;
-        }
-    }
-    int idx = (s_stateIconCacheCount < 64) ? s_stateIconCacheCount++ : 0;
-    strncpy(s_stateIconCache[idx].stateName, sName, 63);
-    s_stateIconCache[idx].stateName[63] = '\0';
-    strncpy(s_stateIconCache[idx].activeIcon, icon, 63);
-    s_stateIconCache[idx].activeIcon[63] = '\0';
+static void CacheStateActiveIcon(uint32_t spellGoid, const char* sName, const char* icon) {
+    s_stateIconCache.Record(spellGoid, sName, icon);
 }
 
-static const char* LookupCachedStateIcon(const char* sName) {
-    if (!sName || !*sName) return nullptr;
-    for (int i = 0; i < s_stateIconCacheCount; ++i) {
-        if (_stricmp(s_stateIconCache[i].stateName, sName) == 0 && s_stateIconCache[i].activeIcon[0] != '\0') {
-            return s_stateIconCache[i].activeIcon;
-        }
-    }
-    return nullptr;
+static const char* LookupCachedStateIcon(uint32_t spellGoid, const char* sName) {
+    return s_stateIconCache.Lookup(spellGoid, sName);
 }
 
 extern "C" void __fastcall Hook_GoActor_AddGenericState(void* thisActor, void* unused_edx, const char* sName, const char* sDescription, uint32_t expireLo, uint32_t expireHi, uint32_t casterGoid, uint32_t spellGoid, float spellLevel) {
@@ -1056,7 +1034,7 @@ extern "C" void __fastcall Hook_GoActor_AddGenericState(void* thisActor, void* u
                         static const auto s_getActiveIcon = (GetActiveIconFn)0x00541B78;
                         const eng::gpstring* iconStr = s_getActiveIcon(goGui);
                         if (iconStr && Readable(iconStr, 4) && iconStr->p && Readable(iconStr->p, 1) && *iconStr->p) {
-                            CacheStateActiveIcon(sName, iconStr->p);
+                            CacheStateActiveIcon(spellGoid, sName, iconStr->p);
                         }
                     }
                 }
@@ -1693,14 +1671,15 @@ static void UpdateBuffUI() {
                                 strncpy(e.icon, iconStr->p, sizeof(e.icon) - 1);
                                 e.icon[sizeof(e.icon) - 1] = '\0';
                                 if (stateKey && Readable(stateKey, 1) && *stateKey) {
-                                    CacheStateActiveIcon(stateKey, e.icon);
+                                    CacheStateActiveIcon(spellGoid, stateKey, e.icon);
                                 }
                             }
                         }
                     }
                 }
-                if (e.icon[0] == '\0' && stateKey && Readable(stateKey, 1) && *stateKey) {
-                    const char* cached = LookupCachedStateIcon(stateKey);
+                if (e.icon[0] == '\0') {
+                    const char* safeKey = (stateKey && Readable(stateKey, 1)) ? stateKey : nullptr;
+                    const char* cached = LookupCachedStateIcon(spellGoid, safeKey);
                     if (cached) {
                         strncpy(e.icon, cached, sizeof(e.icon) - 1);
                         e.icon[sizeof(e.icon) - 1] = '\0';
@@ -1840,10 +1819,13 @@ static void UpdateBuffUI() {
             }
             if (wTime) {
                 if (slotTime > 5999) {
-                    eng::GpStr p99("99");
-                    eng::GpStr ppp("++");
-                    s_uiTextBoxSetLineText(wTime, 0, &p99.s, 0xFF4999FF);
-                    s_uiTextBoxSetLineText(wTime, 1, &ppp.s, 0xFF4999FF);
+                    char hrBuf[16] = "";
+                    char minBuf[16] = "";
+                    buffui::FormatOverNinetyNineMinutes(slotTime, hrBuf, minBuf);
+                    eng::GpStr hrGp(hrBuf);
+                    eng::GpStr minGp(minBuf);
+                    s_uiTextBoxSetLineText(wTime, 0, &hrGp.s, 0xFF4999FF);
+                    s_uiTextBoxSetLineText(wTime, 1, &minGp.s, 0xFF4999FF);
                 } else {
                     int totalMin = slotTime / 60;
                     char minBuf[16] = "";

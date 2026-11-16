@@ -77,6 +77,8 @@
 #include "engine.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
+#include <vector>
 
 namespace {
 
@@ -563,6 +565,535 @@ extern "C" void __fastcall Hook_SEndGive_RSRemove(void* heroInv, void* unused_ed
     ((RSRemoveFn)0x00575F38)(heroInv, itemGo, bDelete, unk);
 }
 
+// ---------------------------------------------------------------------------------------------------
+// 4. Equip requirement check against post-displacement skill modifiers (UI + RS/RCAutoEquip + RCEquip)
+// ---------------------------------------------------------------------------------------------------
+// Swapping an item that grants +stat bonuses (e.g. +4 STR chest) directly onto another item whose
+// stat requirement uses those bonuses previously called GoInventory::CanEquip while the old item's
+// enchantments were still active on GoActor::Skill::m_LevelMod, and RCAutoEquip unequipped the old
+// item before checking whether the candidate could stay equipped. These helpers evaluate CanEquip
+// against read-only post-displacement Pass-1 skill values without mutating GoDb or recalculating
+// max life/mana, guard RSAutoEquip/RCAutoEquip atomically, flush CheckModifierRecalc synchronously
+// after RCEquip changes modifiers, and keep the already-equipped watchdog (0x00505852) untouched so
+// buff-assisted (e.g. Ogre Leg / Iron Fist) self-sustaining gear continues working as in vanilla.
+
+namespace {
+
+const DWORD kCanEquipFn        = 0x00574362;
+const DWORD kGetEquipSlotFn    = 0x00541C44;
+const DWORD kFindGoByGoidFn    = 0x00550A6B;
+const DWORD kIsServerLocalFn   = 0x0052063D;
+const DWORD kIsMeleeWeaponFn   = 0x005396B0;
+const DWORD kIsRangedWeaponFn  = 0x005396D8;
+const DWORD kIsShieldFn        = 0x00539756;
+const DWORD kSetModifiersDirty = 0x00539C47;
+const DWORD kCheckModRecalcFn  = 0x00539C81;
+const DWORD kPlayVoiceSoundFn  = 0x00539D77;
+const DWORD kGoDbFindEnchFn    = 0x0055E3C7;
+const DWORD kModifySkillFn     = 0x005B1F7F;
+const DWORD kTransferSkillFn   = 0x005B1F26;
+
+const DWORD kGoDbPtrAddr       = 0x007ACF4C;
+const DWORD kGoidInvalidAddr   = 0x007ADC8C;
+const DWORD kCsEnterPtrAddr    = 0x007AC398;
+const DWORD kCsLeavePtrAddr    = 0x007AC394;
+const DWORD kNotEquippableSfx  = 0x0078B8E0;  // "gui_inventory_not_equippable"
+
+const DWORD kRSAutoEquipVa     = 0x00574995;
+const DWORD kRCAutoEquipVa     = 0x00574BD9;
+const DWORD kPaperDollMatchVa  = 0x005063E5;
+const DWORD kRCEquipCanEquipVa = 0x00573FE2;
+const DWORD kRCEquipDirtyVa    = 0x0057434F;
+const DWORD kPaperDollHoverVa  = 0x00505FD8;
+
+const int kSlotWeaponHand = 0;
+const int kSlotShieldHand = 1;
+const int kSlotRing1      = 8;
+const int kSlotRing4      = 11;
+const int kSlotRingAny    = 12;
+const int kSlotAny        = 14;
+const int kAltPass1First  = 10;
+const int kAltPass1Last   = 26;
+
+typedef bool     (__thiscall* CanEquipFn)(void* inv, void* itemGo);
+typedef int      (__thiscall* GetEquipSlotFn)(void* goGui);
+typedef void*    (__thiscall* FindGoByGoidFn)(void* godb, uint32_t goid);
+typedef bool     (*IsServerLocalFn)();
+typedef bool     (__thiscall* GoBoolQueryFn)(void* go);
+typedef void     (__thiscall* SetModifiersDirtyFn)(void* go, bool dirty);
+typedef bool     (__thiscall* CheckModRecalcFn)(void* go);
+typedef void     (__thiscall* PlayVoiceSoundFn)(void* go, const char* eventName, bool flag);
+typedef void     (__thiscall* GoDbFindEnchFn)(void* map64, void** outNode, const void* pKeyGoPtr);
+typedef void     (__thiscall* CsFn)(void* cs);
+typedef uint8_t  (__thiscall* ModifySkillFn)(void* unused, void* skill, uint8_t isMul, float value);
+typedef uint8_t  (__thiscall* TransferSkillFn)(void* unused, void* fromSkill, void* toSkill, float amount);
+
+struct Pass1EnchEntry {
+    int      alt;
+    float    value;
+    bool     multiply;
+    uint32_t itemGoid;
+};
+
+struct TransferPair {
+    const char* from;
+    const char* to;
+};
+
+const char* const kAlterSkillNames[7] = {
+    "strength",      // 10
+    "intelligence",  // 11
+    "dexterity",     // 12
+    "melee",         // 13
+    "ranged",        // 14
+    "nature magic",  // 15
+    "combat magic",  // 16
+};
+
+const TransferPair kTransferPairs[10] = {
+    { "strength",     "intelligence" },  // 17
+    { "strength",     "dexterity"    },  // 18
+    { "intelligence", "dexterity"    },  // 19
+    { "melee",        "ranged"       },  // 20
+    { "melee",        "nature magic" },  // 21
+    { "melee",        "combat magic" },  // 22
+    { "ranged",       "nature magic" },  // 23
+    { "ranged",       "combat magic" },  // 24
+    { "nature magic", "combat magic" },  // 25
+    { "combat magic", "nature magic" },  // 26
+};
+
+const DWORD kAutoSlotCanEquipSites[] = {
+    0x00500786,  // Inventory UI click/equip check
+    0x00501126,  // Inventory grid unequippable red tint
+    0x00501454,  // Cursor pickup item_can_equip check
+    0x00506248,  // PaperDoll initial click equip check
+    0x00574776,  // GoInventory::TestEquipPassive
+    0x00577444,  // GoInventory::SAutoGet
+};
+
+bool g_equipSwapFix = false;
+
+inline bool IsValidGoidValue(uint32_t goid) {
+    uint32_t invalid = *(const uint32_t*)kGoidInvalidAddr;
+    return goid != 0 && goid != invalid;
+}
+
+inline void* FindGoByGoidSafe(uint32_t goid) {
+    if (!IsValidGoidValue(goid)) return nullptr;
+    void* godb = *(void**)kGoDbPtrAddr;
+    if (!Readable(godb, 0x90)) return nullptr;
+    return ((FindGoByGoidFn)kFindGoByGoidFn)(godb, goid);
+}
+
+inline int ResolveEquipSlotFromGo(void* itemGo) {
+    if (!Readable(itemGo, 0x30)) return -1;
+    void* gui = *(void**)((char*)itemGo + 0x28);
+    if (!Readable(gui, 0x40)) return -1;
+    return ((GetEquipSlotFn)kGetEquipSlotFn)(gui);
+}
+
+inline int PaperDollSlotNameToEquipSlot(void* slotWin) {
+    if (!Readable(slotWin, 0xA0)) return -1;
+    const char* name = *(const char**)((char*)slotWin + 0x9C);
+    if (!Readable(name, 6)) return -1;
+    if (_stricmp(name, "ring1") == 0) return kSlotRing1 + 0;
+    if (_stricmp(name, "ring2") == 0) return kSlotRing1 + 1;
+    if (_stricmp(name, "ring3") == 0) return kSlotRing1 + 2;
+    if (_stricmp(name, "ring4") == 0) return kSlotRing1 + 3;
+    return -1;
+}
+
+inline void* GetEquippedSlotDirect(void* inv, int slot) {
+    if (slot < 0 || slot >= 12 || !Readable(inv, 0x64)) return nullptr;
+    return *(void**)((char*)inv + 0x34 + slot * 4);
+}
+
+inline bool IsTwoHandedGo(void* go) {
+    if (!Readable(go, 0x0C)) return false;
+    void* atk = *(void**)((char*)go + 0x08);
+    if (!Readable(atk, 0x18)) return false;
+    return ((*(const uint32_t*)((const char*)atk + 0x14) >> 4) & 1u) != 0;
+}
+
+inline bool IsMeleeWeaponGo(void* go)  { return Readable(go, 0x18) && ((GoBoolQueryFn)kIsMeleeWeaponFn)(go); }
+inline bool IsRangedWeaponGo(void* go) { return Readable(go, 0x18) && ((GoBoolQueryFn)kIsRangedWeaponFn)(go); }
+inline bool IsShieldGo(void* go)       { return Readable(go, 0x1C) && ((GoBoolQueryFn)kIsShieldFn)(go); }
+
+inline bool HandItemDeactivatesToMain(void* eq, void* candidate, bool eqWasInHandZero) {
+    if (!eq) return false;
+    bool candRanged = IsRangedWeaponGo(candidate);
+    if (eqWasInHandZero) {
+        if (IsRangedWeaponGo(eq) && !candRanged) return false;
+        if (IsShieldGo(eq)) return false;
+        return true;
+    }
+    bool candMelee = IsMeleeWeaponGo(candidate);
+    if (IsRangedWeaponGo(eq) && !candRanged) return false;
+    if (IsMeleeWeaponGo(eq)  && !candMelee)  return false;
+    return true;
+}
+
+inline void AppendUniquePtr(void* p, void* candidate, void** out, int* count, int maxOut) {
+    if (!p || p == candidate || *count >= maxOut) return;
+    for (int i = 0; i < *count; ++i) {
+        if (out[i] == p) return;
+    }
+    out[(*count)++] = p;
+}
+
+// Mirrors RCAutoEquip / RCEquip slot displacement rules so UI and RPC checks see the exact
+// set of currently equipped items whose GoDb enchantments will move to IL_MAIN (removed).
+int CollectDisplacedItems(void* inv, int targetSlot, void* candidate, void** outDisplaced, int maxOut) {
+    int count = 0;
+    int effSlot = (targetSlot == kSlotAny || targetSlot < 0) ? ResolveEquipSlotFromGo(candidate) : targetSlot;
+    if (effSlot < 0 || effSlot == kSlotRingAny || effSlot >= 12) return 0;
+
+    if (effSlot == kSlotWeaponHand || effSlot == kSlotShieldHand) {
+        void* eq0 = GetEquippedSlotDirect(inv, kSlotWeaponHand);
+        void* eq1 = GetEquippedSlotDirect(inv, kSlotShieldHand);
+        bool candTwoHanded = IsTwoHandedGo(candidate);
+        if (effSlot == kSlotWeaponHand) {
+            if (eq0 && HandItemDeactivatesToMain(eq0, candidate, true))
+                AppendUniquePtr(eq0, candidate, outDisplaced, &count, maxOut);
+            if (eq1 && (IsTwoHandedGo(eq1) || candTwoHanded) && HandItemDeactivatesToMain(eq1, candidate, false))
+                AppendUniquePtr(eq1, candidate, outDisplaced, &count, maxOut);
+        } else {
+            if (eq1 && HandItemDeactivatesToMain(eq1, candidate, false))
+                AppendUniquePtr(eq1, candidate, outDisplaced, &count, maxOut);
+            if (eq0 && (IsTwoHandedGo(eq0) || candTwoHanded) && HandItemDeactivatesToMain(eq0, candidate, true))
+                AppendUniquePtr(eq0, candidate, outDisplaced, &count, maxOut);
+        }
+        return count;
+    }
+
+    AppendUniquePtr(GetEquippedSlotDirect(inv, effSlot), candidate, outDisplaced, &count, maxOut);
+    return count;
+}
+
+void* FindActorSkillByName(void* actor, const char* targetName) {
+    if (!actor || !targetName || !Readable(actor, 0x20)) return nullptr;
+    char* begin = *(char**)((char*)actor + 0x18);
+    char* end   = *(char**)((char*)actor + 0x1C);
+    if (!begin || end <= begin || ((uintptr_t)(end - begin) % 0x48u) != 0) return nullptr;
+    for (char* s = begin; s < end; s += 0x48) {
+        if (!Readable(s, 0x48)) return nullptr;
+        const char* sname = *(const char**)s;
+        if (sname && Readable(sname, 4) && _stricmp(sname, targetName) == 0) return s;
+    }
+    return nullptr;
+}
+
+bool ContainsGoid(const uint32_t* goids, int count, uint32_t target) {
+    if (!target) return false;
+    for (int i = 0; i < count; ++i) {
+        if (goids[i] == target) return true;
+    }
+    return false;
+}
+
+// Snapshots active Pass-1 (skill/attribute) enchantments for ownerGo under GoDb's critical section
+// (GoDb+0x64 is std::map<Go*, EnchantmentVector*>) and reports whether any belong to displacedGoids.
+bool SnapshotPass1Enchantments(void* ownerGo, const uint32_t* displacedGoids, int displacedCount,
+                               std::vector<Pass1EnchEntry>& outEnch, bool* outAnyExcluded) {
+    *outAnyExcluded = false;
+    void* godb = *(void**)kGoDbPtrAddr;
+    if (!ownerGo || !Readable(godb, 0x90)) return false;
+
+    void* cs = (char*)godb + 0x7C;
+    CsFn csEnter = *(CsFn*)kCsEnterPtrAddr;
+    CsFn csLeave = *(CsFn*)kCsLeavePtrAddr;
+    if (!csEnter || !csLeave) return false;
+
+    csEnter(cs);
+    void* node = nullptr;
+    void* keyGo = ownerGo;
+    ((GoDbFindEnchFn)kGoDbFindEnchFn)((char*)godb + 0x64, &node, &keyGo);
+    void* endNode = *(void**)((char*)godb + 0x68);
+    if (node && node != endNode && Readable(node, 0x14)) {
+        void* vec = *(void**)((char*)node + 0x10);
+        if (Readable(vec, 0x0C)) {
+            char** eBegin = *(char***)((char*)vec + 0x04);
+            char** eEnd   = *(char***)((char*)vec + 0x08);
+            if (eBegin && eEnd > eBegin) {
+                for (char** it = eBegin; it < eEnd; ++it) {
+                    char* e = *it;
+                    if (!Readable(e, 0x118)) continue;
+                    int alt = *(const int*)(e + 0x00);
+                    if (alt < kAltPass1First || alt > kAltPass1Last) continue;
+                    if (*(const uint8_t*)(e + 0x9B) != 0) continue;     // m_MarkForDeletion
+                    if (*(const float*)(e + 0x84) > 0.0f) continue;    // m_InitialDelay not elapsed
+                    if (*(const float*)(e + 0x104) > 0.0f) continue;   // m_IntervalTimer pending
+                    uint32_t itemGoid = *(const uint32_t*)(e + 0x110);
+                    if (ContainsGoid(displacedGoids, displacedCount, itemGoid)) {
+                        *outAnyExcluded = true;
+                        continue;
+                    }
+                    Pass1EnchEntry entry;
+                    entry.alt      = alt;
+                    entry.value    = *(const float*)(e + 0x68);
+                    entry.multiply = (*(const uint8_t*)(e + 0x70) != 0);
+                    entry.itemGoid = itemGoid;
+                    outEnch.push_back(entry);
+                }
+            }
+        }
+    }
+    csLeave(cs);
+    return true;
+}
+
+void ApplyReplayedPass1Enchantments(void* actor, const std::vector<Pass1EnchEntry>& enchs) {
+    char* begin = *(char**)((char*)actor + 0x18);
+    char* end   = *(char**)((char*)actor + 0x1C);
+    for (char* s = begin; s < end; s += 0x48) {
+        *(float*)(s + 0x34) = *(const float*)(s + 0x30);  // Skill::ResetModifiers
+    }
+    ModifySkillFn   modFn   = (ModifySkillFn)kModifySkillFn;
+    TransferSkillFn xferFn  = (TransferSkillFn)kTransferSkillFn;
+    for (size_t i = 0; i < enchs.size(); ++i) {
+        const Pass1EnchEntry& e = enchs[i];
+        if (e.alt >= 10 && e.alt <= 16) {
+            void* skill = FindActorSkillByName(actor, kAlterSkillNames[e.alt - 10]);
+            if (skill) modFn(nullptr, skill, e.multiply ? 1 : 0, e.value);
+        } else if (e.alt >= 17 && e.alt <= 26) {
+            const TransferPair& pair = kTransferPairs[e.alt - 17];
+            void* fromSkill = FindActorSkillByName(actor, pair.from);
+            void* toSkill   = FindActorSkillByName(actor, pair.to);
+            if (fromSkill && toSkill) xferFn(nullptr, fromSkill, toSkill, e.value);
+        }
+    }
+}
+
+bool CanEquipForSlotImpl(void* inv, int targetSlot, void* candidate) {
+    CanEquipFn origCanEquip = (CanEquipFn)kCanEquipFn;
+    if (!Readable(inv, 0xA8) || !Readable(candidate, 0x9C)) return origCanEquip(inv, candidate);
+    if (*(const uint8_t*)((const char*)inv + 0x85) != 0) return origCanEquip(inv, candidate);
+
+    void* owner = *(void**)((char*)inv + 0x04);
+    if (!Readable(owner, 0x98)) return origCanEquip(inv, candidate);
+    void* actor = *(void**)owner;
+    if (!Readable(actor, 0x24)) return origCanEquip(inv, candidate);
+
+    void* displaced[4] = {};
+    int displacedCount = CollectDisplacedItems(inv, targetSlot, candidate, displaced, 4);
+    bool modDirty = ((*(const uint8_t*)((const char*)owner + 0x96)) & 2) != 0;
+    if (displacedCount == 0 && !modDirty) return origCanEquip(inv, candidate);
+
+    uint32_t displacedGoids[4] = {};
+    for (int i = 0; i < displacedCount; ++i) {
+        displacedGoids[i] = Readable(displaced[i], 0x50) ? *(const uint32_t*)((const char*)displaced[i] + kGoid) : 0;
+    }
+
+    std::vector<Pass1EnchEntry> remainingEnchs;
+    bool anyExcluded = false;
+    if (!SnapshotPass1Enchantments(owner, displacedGoids, displacedCount, remainingEnchs, &anyExcluded) ||
+        (!anyExcluded && !modDirty)) {
+        return origCanEquip(inv, candidate);
+    }
+
+    char* skillBegin = *(char**)((char*)actor + 0x18);
+    char* skillEnd   = *(char**)((char*)actor + 0x1C);
+    if (!skillBegin || skillEnd <= skillBegin || ((uintptr_t)(skillEnd - skillBegin) % 0x48u) != 0) {
+        return origCanEquip(inv, candidate);
+    }
+    size_t skillCount = (size_t)(skillEnd - skillBegin) / 0x48u;
+    if (skillCount > 64) return origCanEquip(inv, candidate);
+
+    float savedMods[64];
+    for (size_t i = 0; i < skillCount; ++i) {
+        char* sk = skillBegin + i * 0x48;
+        if (!Readable(sk, 0x48)) return origCanEquip(inv, candidate);
+        savedMods[i] = *(const float*)(sk + 0x34);
+    }
+
+    ApplyReplayedPass1Enchantments(actor, remainingEnchs);
+    bool allowed = origCanEquip(inv, candidate);
+
+    for (size_t i = 0; i < skillCount; ++i) {
+        *(float*)(skillBegin + i * 0x48 + 0x34) = savedMods[i];
+    }
+    return allowed;
+}
+
+}  // namespace
+
+extern "C" uint32_t __fastcall Orig_RSAutoEquip(void* inv, void* unused_edx, int slot, uint32_t itemGoid, int origin, int arg4);
+__asm__(
+    ".text\n"
+    ".globl _Orig_RSAutoEquip\n"
+    ".globl @Orig_RSAutoEquip@20\n"
+    "_Orig_RSAutoEquip:\n"
+    "@Orig_RSAutoEquip@20:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  subl $0x20, %esp\n"
+    "  movl $0x0057499B, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" void __fastcall Orig_RCAutoEquip(void* inv, void* unused_edx, int slot, uint32_t itemGoid, int origin, uint32_t arg4);
+__asm__(
+    ".text\n"
+    ".globl _Orig_RCAutoEquip\n"
+    ".globl @Orig_RCAutoEquip@20\n"
+    "_Orig_RCAutoEquip:\n"
+    "@Orig_RCAutoEquip@20:\n"
+    "  pushl %ebp\n"
+    "  movl %esp, %ebp\n"
+    "  subl $0x10, %esp\n"
+    "  movl $0x00574BDF, %eax\n"
+    "  jmp *%eax\n"
+);
+
+extern "C" uint8_t __stdcall SiegeHost_CanEquipForSlot(void* inv, void* candidate, int targetSlot) {
+    return CanEquipForSlotImpl(inv, targetSlot, candidate) ? 1 : 0;
+}
+
+extern "C" uint8_t __stdcall SiegeHost_PaperDollHoverCanEquip(void* inv, void* candidate, void** slotWinPtr) {
+    void* slotWin = Readable(slotWinPtr, 4) ? *slotWinPtr : nullptr;
+    int slot = PaperDollSlotNameToEquipSlot(slotWin);
+    return CanEquipForSlotImpl(inv, slot, candidate) ? 1 : 0;
+}
+
+extern "C" uint8_t __stdcall SiegeHost_AllowPaperDollMatchSlot(void* charGo, void* candidate, void* slotWin) {
+    if (!Readable(charGo, 0x30) || !Readable(candidate, 0x9C)) return 1;
+    void* inv = *(void**)((char*)charGo + kGoInv);
+    if (!Readable(inv, 0xA8)) return 1;
+    int slot = PaperDollSlotNameToEquipSlot(slotWin);
+    if (CanEquipForSlotImpl(inv, slot, candidate)) return 1;
+    ((PlayVoiceSoundFn)kPlayVoiceSoundFn)(charGo, (const char*)kNotEquippableSfx, true);
+    return 0;
+}
+
+extern "C" bool __fastcall Hook_CanEquipAutoSlot(void* inv, void* unused_edx, void* candidate) {
+    return CanEquipForSlotImpl(inv, -1, candidate);
+}
+
+extern "C" void __fastcall Hook_RCEquip_SetModifiersDirtyAndRecalc(void* go, void* unused_edx, uint8_t dirty) {
+    ((SetModifiersDirtyFn)kSetModifiersDirty)(go, dirty != 0);
+    if (Readable(go, 0x98) && *(void**)go != nullptr) {
+        ((CheckModRecalcFn)kCheckModRecalcFn)(go);
+    }
+}
+
+extern "C" uint32_t __fastcall Hook_RSAutoEquip(void* inv, void* unused_edx, int slot, uint32_t itemGoid, int origin, int arg4) {
+    if (IsValidGoidValue(itemGoid)) {
+        void* candidate = FindGoByGoidSafe(itemGoid);
+        if (candidate && !CanEquipForSlotImpl(inv, slot, candidate)) {
+            return 0xFFFFFFFEu;  // RPC_FAILURE_COOKIE: abort before broadcasting
+        }
+    }
+    return Orig_RSAutoEquip(inv, unused_edx, slot, itemGoid, origin, arg4);
+}
+
+extern "C" void __fastcall Hook_RCAutoEquip(void* inv, void* unused_edx, int slot, uint32_t itemGoid, int origin, uint32_t arg4) {
+    if (((IsServerLocalFn)kIsServerLocalFn)() && IsValidGoidValue(itemGoid)) {
+        void* candidate = FindGoByGoidSafe(itemGoid);
+        if (candidate && !CanEquipForSlotImpl(inv, slot, candidate)) {
+            return;  // atomic abort: keep old equipped gear untouched
+        }
+    }
+    Orig_RCAutoEquip(inv, unused_edx, slot, itemGoid, origin, arg4);
+}
+
+extern "C" void SiegeHost_RCEquip_CanEquip();
+extern "C" void SiegeHost_PaperDollHover_CanEquip();
+extern "C" void SiegeHost_PaperDollMatchSlotStub();
+
+__asm__(
+    ".text\n"
+    ".globl _SiegeHost_RCEquip_CanEquip\n"
+    "_SiegeHost_RCEquip_CanEquip:\n"
+    "  popl %eax\n"
+    "  xchgl %eax, (%esp)\n"
+    "  pushl %edi\n"
+    "  pushl %eax\n"
+    "  pushl %ecx\n"
+    "  call _SiegeHost_CanEquipForSlot@12\n"
+    "  ret\n"
+    "\n"
+    ".globl _SiegeHost_PaperDollHover_CanEquip\n"
+    "_SiegeHost_PaperDollHover_CanEquip:\n"
+    "  popl %eax\n"
+    "  xchgl %eax, (%esp)\n"
+    "  pushl %esi\n"
+    "  pushl %eax\n"
+    "  pushl %ecx\n"
+    "  call _SiegeHost_PaperDollHoverCanEquip@12\n"
+    "  ret\n"
+    "\n"
+    ".globl _SiegeHost_PaperDollMatchSlotStub\n"
+    "_SiegeHost_PaperDollMatchSlotStub:\n"
+    "  pushl %esi\n"
+    "  pushl -8(%ebp)\n"
+    "  pushl -12(%ebp)\n"
+    "  call _SiegeHost_AllowPaperDollMatchSlot@12\n"
+    "  testb %al, %al\n"
+    "  jz 1f\n"
+    "  andb $0, 0x1d5(%esi)\n"
+    "  movl $0x005063EC, %eax\n"
+    "  jmp *%eax\n"
+    "1:\n"
+    "  movl $0x0050640E, %eax\n"
+    "  jmp *%eax\n"
+);
+
+namespace {
+
+bool VerifyAndPatchCallSite(DWORD site, DWORD expectedCallee, void* target, const char* label) {
+    BYTE* p = (BYTE*)site;
+    if (p[0] != 0xE8 || (site + 5 + *(int32_t*)(p + 1)) != expectedCallee) {
+        Log("InvFix: VERIFY FAILED at 0x%08lX for %s", site, label);
+        return false;
+    }
+    DWORD o;
+    if (!VirtualProtect(p, 5, PAGE_EXECUTE_READWRITE, &o)) return false;
+    *(int32_t*)(p + 1) = (int32_t)((DWORD)target - (site + 5));
+    VirtualProtect(p, 5, o, &o);
+    FlushInstructionCache(GetCurrentProcess(), p, 5);
+    return true;
+}
+
+bool VerifyAndPatchJumpStub(DWORD site, const BYTE* expected, size_t len, void* target, const char* label) {
+    BYTE* p = (BYTE*)site;
+    if (len < 5 || memcmp(p, expected, len) != 0) {
+        Log("InvFix: VERIFY FAILED at 0x%08lX for %s", site, label);
+        return false;
+    }
+    DWORD o;
+    if (!VirtualProtect(p, len, PAGE_EXECUTE_READWRITE, &o)) return false;
+    p[0] = 0xE9;
+    *(int32_t*)(p + 1) = (int32_t)((DWORD)target - (site + 5));
+    for (size_t i = 5; i < len; ++i) p[i] = 0x90;
+    VirtualProtect(p, len, o, &o);
+    FlushInstructionCache(GetCurrentProcess(), p, len);
+    return true;
+}
+
+void InstallEquipSwapFix() {
+    const BYTE kRSAutoEquipExpect[6]    = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x20 };
+    const BYTE kRCAutoEquipExpect[6]    = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x10 };
+    const BYTE kPaperDollMatchExpect[7] = { 0x80, 0xA6, 0xD5, 0x01, 0x00, 0x00, 0x00 };
+
+    int installed = 0;
+    const int kTotalSites = 12;
+    if (VerifyAndPatchJumpStub(kRSAutoEquipVa, kRSAutoEquipExpect, 6, (void*)&Hook_RSAutoEquip, "RSAutoEquip")) ++installed;
+    if (VerifyAndPatchJumpStub(kRCAutoEquipVa, kRCAutoEquipExpect, 6, (void*)&Hook_RCAutoEquip, "RCAutoEquip")) ++installed;
+    if (VerifyAndPatchJumpStub(kPaperDollMatchVa, kPaperDollMatchExpect, 7, (void*)&SiegeHost_PaperDollMatchSlotStub, "PaperDollMatchSlot")) ++installed;
+    if (VerifyAndPatchCallSite(kRCEquipCanEquipVa, kCanEquipFn, (void*)&SiegeHost_RCEquip_CanEquip, "RCEquip::CanEquip")) ++installed;
+    if (VerifyAndPatchCallSite(kRCEquipDirtyVa, kSetModifiersDirty, (void*)&Hook_RCEquip_SetModifiersDirtyAndRecalc, "RCEquip::SetModifiersDirty")) ++installed;
+    if (VerifyAndPatchCallSite(kPaperDollHoverVa, kCanEquipFn, (void*)&SiegeHost_PaperDollHover_CanEquip, "PaperDollHover::CanEquip")) ++installed;
+
+    for (size_t i = 0; i < sizeof(kAutoSlotCanEquipSites) / sizeof(kAutoSlotCanEquipSites[0]); ++i) {
+        if (VerifyAndPatchCallSite(kAutoSlotCanEquipSites[i], kCanEquipFn, (void*)&Hook_CanEquipAutoSlot, "CanEquipAutoSlot")) ++installed;
+    }
+    g_equipSwapFix = (installed == kTotalSites);
+    Log("InvFix: equip requirement swap fix armed (%d/%d sites, watchdog at 0x00505852 preserved).", installed, kTotalSites);
+}
+
+}  // namespace
+
 void InvFixTick() {
     if (!g_on) return;
     DWORD now = GetTickCount();
@@ -613,6 +1144,12 @@ void InvFixInstall() {
         }
     } else {
         Log("InvFix: VERIFY FAILED at 0x%08lX for SEndGive RSRemove call", kSEndGiveSite);
+    }
+
+    if (!GetEnvironmentVariableA("SIEGEHOST_NO_EQUIPSWAP_FIX", e, sizeof e)) {
+        InstallEquipSwapFix();
+    } else {
+        Log("InvFix: equip requirement swap fix off (SIEGEHOST_NO_EQUIPSWAP_FIX).");
     }
 
     // A player's own machine decides left-click placement; the server decides Z. Both run the same

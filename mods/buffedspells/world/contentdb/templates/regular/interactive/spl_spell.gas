@@ -11714,7 +11714,7 @@
 		target_type_flags_not = tt_actor_pack_only | tt_summoned;
 		usage_context_flags = uc_defensive;
 		apply_enchantments = false;
-		state_name = boost;
+		state_name = mystic_aid;
 		require_state_check = false;
 		[enchantments]
 		{

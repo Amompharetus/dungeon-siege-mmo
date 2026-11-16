@@ -4,7 +4,7 @@ Runtime extension DLL for **Dungeon Siege: Legends of Aranna** (`DSLOA.exe` v1.5
 
 Built as `Mss32.dll`, a proxy for the game's Miles sound system DLL. The original Miles binary is renamed to `mss32_orig.dll` and all exports forward directly to it. When `DSLOA.exe` starts, Windows loads `Mss32.dll` from the game directory, hooking engine functions in memory without modifying retail game executables or tank archives.
 
-Current version: **1.5.24**
+Current version: **1.5.25**
 
 ---
 

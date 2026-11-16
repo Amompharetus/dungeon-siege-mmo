@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <string>
 
-#define SIEGEHOST_VERSION "1.5.24"
+#define SIEGEHOST_VERSION "1.5.25"
 
 enum class Role { None, Server, Client };
 
@@ -99,6 +99,7 @@ std::string PvpZoneHeartbeatLines();
 void InvFixInstall();                   // 0.8.4: pickups that do not fit go to the backpack (src/inventoryfix.cpp)
 void InvFixTick();
 std::string InvFixHeartbeatLines();
+void McpFixInstall();                   // 1.5.4: melee moving-target & head-to-head intercept fixes (src/mcpfix.cpp)
 void ShopStockInstall();                // 0.8.2: backpacks on every shop's MISC tab (src/shopstock.cpp)
 void ShopStockTick();
 void QuestModeInstall();             // 1.3.0: quests shared across the world (src/questmode.cpp)

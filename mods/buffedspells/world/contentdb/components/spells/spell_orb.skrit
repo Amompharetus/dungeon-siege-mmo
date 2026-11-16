@@ -399,6 +399,11 @@ state CreateOrbiter$
 
 			SetState Orbiting$;
 		}
+		// Handle rapid orb-swap cancellation before WE_SPELL_SYNC_MID arrives.
+		if(e$ == WE_REQ_DEACTIVATE)
+		{
+			SetState CleanUp$;
+		}
 	}
 
 	//Waiting until the orbiter effect comes back.
@@ -559,7 +564,11 @@ state CleanUp$
 		if(m_Caster$.IsValid())
 		{
 			//report.generic("spell_orb.skrit: Cleaning up: Caster is valid.\n");
-			m_Caster$.Go.Actor.SRemoveGenericState( owner.Go.Magic.CasterStateName );	
+			if(m_Caster$.Go.Actor.HasGenericState( owner.Go.Magic.CasterStateName )
+			   && m_Caster$.Go.Actor.GetGenericStateSpellGoid( owner.Go.Magic.CasterStateName ) == owner.goid)
+			{
+				m_Caster$.Go.Actor.SRemoveGenericState( owner.Go.Magic.CasterStateName );
+			}
 
 			// MRC 7/16/2003 Stop the effects manually.  It should have run out
 			// of time by now, but multi-player clients might be running it still

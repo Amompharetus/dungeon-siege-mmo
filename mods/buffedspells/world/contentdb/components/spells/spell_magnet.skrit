@@ -1,0 +1,603 @@
+//////////////////////////////////////////////////////////////////////////////
+//
+// File     :  spell_magnet.skrit
+// Author(s):  Mathew Corthell
+//
+// Copyright © 2003 Mad Doc Software.  All rights reserved.
+//----------------------------------------------------------------------------
+//  $Revision:: $              $Date:$
+//----------------------------------------------------------------------------
+//
+// This skrit is intended to serve three different spells.  (spell_monster_magnet,
+// spell_spectral_summoning, and spell_mindflare)  All three spells attract the
+// attention of nearby monsters and redirect those monsters to perform different
+// actions.  The spells are essentially "magnets" for enemies, hence the name of 
+// this skrit.
+//
+// Functionally, this is how the skrit works.  When cast, a copy of the spell
+// is created to coordinate the overall working of the spell.  This spell creates
+// m_magnet$, the focus point for all affected enemies.  The spell then enters
+// a loop for the duration of the spell in which it periodically scans for new
+// monsters.
+//
+// When a monster is found, the spell creates an omni version of itself to 
+// monitor that single monster.  The monster omni version will also loop for 
+// the duration of the spell, and it monitors the individual enemy.  This 
+// version modifies the AI state of the monster, making it behave the way we 
+// want, depending on the spell.  The individual monster omni versions 
+// also monitor the overall coordinating copy of the spell, watching for it 
+// to die.  When it dies, each individual copy of the spell will clean up the 
+// monster it's monitoring, and then terminate itself.
+//
+//////////////////////////////////////////////////////////////////////////////
+
+property string magnetEffect$="" doc="The effect to play for the attracting object.";
+property string summonEffect$="" doc="The effect to play when summoning the object.";
+property string unsummonEffect$="" doc="The effect to play when unsummoning the object.";
+
+property string stateName$="DSX_mesmerized" doc="State name for creatures affected by this spell.";
+property string state_description$="Mesmerized" doc="Description of the state to appear on affected monsters.";
+property string chasingStateName$="DSX_mezmerized_chasing" doc="Extra state for chasing an object.";
+
+property string caster_description$="Mezmerizing enemies" doc="Description of the caster while casting a mezmerizing spell.";
+property string other_description$="" doc="Description of what the magnet is doing to be displayed.";
+
+property bool attractChasers$=false doc="Does this spell attract a chaser only?";
+property bool attractAttackers$=false doc="Does this spell attract attacks?";	
+
+property float updateDelay$=0.1 doc="How much time in seconds between updating and looking for more monsters.";
+property float chargeDelay$=2 doc="Time it takes for the spell to charge before it starts working.  Intended to let the effect play.";
+
+property float radius$=15 doc="The radius from the magnet in which creatures will be affected.";
+property float innerRadius$=2 doc="How close should monsters try to get to the magnet.";
+
+property bool projectile$=false doc="Use a projectile as the magnet instead of a stationary object.";
+property bool substantialObject$=false doc="Does the effect of this spell require a model to be drawn?  Otherwise, it's just an effect.";
+property string objectName$="" doc="The name of the object to base the magnet on.";
+
+property string immunity$="" doc="The type of immunity creatures need to have to be, well, immune to this spell.";
+
+property bool useChance$=false doc="Use a random chance to determine if the monster is affected or not.";
+property float initialChance$=.4 doc="Initial chance to affect creatures.";
+property float incrementChance$=.015 doc="Per-level increment that gets added to the initial chance for every level above the minimum required level.";
+
+//These are properties that are used to pass information to the child copies of this spell.
+
+//Is this copy of the spell tracking an individual monster?  Should be true for the omni
+//copies that work on the individual monsters.
+property bool m_trackingSingleMonster$=false doc="Special property for use by this skrit.  Shouldn't be used in the template.";
+//Int version of the Goid for the magnet.
+property int m_magnetAsInt$=0 doc="Special property for use by this skrit.  Shouldn't be used in template.";
+//Int version of the Goid of the parent spell.
+property int m_parentSpell$=0 doc="Special property for use by this skrit.  Shouldn't be used in template.";
+// Is this copy just tracking the state and not affecting the monster?
+property bool m_trackingOnly$=false doc="Special property for use by this skrit.  Shouldn't be used in template.";
+
+
+//This.
+owner = GoSkritComponent;
+
+//Target of the spell.  Either a terrain node or the monster
+Goid m_Target$;
+//Caster.
+Goid m_Caster$;
+
+//Magnet object that's holding the attention of monsters.
+Goid m_magnet$;
+//Weapon for use with projectiles.
+Goid m_Weapon$;
+
+//How long does the magnet last.
+float m_magnetDuration$;
+
+float m_timeRemaining$;
+
+//A number of functions used by the skrit.  These do most of the detail work,
+//while this skrit does more of the overall coordination.
+#include "k_inc_spl_utils_magnet_DSX" 
+
+//Default state on creation.
+startup state Initial$
+{
+	//Initialize some data.
+	event OnEnterState$
+	{
+		m_magnetDuration$ = 0.0;
+		m_trackingSingleMonster$ = false;
+	}
+
+	event OnGoHandleMessage$( eWorldEvent e$, WorldMessage msg$ )
+	{	
+        //We got cast initially.
+		if( e$ == WE_REQ_CAST )
+		{
+			//Get some basic information.
+			m_Target$ 			= MakeGoid( msg$.GetData1() );
+			m_Caster$ 			= msg$.GetSendFrom();
+			m_Weapon$			= owner.go.goid;
+
+            //Is the target valid?  If not, then punt right now.
+			if( !m_Target$.IsValid || !m_Caster$.IsValid)
+			{
+				SetState Finished$;
+				return;
+			}
+
+			//If it's a projectile, then we want to go right into creating 
+			//the projectile magnet.  We don't want an OMNI copy in this case,
+			//because the location of the spell is used to launch the projectile.
+			if(projectile$)
+			{
+				SetState LaunchMagnet$;
+			}
+			//Otherwise, create an omni version of this spell to monitor the rest
+			//of the casting.  
+			else
+			{
+				//Clone the spell to create an OMNI version.
+				GoCloneReq cloneReq$ = MakeGoCloneReq( Owner.go.Parent.Goid, owner.goid );
+				cloneReq$.Omni = true;
+				Goid new_spell$ = GoDb.SCloneGo( cloneReq$ );				
+
+				// send Omni version an Activate to get it started.
+				PostWorldMessage( WE_REQ_ACTIVATE, m_Caster$, new_spell$, MakeInt( m_Target$ ), 0 );
+
+				SetState Finished$;
+			}
+		}
+
+		//The copied OMNI version of the spell has been activated.
+		if(e$ == WE_REQ_ACTIVATE)
+		{
+			//In the omni version, attain some data and validate it.
+			m_Caster$ = msg$.GetSendFrom();
+			m_Target$ = MakeGoid(msg$.GetData1());
+			if(!m_Caster$.IsValid
+			   || !m_Target$.IsValid)
+			{
+				SetState Finished$;
+			}
+
+			//If the target is an actor, then this must be an omni of the spell to
+			//track the actor.  The spell can otherwise only target terrain.
+			if(m_trackingSingleMonster$)
+			{
+				//Retrieve the magnet from the property.
+				m_magnet$ = MakeGoid(m_magnetAsInt$);
+
+				//Start watching the parent spell.  When it dies, so do we.
+				GoDb.StartWatching( owner.Goid, MakeGoid(m_parentSpell$));	
+				
+				// MRC 9/17/2003 Also start watching the magnet
+				GoDb.StartWatching( owner.Goid, m_magnet$);	
+
+				//Jump right in and start watching our monster.  (m_Target$)
+				SetState LoopingSingleMonster$;
+			}
+			//Otherwise, this is the overseer OMNI version of the spell.  
+			else
+			{
+				//Otherwise, the duration is specified in the magic component of the spell.
+				m_magnetDuration$ = owner.Go.Magic.EvaluateEffectDuration(m_Caster$.Go, m_Caster$.Go);
+
+				//We want to create the magnet now.
+				SetState CreateMagnet$;
+			}
+		}
+
+	}
+}
+
+
+//State for creating a magnet object.
+state CreateMagnet$
+{
+	//On entering the state, create the magnet.
+	event OnEnterState$
+	{
+		//Make the magnet object.
+		GoCloneReq cloneReq$ = MakeGoCloneReq(objectName$);
+
+		// MRC 7/8/2003 Bug 1312 Force the clone to appear on clients.
+		cloneReq$.SetForceServerOnly(false);
+		cloneReq$.SetForceClientAllowed(true);
+		cloneReq$.StartingPos = m_Target$.go.GetPlacement().GetPosition();
+		m_magnet$ = GoDb.SCloneGo( cloneReq$ );
+		if(!m_magnet$.IsValid())
+		{
+			SetState Finished$;
+		}
+		//The magnet should not have any items in it's inventory.  Erase them all.  If
+		//we don't do this, it will drop items when it disappears.
+		m_magnet$.Go.GetMind.TempGopColl1.clear();
+		m_magnet$.Go.GetInventory.ListItems(IL_ALL, m_magnet$.Go.GetMind.TempGopColl1);
+		int i$ = 0;
+		while( i$ < m_magnet$.Go.GetMind.TempGopColl1.Size() )
+		{	
+			//Mark thie Go and children, in case it's a spellbook or a backpack.
+			GoDb.SMarkGoAndChildrenForDeletion(m_magnet$.Go.GetMind.TempGopColl1.Get(i$));
+			i$ += 1;
+		}
+		//We also want to get rid of any gold so it doesn't drop that, either.
+		m_magnet$.go.GetInventory.RSSetGold(0);
+
+		//If the object of attention is not substantial, then make it not exist.
+		if(!substantialObject$)
+		{
+			// Lock the underlying model so it doesn't wiggle.
+			m_magnet$.Go.Aspect.SSetLockMeshFlag(true);
+		}
+		//Otherwise, maybe we retexture it.
+		else
+		{
+			//Turn the magnet Go invisible.  If it should be visible, then we'll turn
+			//it visible again after the summoning is complete.
+			// MRC 7/8/2003 Bug 1312 Use the server version of this function call.
+			m_magnet$.Go.GetAspect.SSetIsVisible(false);
+		}
+
+		// MRC 8/6/2003 Bug 2320 Making the magnet (spectral image) invincible.
+		m_magnet$.Go.Aspect.SetIsInvincible(true);
+
+		//The magnet cannot attack anything.
+		m_magnet$.Go.GetMind.SetMayAttack(false);
+
+		//If it's not supposed to be attacked, then don't let it.
+		if(!attractAttackers$)
+		{
+			m_magnet$.Go.GetMind.SetMayBeAttacked(false);
+		}
+
+		string params$ = "";
+
+		//If desired, play a summoning effect for the magnet.
+		if(!StringTool.IsEmpty(summonEffect$))
+		{
+			SiegeFX.SRunMPScript(summonEffect$, m_Target$, m_Caster$, params$, owner.Goid, WE_REQ_CAST);
+		}
+
+		//And start any long-term magnet effects.
+		if(!StringTool.IsEmpty(magnetEffect$))
+		{
+
+			//Note how long the spell is and the delay for the charge-up effect.
+			StringTool.AssignF( params$, "[%g][%g]", m_magnetDuration$, chargeDelay$);				
+
+			//Run the magnet effect.
+			SiegeFX.SRunMPScript(magnetEffect$, m_magnet$, m_Caster$, params$, owner.Goid, WE_REQ_CAST);
+		}
+
+		//Start watching the magnet.  If it gets destroyed, we'll want to stop the spell.
+		GoDb.StartWatching( owner.Goid, m_magnet$);					
+
+		//Set the caster state for the duration of the spell.
+		m_Caster$.Go.Actor.SAddGenericState( owner.Go.Magic.CasterStateName, caster_description$, m_magnetDuration$ + chargeDelay$, m_Caster$, owner.goid, owner.go.magic.GetMagicLevel( m_Caster$.go ) );
+		// Add a state to the magnet so we see the timer there, as well.
+		m_magnet$.Go.Actor.SAddGenericState( owner.Go.Magic.CasterStateName, other_description$, m_magnetDuration$ + chargeDelay$, m_Caster$, owner.goid, owner.go.magic.GetMagicLevel( m_Caster$.go ) );
+
+		//Start looking for monsters.
+		SetState LoopingOverall$;
+	}
+
+	//If the caster goes away during this state, then slean up the spell.
+	event OnGoHandleCcMessage$( eWorldEvent e$, WorldMessage msg$ )
+	{
+		//Watch and see if the player dies or is knocked unconscious.
+		if(e$ == WE_KILLED || e$ == WE_LOST_CONSCIOUSNESS)
+		{
+			if(m_Caster$.IsValid() && m_Caster$ == msg$.GetSendTo())
+			{
+				SetState CleanUpOverall$;
+			}
+		}
+	}	
+}
+
+//State for launching projectile magnets.
+state LaunchMagnet$
+{		
+	event OnEnterState$
+	{
+		//If the caster and target are valid, then create the magnet.
+		if( (m_Caster$.IsValidMp) && (m_Target$.IsValidMp))
+		{
+			//The magnet is a piece of ammo in this case.
+			m_magnet$ = m_Weapon$.Go.Attack.SPrepareAmmo;
+
+			m_magnetDuration$ = m_magnet$.Go.Physics.SimDuration;				
+
+			SiegePos initial_pos$ = m_Weapon$.Go.Attack.ComputeFiringPos;
+			int firing_pos$ = SiegeFx.AddVariable( initial_pos$, m_magnet$ );
+
+			m_Weapon$.Go.Attack.ComputeAimingError;
+			float x_error$ = m_Weapon$.Go.Attack.GetAimingErrorX;
+			float y_error$ = m_Weapon$.Go.Attack.GetAimingErrorY;
+	
+			float velocity$ = m_Weapon$.Go.Physics.GetVelocity;
+	
+			float aiming_angle$ = m_Weapon$.Go.Attack.ComputeAimingAngle( SiegeFx.GetVariable( firing_pos$, m_magnet$ ), m_Target$.go.placement.position, velocity$ );
+	
+			m_Weapon$.Go.Attack.SLaunchAmmo( velocity$, SiegeFx.GetVariable( firing_pos$, m_magnet$ ), m_Target$.go.placement.position, x_error$, y_error$, Goid.InvalidGoid );
+
+			//Start watching the magnet.  If it gets destroyed, we'll want to stop the spell.
+			GoDb.StartWatching( owner.Goid, m_magnet$);					
+
+			//Set the caster state for the duration of the spell.
+			m_Caster$.Go.Actor.SAddGenericState( owner.Go.Magic.CasterStateName, caster_description$, m_magnetDuration$ + chargeDelay$, m_Caster$, owner.goid, owner.go.magic.GetMagicLevel( m_Caster$.go ) );
+
+			//Start looking for monsters.
+			SetState LoopingOverall$;
+		}
+		else
+		{
+			SetState Finished$;
+		}
+	}
+}
+
+//This state is a repeating state that continues to search for new monsters to come under
+//the effects of the spell.
+state LoopingOverall$
+{
+	int timerDur$ = 1;
+	int timerUpdateOverall$ = 2;
+	int timerStart$ =  3;
+
+	//On entering the state, start the charge-up timer.  The spell effectively pauses
+	//this long while the effect plays before it starts to really work.  This gives time
+	//for summoning or charge-up effects to play.
+	event OnEnterState$
+	{
+		//A timer to start the actual workings of the spell.
+		this.CreateTimer(timerStart$, chargeDelay$);
+		m_timeRemaining$ = m_magnetDuration$; 
+	}
+
+	//Watch for the timers.
+	event OnTimer$(int id$, float /*delta$*/)
+	{
+		//The charge-up is complete and it's time to set the spell in motion.
+		if(id$ == timerStart$)
+		{
+			//If the magnet is invalid, then stop now.
+			if(!m_magnet$.IsValid())
+			{
+				SetState CleanUpOverall$;
+			}
+
+			//Make the magnet visible, if it should be.
+			if(substantialObject$)
+			{
+				// MRC 7/8/2003 Bug 1312 Use the server version of this function call.
+				m_magnet$.Go.GetAspect.SSetIsVisible(true);
+			}
+			
+			//Timer for the duration of the spell.
+			this.CreateTimer(timerDur$, m_magnetDuration$);
+
+			//Timer for updating and affecting monsters.  First time this
+			//timer is zero, so it happens right away.
+			this.CreateTimer(timerUpdateOverall$, 0);
+		}
+
+		//The update.  Look for monsters near the magnet to affect.
+		if(id$ == timerUpdateOverall$)
+		{
+			// Decrement the time remaining.
+			m_timeRemaining$ = m_timeRemaining$ - updateDelay$;
+
+			//Look for monsters within the radius of the magnet.  We search
+			//for enemies of the caster within the radius of the magnet.
+			m_Caster$.Go.Mind.TempGopColl1.Clear;
+			AIQuery.GetEnemiesOfGoInSphere(m_magnet$.go.placement.position, radius$, m_Caster$.go, m_Caster$.Go.Mind.TempGopColl1);
+
+			//Try to attract monsters.  If this fails for some reason, we should
+			//abort the spell.
+			if(!MagnetMonsters$(m_Caster$.Go.Mind.TempGopColl1, m_magnet$, immunity$, m_timeRemaining$ ))
+			{
+				SetState CleanUpOverall$;
+			}
+
+			//Restart the update timer for the next pass.
+			this.CreateTimer(timerUpdateOverall$, updateDelay$);		
+		}
+
+		//The end of the duration of the spell.  Shut it all down.
+		if(id$ == timerDur$)
+		{
+			SetState CleanUpOverall$;
+		}
+	}
+
+	//Watch for the player or the magnet being knocked out of commission.
+	//If either is gone, then we want to shut the spell down.
+	event OnGoHandleCcMessage$( eWorldEvent e$, WorldMessage msg$ )
+	{
+		//Watch and see if the player dies or is knocked unconscious.
+		if(e$ == WE_KILLED || e$ == WE_LOST_CONSCIOUSNESS)
+		{
+			if(m_Caster$.IsValid() && m_Caster$ == msg$.GetSendTo())
+			{
+				SetState CleanUpOverall$;
+			}
+		}
+
+		if(e$ == WE_DESTRUCTED)
+		{
+			if(m_magnet$ == msg$.GetSendTo())
+			{
+				SetState CleanUpOverall$;
+			}
+		}
+	}	
+}		
+
+//For the OMNI versions of the spell that watch single monsters.
+//Loops and periodically refreshes for the monster's convenience.
+state LoopingSingleMonster$
+{
+	int timerUpdateSingle$ = 1;
+
+	//Once into this state, start updating immediately.
+	event OnEnterState$
+	{
+		// If we're not just tracking the monster, then we're affecting it, so we need
+		// to start a timer to affect the monster.
+		if(!m_trackingOnly$)
+		{
+			this.CreateTimer(timerUpdateSingle$, 0);
+		}
+	}
+	event OnTimer$(int id$, float /*delta$*/)
+	{
+		//Update this monster.
+		if(id$ == timerUpdateSingle$)
+		{
+			if(attractChasers$)
+			{
+				//If we fail to affect this monster, then clean up immediately.
+				if(!MagnetSingleMonster$(m_Target$, m_magnet$, innerRadius$, true))
+				{
+					SetState CleanUpSingleMonster$;
+				}
+			}
+			else if(attractAttackers$)
+			{
+				//If we fail to affect this monster, then clean up immediately.
+				if(!MagnetSingleMonster$(m_Target$, m_magnet$, innerRadius$, false))
+				{
+					SetState CleanUpSingleMonster$;
+				}
+			}
+			else
+			{
+				SetState CleanUpSingleMonster$;
+			}
+
+			//Timer for updating and affecting monsters.
+			this.CreateTimer(timerUpdateSingle$, updateDelay$);
+		}
+	}
+
+	//Keep an eye out for the parent spell that spawned this OMNI spell.
+	//If it's destroyed, or sends a SYNC message, then we know it's time to
+	//shut down.
+	event OnGoHandleCcMessage$( eWorldEvent e$, WorldMessage msg$ )
+	{
+		if(e$ == WE_DESTRUCTED)
+		{
+			// MRC 9/17/2003 Was the message sent to our parent spell or to the magnet?
+			if(MakeGoid(m_parentSpell$) == msg$.GetSendTo()
+			   || m_magnet$ == msg$.GetSendTo())
+			{
+				SetState CleanUpSingleMonster$;
+			}			
+		}
+		if(e$ == WE_SPELL_SYNC_MID)
+		{
+			if(MakeGoid(m_parentSpell$) == msg$.GetSendTo()
+			   && MakeGoid(m_parentSpell$) == msg$.GetSendFrom())
+			{
+				SetState CleanUpSingleMonster$;
+			}
+		}
+	}
+}
+
+//Cleanning up the OMNI version of a spell that handles an individual monster.
+state CleanUpSingleMonster$
+{
+	//Clean up when we get here.
+	event OnEnterState$
+	{
+		if(m_Target$.IsValid)
+		{
+			//Remove the state.  It doesn't really matter if the monster was initially affected
+			//by another magnet spell.  In about a tenth of a second (depending on the specified
+			//value), the other spell will reclaim this monster, if the other spell is still running.
+			m_Target$.go.Actor.SRemoveGenericState(stateName$);
+
+			//Clear any jobs we put into the monster.
+			m_Target$.go.Mind.Clear;
+
+			//And then restart it's brain.
+			m_Target$.go.Mind.SDoJob( MakeJobReq( JAT_BRAIN, JQ_BRAIN, QP_CLEAR, AO_REFLEX ));
+		}
+	}
+}
+
+//Cleaning up the overall version of this spell.
+state CleanUpOverall$
+{
+	//Clean up when we get here.
+	event OnEnterState$
+	{
+		string params$ = "";
+
+		//Send a sync message to myself.  The children copies of this spell wil see it and respond
+		//appropriately.
+		PostWorldMessage( WE_SPELL_SYNC_MID, owner.Goid, owner.Goid, 1 );
+
+		//If desired, play an unsummoning effect for the magnet.
+		if(!StringTool.IsEmpty(unsummonEffect$) && m_Caster$.IsValid())
+		{
+			// Play the effect, but delay while playing the effect before we delete the object
+			SiegeFX.SRunScript(unsummonEffect$, m_magnet$, m_Caster$, params$, owner.Goid, WE_REQ_CAST);
+			this.CreateTimer(2, .1);
+		}
+		// Otherwise, we immediately delete the object.
+		else
+		{
+			this.CreateTimer(1, 0);
+		}
+	}
+	// Time to delete the go
+	trigger OnTimer$(1)
+	{
+		// Stop the magnet effect
+		if(!StringTool.IsEmpty(magnetEffect$))
+		{
+			SiegeFx.SStopScript(owner.goid, magnetEffect$);
+		}
+		// And stop the unsummon effect
+		if(!StringTool.IsEmpty(unsummonEffect$))
+		{
+			SiegeFx.SStopScript(owner.goid, unsummonEffect$);
+		}
+
+		//Mark the magnet for deletion, but only if it's not a projectile.  Projectiles will
+		//explode and destroy themselves.
+		if(m_magnet$.IsValid()
+		   && !projectile$)
+		{
+			GoDb.SMarkGoAndChildrenForDeletion(m_magnet$);
+		}
+
+		if(m_Caster$.IsValid
+		   && m_Caster$.go.Actor.HasGenericState(owner.Go.Magic.CasterStateName)
+		   && m_Caster$.go.Actor.GetGenericStateSpellGoid(owner.Go.Magic.CasterStateName) == owner.goid)
+		{
+			m_Caster$.go.Actor.SRemoveGenericState(owner.Go.Magic.CasterStateName);
+		}
+
+		SetState Finished$;
+	}
+	// Make the magnet invisible, then wait a few seconds before deleting it.
+	// This gives the effects time to finish before we remove the Go
+	trigger OnTimer$(2)
+	{
+		if(m_magnet$.IsValid())
+		{
+			m_magnet$.Go.Aspect.SetIsVisible(false);
+		}
+		this.CreateTimer(1, 3);
+	}
+}
+
+state Finished$
+{	
+	event OnEnterState$
+	{
+		PostWorldMessage( WE_REQ_DELETE, owner.Goid, owner.Goid, 1 );
+	}
+}
