@@ -54,10 +54,18 @@ static bool WorldDiffVec(const EngineSiegePos& from, const EngineSiegePos& to, f
     return true;
 }
 
-static float WorldDistSq(const EngineSiegePos& from, const EngineSiegePos& to) {
+static bool WorldDistSqOk(const EngineSiegePos& from, const EngineSiegePos& to, float* outDistSq) {
     float d[3] = { 0.0f, 0.0f, 0.0f };
-    if (!WorldDiffVec(from, to, d)) return 0.0f;
-    return d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+    if (!WorldDiffVec(from, to, d)) return false;
+    float dSq = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+    if (!std::isfinite(dSq)) return false;
+    *outDistSq = dSq;
+    return true;
+}
+
+static float WorldDistSq(const EngineSiegePos& from, const EngineSiegePos& to) {
+    float dSq = 0.0f;
+    return WorldDistSqOk(from, to, &dSq) ? dSq : 0.0f;
 }
 
 static float WorldDist(const EngineSiegePos& from, const EngineSiegePos& to) {
@@ -75,7 +83,8 @@ extern "C" uint32_t __cdecl McpFix_CanRunShortHeadToHead(const void* listHead, u
 
     const EngineSiegePos& p0 = *(const EngineSiegePos*)((const char*)node0 + 8);
     const EngineSiegePos& p1 = *(const EngineSiegePos*)((const char*)node1 + 8);
-    float dSq = WorldDistSq(p0, p1);
+    float dSq = 0.0f;
+    if (!WorldDistSqOk(p0, p1, &dSq)) return 0;
     return mcpfix::ShouldRunHeadToHead(listSize, dSq) ? 1u : 0u;
 }
 
@@ -102,7 +111,11 @@ extern "C" uint32_t __cdecl McpFix_SolveMeleeMovingTarget(void* frameEbp, void* 
     EngineSiegePos targetPos0 = {};
     double t0Sample = tStart;
     s_planGetPosAtTime(targetPlan, &targetPos0, &t0Sample, 1, 0);
-    float dist0 = WorldDist(att0, targetPos0);
+    float dist0Sq = 0.0f;
+    if (!WorldDistSqOk(att0, targetPos0, &dist0Sq)) {
+        return mcpfix::REQ_OUT_OF_RANGE_12;
+    }
+    float dist0 = std::sqrt(dist0Sq);
 
     // Already within real melee range at attacker's current plan end: attack without extra move.
     if (dist0 <= range + 0.05f) {

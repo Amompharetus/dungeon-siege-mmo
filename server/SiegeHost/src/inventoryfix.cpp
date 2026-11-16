@@ -573,9 +573,10 @@ extern "C" void __fastcall Hook_SEndGive_RSRemove(void* heroInv, void* unused_ed
 // enchantments were still active on GoActor::Skill::m_LevelMod, and RCAutoEquip unequipped the old
 // item before checking whether the candidate could stay equipped. These helpers evaluate CanEquip
 // against read-only post-displacement Pass-1 skill values without mutating GoDb or recalculating
-// max life/mana, guard RSAutoEquip/RCAutoEquip atomically, flush CheckModifierRecalc synchronously
-// after RCEquip changes modifiers, and keep the already-equipped watchdog (0x00505852) untouched so
-// buff-assisted (e.g. Ogre Leg / Iron Fist) self-sustaining gear continues working as in vanilla.
+// max life/mana, guard RSAutoEquip/RCAutoEquip atomically, refresh only Pass-1 Skill modifiers
+// in-place after RCEquip outside GoInventory::Xfer (avoiding synchronous Pass-0 EnchVec::Update),
+// and keep the already-equipped watchdog (0x00505852) untouched so buff-assisted (e.g. Ogre's Might /
+// Iron Fist) self-sustaining gear continues working as in vanilla.
 
 namespace {
 
@@ -587,7 +588,6 @@ const DWORD kIsMeleeWeaponFn   = 0x005396B0;
 const DWORD kIsRangedWeaponFn  = 0x005396D8;
 const DWORD kIsShieldFn        = 0x00539756;
 const DWORD kSetModifiersDirty = 0x00539C47;
-const DWORD kCheckModRecalcFn  = 0x00539C81;
 const DWORD kPlayVoiceSoundFn  = 0x00539D77;
 const DWORD kGoDbFindEnchFn    = 0x0055E3C7;
 const DWORD kModifySkillFn     = 0x005B1F7F;
@@ -621,7 +621,6 @@ typedef void*    (__thiscall* FindGoByGoidFn)(void* godb, uint32_t goid);
 typedef bool     (*IsServerLocalFn)();
 typedef bool     (__thiscall* GoBoolQueryFn)(void* go);
 typedef void     (__thiscall* SetModifiersDirtyFn)(void* go, bool dirty);
-typedef bool     (__thiscall* CheckModRecalcFn)(void* go);
 typedef void     (__thiscall* PlayVoiceSoundFn)(void* go, const char* eventName, bool flag);
 typedef void     (__thiscall* GoDbFindEnchFn)(void* map64, void** outNode, const void* pKeyGoPtr);
 typedef void     (__thiscall* CsFn)(void* cs);
@@ -865,6 +864,43 @@ void ApplyReplayedPass1Enchantments(void* actor, const std::vector<Pass1EnchEntr
     }
 }
 
+bool ValidateActorSkills(void* actor, char** outBegin, size_t* outCount) {
+    char* skillBegin = *(char**)((char*)actor + 0x18);
+    char* skillEnd   = *(char**)((char*)actor + 0x1C);
+    if (!skillBegin || skillEnd <= skillBegin || ((uintptr_t)(skillEnd - skillBegin) % 0x48u) != 0) {
+        return false;
+    }
+    size_t skillCount = (size_t)(skillEnd - skillBegin) / 0x48u;
+    if (skillCount > 64) return false;
+    for (size_t i = 0; i < skillCount; ++i) {
+        if (!Readable(skillBegin + i * 0x48, 0x48)) return false;
+    }
+    *outBegin = skillBegin;
+    *outCount = skillCount;
+    return true;
+}
+
+// Refreshes only Actor::Skill::m_LevelMod (Pass 1, alt 10..26) in place outside Xfer, preserving
+// Go's dirty flag so the frame's normal CheckModifierRecalc still handles Pass 0 on schedule.
+void RefreshPass1SkillsInPlace(void* go) {
+    if (!Readable(go, 0x98)) return;
+    void* inv = *(void**)((const char*)go + kGoInv);
+    if (!Readable(inv, 0xA8) || *(const uint8_t*)((const char*)inv + 0x85) != 0) return;
+
+    void* actor = *(void**)go;
+    if (!Readable(actor, 0x24)) return;
+
+    char* skillBegin = nullptr;
+    size_t skillCount = 0;
+    if (!ValidateActorSkills(actor, &skillBegin, &skillCount)) return;
+
+    std::vector<Pass1EnchEntry> activeEnchs;
+    bool anyExcluded = false;
+    if (!SnapshotPass1Enchantments(go, nullptr, 0, activeEnchs, &anyExcluded)) return;
+
+    ApplyReplayedPass1Enchantments(actor, activeEnchs);
+}
+
 bool CanEquipForSlotImpl(void* inv, int targetSlot, void* candidate) {
     CanEquipFn origCanEquip = (CanEquipFn)kCanEquipFn;
     if (!Readable(inv, 0xA8) || !Readable(candidate, 0x9C)) return origCanEquip(inv, candidate);
@@ -892,19 +928,15 @@ bool CanEquipForSlotImpl(void* inv, int targetSlot, void* candidate) {
         return origCanEquip(inv, candidate);
     }
 
-    char* skillBegin = *(char**)((char*)actor + 0x18);
-    char* skillEnd   = *(char**)((char*)actor + 0x1C);
-    if (!skillBegin || skillEnd <= skillBegin || ((uintptr_t)(skillEnd - skillBegin) % 0x48u) != 0) {
+    char* skillBegin = nullptr;
+    size_t skillCount = 0;
+    if (!ValidateActorSkills(actor, &skillBegin, &skillCount)) {
         return origCanEquip(inv, candidate);
     }
-    size_t skillCount = (size_t)(skillEnd - skillBegin) / 0x48u;
-    if (skillCount > 64) return origCanEquip(inv, candidate);
 
     float savedMods[64];
     for (size_t i = 0; i < skillCount; ++i) {
-        char* sk = skillBegin + i * 0x48;
-        if (!Readable(sk, 0x48)) return origCanEquip(inv, candidate);
-        savedMods[i] = *(const float*)(sk + 0x34);
+        savedMods[i] = *(const float*)(skillBegin + i * 0x48 + 0x34);
     }
 
     ApplyReplayedPass1Enchantments(actor, remainingEnchs);
@@ -972,8 +1004,8 @@ extern "C" bool __fastcall Hook_CanEquipAutoSlot(void* inv, void* unused_edx, vo
 
 extern "C" void __fastcall Hook_RCEquip_SetModifiersDirtyAndRecalc(void* go, void* unused_edx, uint8_t dirty) {
     ((SetModifiersDirtyFn)kSetModifiersDirty)(go, dirty != 0);
-    if (Readable(go, 0x98) && *(void**)go != nullptr) {
-        ((CheckModRecalcFn)kCheckModRecalcFn)(go);
+    if (dirty) {
+        RefreshPass1SkillsInPlace(go);
     }
 }
 
@@ -1089,7 +1121,7 @@ void InstallEquipSwapFix() {
         if (VerifyAndPatchCallSite(kAutoSlotCanEquipSites[i], kCanEquipFn, (void*)&Hook_CanEquipAutoSlot, "CanEquipAutoSlot")) ++installed;
     }
     g_equipSwapFix = (installed == kTotalSites);
-    Log("InvFix: equip requirement swap fix armed (%d/%d sites, watchdog at 0x00505852 preserved).", installed, kTotalSites);
+    Log("InvFix: equip requirement swap fix armed (%d/%d sites, Pass-1 safe recalc, watchdog at 0x00505852 preserved).", installed, kTotalSites);
 }
 
 }  // namespace

@@ -4,7 +4,7 @@ Runtime extension DLL for **Dungeon Siege: Legends of Aranna** (`DSLOA.exe` v1.5
 
 Built as `Mss32.dll`, a proxy for the game's Miles sound system DLL. The original Miles binary is renamed to `mss32_orig.dll` and all exports forward directly to it. When `DSLOA.exe` starts, Windows loads `Mss32.dll` from the game directory, hooking engine functions in memory without modifying retail game executables or tank archives.
 
-Current version: **1.5.25**
+Current version: **1.5.26**
 
 ---
 
@@ -105,6 +105,8 @@ To uninstall, remove `Mss32.dll` and restore `mss32_orig.dll`.
 
 ## Changelog Summary
 
+* **1.5.26**: Fixed JIP character-load crash in equip-swap hook by keeping `SetModifiersDirty` deferred during `GoInventory::Xfer` (`inv+0x85`) and refreshing only Pass-1 skill modifiers outside `Xfer` without triggering `Pass 0` `EnchVec::Update`; added `WorldDiffVec` finite guards in `mcpfix` and `INVALID_GOID` (`0xFFFFFFFF`) checks in Native `BuffUI`.
+* **1.5.25**: Added equip-requirement swap guard across 12 UI/RPC sites (`inventoryfix.cpp`), melee target intercept/distance short-circuit fixes (`mcpfix.cpp`), and Native BuffUI state sync + keybind improvements (`characterabilities.cpp`).
 * **1.5.24**: Changed default PvE death drop penalty from `dio_all` to `dio_inventory` (players keep equipped gear and spells on death while dropping backpack inventory and gold; PvP zones retain `dio_nothing`). Added Legends of Aranna expansion area groups (`areagroups.h` groups 27–31).
 * **1.5.9**: Added zone-based PvP for Endless Dunes, Pit of Despair, and Eastern Island with `dio_nothing` death item protection. Added AutoHost dialog text hook and Yes/No auto-confirmation.
 * **1.5.5**: Added 3-second cooldown on out-of-mana chat notices and corrected player leave message grammar.

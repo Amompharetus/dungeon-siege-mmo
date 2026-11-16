@@ -1023,7 +1023,7 @@ static const char* LookupCachedStateIcon(uint32_t spellGoid, const char* sName) 
 extern "C" void __fastcall Hook_GoActor_AddGenericState(void* thisActor, void* unused_edx, const char* sName, const char* sDescription, uint32_t expireLo, uint32_t expireHi, uint32_t casterGoid, uint32_t spellGoid, float spellLevel) {
     if (thisActor && sName && Readable(thisActor, 0x60) && Readable(sName, 1) && *sName) {
         // Cache spell's active_icon while the spell Go* still exists in GoDb
-        if (spellGoid != 0) {
+        if (spellGoid != 0 && spellGoid != 0xFFFFFFFFu) {
             void* godb = *(void**)0x007ACF4C;
             if (godb && Readable(godb, 0x40)) {
                 void* spellGo = FindGo(godb, spellGoid);
@@ -1661,7 +1661,7 @@ static void UpdateBuffUI() {
                 }
 
                 // Resolve active icon from live spell Go* or cached state table
-                if (spellGoid != 0) {
+                if (spellGoid != 0 && spellGoid != 0xFFFFFFFFu) {
                     void* spellGo = FindGo(godb, spellGoid);
                     if (spellGo && Readable(spellGo, 0x40)) {
                         void* goGui = *(void**)((char*)spellGo + 0x28);
