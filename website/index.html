@@ -5572,73 +5572,73 @@
 
 <script>
     const TOWNS = [
-        { id: 'elddim', name: 'Elddim', req: 'Level 0+', left: '22.5%', top: '33.6%', posClass: 'pos-down-mid' },
-        { id: 'lang', name: 'Lang', req: 'Level 25+', left: '11.3%', top: '37.8%', posClass: 'pos-down-left' },
-        { id: 'meren', name: 'Meren', req: 'Level 18+', left: '39.3%', top: '34.0%', posClass: 'pos-down-mid' },
-        { id: 'crystwind', name: 'Crystwind', req: 'Level 5+', left: '17.9%', top: '52.0%', posClass: 'pos-up-mid' },
-        { id: 'fallraen', name: 'Fallraen', req: 'Level 9+', left: '27.2%', top: '58.8%', posClass: 'pos-up-mid' },
-        { id: 'quillrabe', name: 'Quillrabe', req: 'Level 42+', left: '14.1%', top: '63.4%', posClass: 'pos-up-left' },
-        { id: 'hiroth', name: 'Hiroth', req: 'Level 46+', left: '12.1%', top: '69.6%', posClass: 'pos-up-left' },
-        { id: 'grescal', name: 'Grescal', req: 'Level 50+', left: '30.3%', top: '80.4%', posClass: 'pos-up-mid' },
-        { id: 'neeners_emporium', name: "Neener's Emporium", req: 'Level 58+', left: '73.5%', top: '22.0%', posClass: 'pos-down-right' }
+        { id: 'elddim', name: 'Elddim', req: 'Level 0+', left: '57.1%', top: '40.4%', posClass: 'pos-up-mid' },
+        { id: 'lang', name: 'Lang', req: 'Level 25+', left: '42.8%', top: '43.4%', posClass: 'pos-up-mid' },
+        { id: 'meren', name: 'Meren', req: 'Level 18+', left: '77.1%', top: '41.2%', posClass: 'pos-up-right' },
+        { id: 'crystwind', name: 'Crystwind', req: 'Level 5+', left: '50.7%', top: '56.8%', posClass: 'pos-up-mid' },
+        { id: 'fallraen', name: 'Fallraen', req: 'Level 9+', left: '63.5%', top: '64.2%', posClass: 'pos-up-mid' },
+        { id: 'quillrabe', name: 'Quillrabe', req: 'Level 42+', left: '46.2%', top: '69.0%', posClass: 'pos-up-mid' },
+        { id: 'hiroth', name: 'Hiroth', req: 'Level 46+', left: '43.8%', top: '76.6%', posClass: 'pos-up-mid' },
+        { id: 'grescal', name: 'Grescal', req: 'Level 50+', left: '65.7%', top: '86.4%', posClass: 'pos-up-mid' },
+        { id: 'neeners_emporium', name: "Neener's Emporium", req: 'Level 58+', left: '30.4%', top: '33.0%', posClass: 'pos-down-mid' }
     ];
 
     const MAP_AREAS = {
-        // Towns (Utraean Peninsula & Eastern Aranna Reaches Hub)
-        'elddim': { id: 'elddim', name: 'Elddim', left: '22.5%', top: '33.6%', posClass: 'pos-down-mid', isTown: true },
-        'lang': { id: 'lang', name: 'Lang', left: '11.3%', top: '37.8%', posClass: 'pos-down-left', isTown: true },
-        'meren': { id: 'meren', name: 'Meren', left: '39.3%', top: '34.0%', posClass: 'pos-down-mid', isTown: true },
-        'crystwind': { id: 'crystwind', name: 'Crystwind', left: '17.9%', top: '52.0%', posClass: 'pos-up-mid', isTown: true },
-        'fallraen': { id: 'fallraen', name: 'Fallraen', left: '27.2%', top: '58.8%', posClass: 'pos-up-mid', isTown: true },
-        'quillrabe': { id: 'quillrabe', name: 'Quillrabe', left: '14.1%', top: '63.4%', posClass: 'pos-up-left', isTown: true },
-        'hiroth': { id: 'hiroth', name: 'Hiroth', left: '12.1%', top: '69.6%', posClass: 'pos-up-left', isTown: true },
-        'grescal': { id: 'grescal', name: 'Grescal', left: '30.3%', top: '80.4%', posClass: 'pos-up-mid', isTown: true },
-        'neeners_emporium': { id: 'neeners_emporium', name: "Neener's Emporium", left: '73.5%', top: '22.0%', posClass: 'pos-down-right', isTown: true },
+        // Towns (Utraean Peninsula & Island of the Utraeans)
+        'elddim': { id: 'elddim', name: 'Elddim', left: '57.1%', top: '40.4%', posClass: 'pos-up-mid', isTown: true },
+        'lang': { id: 'lang', name: 'Lang', left: '42.8%', top: '43.4%', posClass: 'pos-up-mid', isTown: true },
+        'meren': { id: 'meren', name: 'Meren', left: '77.1%', top: '41.2%', posClass: 'pos-up-right', isTown: true },
+        'crystwind': { id: 'crystwind', name: 'Crystwind', left: '50.7%', top: '56.8%', posClass: 'pos-up-mid', isTown: true },
+        'fallraen': { id: 'fallraen', name: 'Fallraen', left: '63.5%', top: '64.2%', posClass: 'pos-up-mid', isTown: true },
+        'quillrabe': { id: 'quillrabe', name: 'Quillrabe', left: '46.2%', top: '69.0%', posClass: 'pos-up-mid', isTown: true },
+        'hiroth': { id: 'hiroth', name: 'Hiroth', left: '43.8%', top: '76.6%', posClass: 'pos-up-mid', isTown: true },
+        'grescal': { id: 'grescal', name: 'Grescal', left: '65.7%', top: '86.4%', posClass: 'pos-up-mid', isTown: true },
+        'neeners_emporium': { id: 'neeners_emporium', name: "Neener's Emporium", left: '30.4%', top: '33.0%', posClass: 'pos-down-mid', isTown: true },
 
         // Wilderness & Dungeons across the Utraean Peninsula
-        'dorneks_stone_quarry': { id: 'dorneks_stone_quarry', name: "Dornek's Stone Quarry", left: '18.1%', top: '12.8%', posClass: 'pos-down-mid' },
-        'sulfur_tunnels': { id: 'sulfur_tunnels', name: 'Sulfur Tunnels', left: '17.6%', top: '18.6%', posClass: 'pos-down-mid' },
-        'mt_elspen_forest': { id: 'mt_elspen_forest', name: 'Mt. Elspen Forest', left: '25.9%', top: '16.5%', posClass: 'pos-down-mid' },
-        'meren_coast': { id: 'meren_coast', name: 'Meren Coast', left: '39.9%', top: '26.6%', posClass: 'pos-down-mid' },
-        'great_northern_forest': { id: 'great_northern_forest', name: 'Great Northern Forest', left: '24.4%', top: '26.6%', posClass: 'pos-down-mid' },
-        'elddim_lowlands': { id: 'elddim_lowlands', name: 'Elddim Lowlands', left: '16.5%', top: '30.4%', posClass: 'pos-down-mid' },
-        'lang_mire': { id: 'lang_mire', name: 'Lang Mire', left: '15.1%', top: '36.0%', posClass: 'pos-down-left' },
-        'goblin_warrens': { id: 'goblin_warrens', name: 'Goblin Warrens', left: '8.8%', top: '39.6%', posClass: 'pos-down-left' },
-        'elddim_glade': { id: 'elddim_glade', name: 'Elddim Glade', left: '18.2%', top: '41.2%', posClass: 'pos-down-mid' },
-        'iliarth_valley': { id: 'iliarth_valley', name: 'Iliarth Valley', left: '27.5%', top: '36.8%', posClass: 'pos-down-mid' },
-        'iliarth_divide': { id: 'iliarth_divide', name: 'Iliarth Divide', left: '26.9%', top: '40.5%', posClass: 'pos-down-mid' },
-        'hovart_marsh': { id: 'hovart_marsh', name: 'Hovart Marsh', left: '32.9%', top: '46.2%', posClass: 'pos-down-mid' },
-        'cloud_forest': { id: 'cloud_forest', name: 'Cloud Forest', left: '39.9%', top: '43.4%', posClass: 'pos-down-mid' },
-        'utraean_basilicus': { id: 'utraean_basilicus', name: 'Utraean Basilicus', left: '21.6%', top: '45.6%', posClass: 'pos-up-mid' },
-        'iliarth_falls': { id: 'iliarth_falls', name: 'Iliarth Falls', left: '26.3%', top: '47.6%', posClass: 'pos-up-mid' },
-        'redwood_gap': { id: 'redwood_gap', name: 'Redwood Gap', left: '13.4%', top: '46.2%', posClass: 'pos-up-left' },
-        'fury_den': { id: 'fury_den', name: 'Fury Den', left: '12.4%', top: '54.0%', posClass: 'pos-up-left' },
-        'crystwind_mines': { id: 'crystwind_mines', name: 'Crystwind Mines', left: '20.4%', top: '52.0%', posClass: 'pos-up-mid' },
-        'iliarth_canyon': { id: 'iliarth_canyon', name: 'Iliarth Canyon', left: '21.8%', top: '56.6%', posClass: 'pos-up-mid' },
-        'mt_utrae_forest': { id: 'mt_utrae_forest', name: 'Mt. Utrae Forest', left: '31.2%', top: '52.4%', posClass: 'pos-up-mid' },
-        'quillrabe_canyons': { id: 'quillrabe_canyons', name: 'Quillrabe Canyons', left: '18.8%', top: '59.8%', posClass: 'pos-up-mid' },
-        'crystwind_old_mines': { id: 'crystwind_old_mines', name: 'Crystwind Old Mines', left: '20.9%', top: '55.8%', posClass: 'pos-up-mid' },
-        'fallraen_forest': { id: 'fallraen_forest', name: 'Fallraen Forest', left: '27.4%', top: '67.2%', posClass: 'pos-up-mid' },
-        'glacial_caverns': { id: 'glacial_caverns', name: 'Glacial Caverns', left: '29.7%', top: '59.4%', posClass: 'pos-up-mid' },
-        'drake_nest': { id: 'drake_nest', name: 'Drake Nest', left: '12.8%', top: '65.0%', posClass: 'pos-up-left' },
-        'castle_hiroth': { id: 'castle_hiroth', name: 'Castle Hiroth', left: '11.1%', top: '67.4%', posClass: 'pos-up-left' },
-        'hiroth_mausoleum': { id: 'hiroth_mausoleum', name: 'Hiroth Mausoleum', left: '12.1%', top: '73.2%', posClass: 'pos-up-left' },
-        'mesa_desert': { id: 'mesa_desert', name: 'Mesa Desert', left: '22.4%', top: '71.8%', posClass: 'pos-up-mid' },
-        'volcanic_caverns': { id: 'volcanic_caverns', name: 'Volcanic Caverns', left: '17.6%', top: '74.4%', posClass: 'pos-up-mid' },
-        'endless_desert': { id: 'endless_desert', name: 'Endless Desert', left: '36.3%', top: '83.2%', posClass: 'pos-up-mid' },
-        'eastern_island': { id: 'eastern_island', name: 'Eastern Island', left: '41.8%', top: '72.8%', posClass: 'pos-up-mid' },
+        'dorneks_stone_quarry': { id: 'dorneks_stone_quarry', name: "Dornek's Stone Quarry", left: '58.5%', top: '24.8%', posClass: 'pos-down-mid' },
+        'sulfur_tunnels': { id: 'sulfur_tunnels', name: 'Sulfur Tunnels', left: '55.7%', top: '28.2%', posClass: 'pos-down-mid' },
+        'mt_elspen_forest': { id: 'mt_elspen_forest', name: 'Mt. Elspen Forest', left: '65.9%', top: '26.8%', posClass: 'pos-down-mid' },
+        'meren_coast': { id: 'meren_coast', name: 'Meren Coast', left: '77.5%', top: '34.0%', posClass: 'pos-down-right' },
+        'great_northern_forest': { id: 'great_northern_forest', name: 'Great Northern Forest', left: '61.6%', top: '34.4%', posClass: 'pos-down-mid' },
+        'elddim_lowlands': { id: 'elddim_lowlands', name: 'Elddim Lowlands', left: '50.6%', top: '38.2%', posClass: 'pos-down-mid' },
+        'lang_mire': { id: 'lang_mire', name: 'Lang Mire', left: '47.9%', top: '42.4%', posClass: 'pos-up-mid' },
+        'goblin_warrens': { id: 'goblin_warrens', name: 'Goblin Warrens', left: '40.7%', top: '46.4%', posClass: 'pos-up-mid' },
+        'elddim_glade': { id: 'elddim_glade', name: 'Elddim Glade', left: '51.3%', top: '47.4%', posClass: 'pos-up-mid' },
+        'iliarth_valley': { id: 'iliarth_valley', name: 'Iliarth Valley', left: '64.1%', top: '42.8%', posClass: 'pos-up-mid' },
+        'iliarth_divide': { id: 'iliarth_divide', name: 'Iliarth Divide', left: '62.9%', top: '47.2%', posClass: 'pos-up-mid' },
+        'hovart_marsh': { id: 'hovart_marsh', name: 'Hovart Marsh', left: '68.7%', top: '52.4%', posClass: 'pos-up-mid' },
+        'cloud_forest': { id: 'cloud_forest', name: 'Cloud Forest', left: '77.6%', top: '49.4%', posClass: 'pos-up-right' },
+        'utraean_basilicus': { id: 'utraean_basilicus', name: 'Utraean Basilicus', left: '54.1%', top: '51.8%', posClass: 'pos-up-mid' },
+        'iliarth_falls': { id: 'iliarth_falls', name: 'Iliarth Falls', left: '60.6%', top: '53.6%', posClass: 'pos-up-mid' },
+        'redwood_gap': { id: 'redwood_gap', name: 'Redwood Gap', left: '45.3%', top: '51.4%', posClass: 'pos-up-mid' },
+        'fury_den': { id: 'fury_den', name: 'Fury Den', left: '43.4%', top: '59.4%', posClass: 'pos-up-mid' },
+        'crystwind_mines': { id: 'crystwind_mines', name: 'Crystwind Mines', left: '55.0%', top: '57.4%', posClass: 'pos-up-mid' },
+        'iliarth_canyon': { id: 'iliarth_canyon', name: 'Iliarth Canyon', left: '56.2%', top: '65.0%', posClass: 'pos-up-mid' },
+        'mt_utrae_forest': { id: 'mt_utrae_forest', name: 'Mt. Utrae Forest', left: '68.8%', top: '57.6%', posClass: 'pos-up-mid' },
+        'quillrabe_canyons': { id: 'quillrabe_canyons', name: 'Quillrabe Canyons', left: '52.2%', top: '68.6%', posClass: 'pos-up-mid' },
+        'crystwind_old_mines': { id: 'crystwind_old_mines', name: 'Crystwind Old Mines', left: '54.9%', top: '61.4%', posClass: 'pos-up-mid' },
+        'fallraen_forest': { id: 'fallraen_forest', name: 'Fallraen Forest', left: '64.0%', top: '72.8%', posClass: 'pos-up-mid' },
+        'glacial_caverns': { id: 'glacial_caverns', name: 'Glacial Caverns', left: '67.8%', top: '65.0%', posClass: 'pos-up-mid' },
+        'drake_nest': { id: 'drake_nest', name: 'Drake Nest', left: '40.9%', top: '71.2%', posClass: 'pos-up-mid' },
+        'castle_hiroth': { id: 'castle_hiroth', name: 'Castle Hiroth', left: '41.6%', top: '74.2%', posClass: 'pos-up-mid' },
+        'hiroth_mausoleum': { id: 'hiroth_mausoleum', name: 'Hiroth Mausoleum', left: '44.9%', top: '80.4%', posClass: 'pos-up-mid' },
+        'mesa_desert': { id: 'mesa_desert', name: 'Mesa Desert', left: '56.5%', top: '78.2%', posClass: 'pos-up-mid' },
+        'volcanic_caverns': { id: 'volcanic_caverns', name: 'Volcanic Caverns', left: '49.3%', top: '82.6%', posClass: 'pos-up-mid' },
+        'endless_desert': { id: 'endless_desert', name: 'Endless Desert', left: '72.4%', top: '89.2%', posClass: 'pos-up-right' },
+        'eastern_island': { id: 'eastern_island', name: 'Eastern Island', left: '87.9%', top: '78.6%', posClass: 'pos-up-right' },
 
-        // Legends of Aranna Expansion — Mt. Kreth, Zaurask Stronghold & Lands of the Great Clock
-        'ramparts': { id: 'ramparts', name: 'The Ramparts', left: '80.6%', top: '26.0%', posClass: 'pos-down-right' },
-        'stronghold_gate': { id: 'stronghold_gate', name: 'Stronghold Gate', left: '87.8%', top: '29.8%', posClass: 'pos-down-right' },
-        'stronghold_tunnel': { id: 'stronghold_tunnel', name: 'Stronghold Tunnel', left: '76.0%', top: '33.6%', posClass: 'pos-up-right' },
-        'zaurask_stronghold': { id: 'zaurask_stronghold', name: 'Zaurask Stronghold', left: '83.4%', top: '39.6%', posClass: 'pos-up-right' },
-        'inner_stronghold': { id: 'inner_stronghold', name: 'Inner Stronghold', left: '90.3%', top: '43.4%', posClass: 'pos-up-right' },
-        'stronghold_caverns': { id: 'stronghold_caverns', name: 'Stronghold Caverns', left: '81.0%', top: '48.8%', posClass: 'pos-up-right' },
-        'clock_wastelands': { id: 'clock_wastelands', name: 'Great Clock Wastelands', left: '76.9%', top: '64.6%', posClass: 'pos-up-right' },
-        'clock_tunnels': { id: 'clock_tunnels', name: 'Tunnels of the Great Clock', left: '88.1%', top: '71.2%', posClass: 'pos-up-right' },
-        'clock_halls': { id: 'clock_halls', name: 'Halls of the Great Clock', left: '77.1%', top: '78.4%', posClass: 'pos-up-right' },
-        'great_clock': { id: 'great_clock', name: 'The Great Clock', left: '85.9%', top: '87.6%', posClass: 'pos-up-right' }
+        // Island of the Utraeans — Zaurask Stronghold, Mt. Kreth & Lands of the Great Clock
+        'ramparts': { id: 'ramparts', name: 'The Ramparts', left: '35.6%', top: '30.0%', posClass: 'pos-down-mid' },
+        'stronghold_gate': { id: 'stronghold_gate', name: 'Stronghold Gate', left: '37.6%', top: '24.8%', posClass: 'pos-down-mid' },
+        'stronghold_tunnel': { id: 'stronghold_tunnel', name: 'Stronghold Tunnel', left: '25.7%', top: '26.0%', posClass: 'pos-down-mid' },
+        'zaurask_stronghold': { id: 'zaurask_stronghold', name: 'Zaurask Stronghold', left: '29.7%', top: '21.6%', posClass: 'pos-down-mid' },
+        'inner_stronghold': { id: 'inner_stronghold', name: 'Inner Stronghold', left: '36.9%', top: '17.4%', posClass: 'pos-down-mid' },
+        'stronghold_caverns': { id: 'stronghold_caverns', name: 'Stronghold Caverns', left: '29.1%', top: '14.8%', posClass: 'pos-down-mid' },
+        'clock_wastelands': { id: 'clock_wastelands', name: 'Great Clock Wastelands', left: '20.6%', top: '19.2%', posClass: 'pos-down-left' },
+        'clock_tunnels': { id: 'clock_tunnels', name: 'Tunnels of the Great Clock', left: '17.4%', top: '25.6%', posClass: 'pos-down-left' },
+        'clock_halls': { id: 'clock_halls', name: 'Halls of the Great Clock', left: '11.3%', top: '19.4%', posClass: 'pos-down-left' },
+        'great_clock': { id: 'great_clock', name: 'The Great Clock', left: '14.6%', top: '13.0%', posClass: 'pos-down-left' }
     };
 
     const MAP_REGION_ALIASES = {
@@ -5760,8 +5760,8 @@
                 </filter>
             </defs>
 
-            <!-- High-Resolution 3D-Hillshaded Procedural Relief Atlas (Utraean Peninsula + Eastern Aranna Reaches) -->
-            <image href="/static/world-atlas.webp?v=3" x="0" y="0" width="1360" height="1000" preserveAspectRatio="none"/>
+            <!-- High-Resolution 3D-Hillshaded Procedural Relief Atlas (Utraean Peninsula & Island of the Utraeans) -->
+            <image href="/static/world-atlas.webp?v=4" x="0" y="0" width="1360" height="1000" preserveAspectRatio="none"/>
 
             <!-- Subtle Cartographic Rhumb Lines & Coordinate Grid over Ocean -->
             <g stroke="#8fb8d6" stroke-width="0.65" opacity="0.14" stroke-dasharray="5 8">
@@ -5779,169 +5779,167 @@
                 <line x1="1264" y1="92" x2="0" y2="92"/>
             </g>
 
-            <!-- Eastern Stronghold & Clocklands Connecting Dirt Trails -->
-            <g fill="none" stroke="#e5b85c" stroke-width="2.1" stroke-dasharray="5 5" opacity="0.68">
-                <path d="M1000,220 Q1050,240 1096,260 L1194,298"/>
-                <path d="M1096,260 Q1062,298 1034,336 L1134,396 L1228,434"/>
-                <path d="M1134,396 Q1118,444 1102,488"/>
-                <path d="M1102,488 Q1074,568 1046,646" stroke="#e07b42" stroke-dasharray="4 4"/>
-                <path d="M1046,646 Q1125,678 1198,712 Q1122,748 1048,784 Q1108,832 1168,876"/>
+            <!-- Island of the Utraeans Connecting Dirt & Subterranean Trails -->
+            <g fill="none" stroke="#e5b85c" stroke-width="2.0" stroke-dasharray="5 5" opacity="0.68">
+                <path d="M414,330 Q456,320 484,300 L512,248 Q466,226 404,216 L502,174"/>
+                <path d="M484,300 Q416,282 350,260 Q378,238 404,216 Q400,182 396,148"/>
+                <path d="M396,148 Q338,168 280,192 Q256,224 236,256 Q192,232 154,194 Q174,160 198,130" stroke="#e07b42" stroke-dasharray="4 4"/>
             </g>
 
             <!-- UTRAEAN DISPLACER TELEPORT CONDUIT (Grescal Lv50+ -> Neener's Emporium Lv58+) -->
             <g filter="url(#arcGlow-${ns})">
-                <path d="M412,804 C605,892 795,585 1000,220" fill="none" stroke="url(#portalArc-${ns})" stroke-width="3.2" stroke-dasharray="8 6" opacity="0.92"/>
-                <circle cx="412" cy="804" r="15" fill="none" stroke="#5ce1e6" stroke-width="1.8" opacity="0.72"/>
-                <circle cx="1000" cy="220" r="16" fill="none" stroke="#c892ff" stroke-width="2" opacity="0.78"/>
+                <path d="M894,864 C710,975 398,745 414,330" fill="none" stroke="url(#portalArc-${ns})" stroke-width="3.2" stroke-dasharray="8 6" opacity="0.92"/>
+                <circle cx="894" cy="864" r="15" fill="none" stroke="#5ce1e6" stroke-width="1.8" opacity="0.72"/>
+                <circle cx="414" cy="330" r="16" fill="none" stroke="#c892ff" stroke-width="2" opacity="0.78"/>
             </g>
-            ${label(736, 616, 'DISPLACER CONDUIT', 13.5, '#8fe9f5', 'middle', '1.1')}
-            ${label(736, 633, "(Grescal \u2192 Neener's)", 11.5, '#c9deef', 'middle', '0.4')}
+            ${label(436, 616, 'DISPLACER CONDUIT', 13, '#8fe9f5', 'middle', '1.1')}
+            ${label(436, 633, "(Grescal \u2192 Neener's Emporium)", 11, '#c9deef', 'middle', '0.4')}
 
             <!-- HERALDIC TOWN & CITADEL CRESTS -->
             <!-- Elddim -->
-            <g transform="translate(306,336)">
+            <g transform="translate(776,404)">
                 <rect x="-13" y="-13" width="26" height="26" rx="5" fill="#1b222c" stroke="#e5b85c" stroke-width="2"/>
                 <path d="M-7,8 L-7,-1 A7,7 0 0,1 7,-1 L7,8" fill="none" stroke="#f2cf78" stroke-width="2.2"/>
                 <circle cx="0" cy="0" r="2.6" fill="#ffd97d"/>
             </g>
             <!-- Lang -->
-            <g transform="translate(154,378)">
+            <g transform="translate(582,434)">
                 <circle r="13" fill="#16291c" stroke="#62c478" stroke-width="2"/>
                 <path d="M0,-7 C5,-2 5,3 0,7 C-5,3 -5,-2 0,-7 Z" fill="#6ad482"/>
             </g>
             <!-- Meren -->
-            <g transform="translate(534,340)">
+            <g transform="translate(1048,412)">
                 <circle r="13" fill="#142736" stroke="#75bde8" stroke-width="2"/>
                 <path d="M-7,0 Q0,-6 6,0 Q0,6 -7,0 M6,0 L10,-4 L10,4 Z" fill="#7ec6f0"/>
             </g>
             <!-- Crystwind -->
-            <g transform="translate(244,520)">
+            <g transform="translate(690,568)">
                 <rect x="-13" y="-13" width="26" height="26" rx="4" fill="#232227" stroke="#d4b56a" stroke-width="2"/>
                 <path d="M-6,-5 L6,-5 M0,-5 L0,7" stroke="#ebd8a6" stroke-width="3"/>
             </g>
             <!-- Fallraen -->
-            <g transform="translate(370,588)">
+            <g transform="translate(864,642)">
                 <circle r="13" fill="#14293a" stroke="#85e1ff" stroke-width="2"/>
                 <polygon points="0,-8 2.5,-2.5 8,0 2.5,2.5 0,8 -2.5,2.5 -8,0 -2.5,-2.5" fill="#a8ebff"/>
             </g>
             <!-- Quillrabe -->
-            <g transform="translate(192,634)">
+            <g transform="translate(628,690)">
                 <polygon points="0,-14 12,0 7,12 -7,12 -12,0" fill="#2b1718" stroke="#de6d5a" stroke-width="2"/>
                 <polygon points="0,-7 4.5,5 -4.5,5" fill="#de6d5a"/>
             </g>
             <!-- Hiroth -->
-            <g transform="translate(164,696)">
+            <g transform="translate(596,766)">
                 <circle r="13" fill="#292014" stroke="#f0c35e" stroke-width="2"/>
                 <polygon points="-7,5 -8,-4 -2.5,0 0,-6 2.5,0 8,-4 7,5" fill="#f0c35e"/>
             </g>
             <!-- Grescal -->
-            <g transform="translate(412,804)">
+            <g transform="translate(894,864)">
                 <circle r="13.5" fill="#2d2315" stroke="#f2ba66" stroke-width="2.2"/>
                 <path d="M0,7 L0,-2 M0,-1 Q-6,-6 -8,-1 M0,-1 Q6,-6 8,-1 M0,-2 Q0,-7 3.5,-8" stroke="#f2ba66" stroke-width="2.1" fill="none"/>
             </g>
             <!-- Neener's Emporium -->
-            <g transform="translate(1000,220)">
+            <g transform="translate(414,330)">
                 <polygon points="0,-16 14,-4 9,13 -9,13 -14,-4" fill="#261938" stroke="#d49bff" stroke-width="2.2"/>
                 <polygon points="0,-8.5 2.5,-2.5 8.5,0 2.5,2.5 0,8.5 -2.5,2.5 -8.5,0 -2.5,-2.5" fill="#f5ce73"/>
             </g>
             <!-- Zaurask Stronghold Citadel -->
-            <g transform="translate(1134,396)">
+            <g transform="translate(404,216)">
                 <rect x="-12" y="-10" width="24" height="20" fill="#2a1f24" stroke="#de8660" stroke-width="2"/>
                 <path d="M-12,-10 L-12,-15 L-6,-15 L-6,-10 L0,-10 L0,-15 L6,-15 L6,-10 L12,-10" fill="none" stroke="#de8660" stroke-width="2"/>
             </g>
             <!-- The Great Clock Astrolabe -->
-            <g transform="translate(1168,876)">
+            <g transform="translate(198,130)">
                 <circle r="15" fill="#281f13" stroke="#f2c464" stroke-width="2.2"/>
                 <circle r="7" fill="none" stroke="#5ce1e6" stroke-width="1.6"/>
                 <line x1="0" y1="0" x2="0" y2="-9" stroke="#f2c464" stroke-width="1.8"/>
                 <line x1="0" y1="0" x2="7" y2="3.5" stroke="#f2c464" stroke-width="1.6"/>
             </g>
 
-            <!-- CARVED STONE DUNGEON DOORWAYS (1..12 Utraean Peninsula, 13..17 Aranna Reaches) -->
-            ${dungeonPin(218, 190, 1, false)}
-            ${dungeonPin(316, 214, 2, false)}
-            ${dungeonPin(410, 208, 3, false)}
-            ${dungeonPin(486, 300, 3, false)}
-            ${dungeonPin(368, 298, 4, false)}
-            ${dungeonPin(416, 424, 4, false)}
-            ${dungeonPin(118, 398, 5, false)}
-            ${dungeonPin(134, 488, 5, false)}
-            ${dungeonPin(348, 422, 6, false)}
-            ${dungeonPin(452, 422, 6, false)}
-            ${dungeonPin(146, 540, 7, false)}
-            ${dungeonPin(278, 524, 8, false)}
-            ${dungeonPin(282, 556, 9, false)}
-            ${dungeonPin(346, 650, 9, false)}
-            ${dungeonPin(406, 594, 10, false)}
-            ${dungeonPin(144, 634, 11, false)}
-            ${dungeonPin(220, 668, 11, false)}
-            ${dungeonPin(164, 734, 12, false)}
-            ${dungeonPin(242, 746, 12, false)}
-            <!-- Eastern Aranna Reaches Dungeons (13..17) -->
-            ${dungeonPin(1012, 348, 13, true)}
-            ${dungeonPin(1068, 504, 14, true)}
-            ${dungeonPin(1222, 722, 15, true)}
-            ${dungeonPin(1024, 796, 16, true)}
-            ${dungeonPin(1142, 876, 17, true)}
+            <!-- CARVED STONE DUNGEON DOORWAYS (1..12 Utraean Peninsula, 13..17 Island of the Utraeans) -->
+            ${dungeonPin(758, 282, 1, false)}
+            ${dungeonPin(872, 304, 2, false)}
+            ${dungeonPin(982, 294, 3, false)}
+            ${dungeonPin(1078, 368, 3, false)}
+            ${dungeonPin(854, 386, 4, false)}
+            ${dungeonPin(912, 494, 4, false)}
+            ${dungeonPin(554, 464, 5, false)}
+            ${dungeonPin(572, 536, 5, false)}
+            ${dungeonPin(828, 492, 6, false)}
+            ${dungeonPin(956, 492, 6, false)}
+            ${dungeonPin(590, 594, 7, false)}
+            ${dungeonPin(748, 574, 8, false)}
+            ${dungeonPin(746, 614, 9, false)}
+            ${dungeonPin(832, 692, 9, false)}
+            ${dungeonPin(922, 650, 10, false)}
+            ${dungeonPin(556, 712, 11, false)}
+            ${dungeonPin(662, 728, 11, false)}
+            ${dungeonPin(594, 804, 12, false)}
+            ${dungeonPin(688, 814, 12, false)}
+            <!-- Island of the Utraeans Dungeons (13..17) -->
+            ${dungeonPin(350, 260, 13, true)}
+            ${dungeonPin(396, 148, 14, true)}
+            ${dungeonPin(236, 256, 15, true)}
+            ${dungeonPin(154, 194, 16, true)}
+            ${dungeonPin(170, 130, 17, true)}
 
-            <!-- CARTOGRAPHIC REGION & TOWN LABELS -->
-            ${label(246, 108, "Dornek's Stone Quarry", 13.5)}
-            ${label(356, 146, "Mt. Elspen Forest", 13.5)}
-            ${label(332, 248, "Great Northern Forest", 13.5)}
-            ${label(222, 286, "Elddim Lowlands", 13)}
-            ${label(544, 248, "Meren Coast", 13)}
-            ${label(306, 312, "Elddim", 16.5, '#ffe399')}
-            ${label(534, 316, "Meren", 16.5, '#ffe399')}
-            ${label(154, 354, "Lang", 16.5, '#ffe399')}
-            ${label(224, 372, "Lang Mire", 12.5)}
-            ${label(402, 356, "Iliarth Valley", 13)}
-            ${label(246, 412, "Elddim Glade", 12.5)}
-            ${label(372, 398, "Iliarth Divide", 12.5)}
-            ${label(452, 464, "Hovart Marsh", 12.5)}
-            ${label(542, 434, "Cloud Forest", 13)}
-            ${label(286, 458, "Utraean Basilicus", 11.5, '#cfe8ff')}
-            ${label(172, 442, "Redwood Gap", 13)}
-            ${label(362, 488, "Iliarth Falls", 12.5)}
-            ${label(244, 496, "Crystwind", 16.5, '#ffe399')}
-            ${label(436, 514, "Mt. Utrae Forest", 13)}
-            ${label(294, 584, "Iliarth Canyon", 12.5)}
-            ${label(476, 612, "Mt. Utrae", 14.5, '#e6f2ff')}
-            ${label(370, 564, "Fallraen", 16.5, '#ffe399')}
-            ${label(372, 678, "Fallraen Forest", 13)}
-            ${label(278, 626, "Quillrabe", 12.5)}
-            ${label(278, 641, "Canyons", 12.5)}
-            ${label(192, 610, "Quillrabe", 16.5, '#ffe399')}
-            ${label(164, 672, "Hiroth", 16.5, '#ffe399')}
-            ${label(306, 718, "Mesa Desert", 14)}
-            ${label(412, 780, "Grescal", 16.5, '#ffe399')}
-            ${label(494, 844, "Endless Desert", 14)}
-            ${label(570, 742, "Eastern Island", 13.5)}
+            <!-- CARTOGRAPHIC REGION & TOWN LABELS (Utraean Peninsula) -->
+            ${label(795, 232, "Dornek's Stone Quarry", 13.5)}
+            ${label(912, 248, "Mt. Elspen Forest", 13.5)}
+            ${label(846, 338, "Great Northern Forest", 13.5)}
+            ${label(688, 364, "Elddim Lowlands", 13)}
+            ${label(1062, 326, "Meren Coast", 13)}
+            ${label(776, 380, "Elddim", 16.5, '#ffe399')}
+            ${label(1048, 388, "Meren", 16.5, '#ffe399')}
+            ${label(582, 410, "Lang", 16.5, '#ffe399')}
+            ${label(656, 424, "Lang Mire", 12.5)}
+            ${label(892, 422, "Iliarth Valley", 13)}
+            ${label(704, 466, "Elddim Glade", 12.5)}
+            ${label(890, 462, "Iliarth Divide", 12.5)}
+            ${label(956, 524, "Hovart Marsh", 12.5)}
+            ${label(1062, 488, "Cloud Forest", 13)}
+            ${label(742, 508, "Utraean Basilicus", 11.5, '#cfe8ff')}
+            ${label(618, 502, "Redwood Gap", 13)}
+            ${label(838, 536, "Iliarth Falls", 12.5)}
+            ${label(690, 544, "Crystwind", 16.5, '#ffe399')}
+            ${label(954, 576, "Mt. Utrae Forest", 13)}
+            ${label(766, 650, "Iliarth Canyon", 12.5)}
+            ${label(1008, 658, "Mt. Utrae", 14.5, '#e6f2ff')}
+            ${label(864, 616, "Fallraen", 16.5, '#ffe399')}
+            ${label(870, 728, "Fallraen Forest", 13)}
+            ${label(714, 678, "Quillrabe", 12.5)}
+            ${label(714, 693, "Canyons", 12.5)}
+            ${label(628, 666, "Quillrabe", 16.5, '#ffe399')}
+            ${label(596, 742, "Hiroth", 16.5, '#ffe399')}
+            ${label(776, 774, "Mesa Desert", 14)}
+            ${label(894, 839, "Grescal", 16.5, '#ffe399')}
+            ${label(984, 916, "Endless Desert", 14)}
+            ${label(1196, 882, "Eastern Island", 13.5)}
 
-            <!-- OCEAN & EASTERN ARANNA REALM LABELS -->
-            ${label(712, 346, "THE UTRAEAN SEA", 16, '#76abd1', 'middle', '2.4')}
-            ${label(1078, 150, "MT. KRETH &amp;", 14.5, '#f0b39e', 'middle', '0.9')}
-            ${label(1078, 168, "ZAURASK STRONGHOLD", 14.5, '#f0b39e', 'middle', '0.9')}
-            ${label(978, 224, "Neener's Emporium", 15.5, '#f3d2ff', 'end')}
-            ${label(1106, 242, "The Ramparts", 13)}
-            ${label(1196, 282, "Stronghold Gate", 13)}
-            ${label(1034, 318, "Stronghold Tunnel", 13)}
-            ${label(1134, 372, "Zaurask Stronghold", 15.5, '#ffd6ad')}
-            ${label(1228, 418, "Inner Stronghold", 13)}
-            ${label(1108, 472, "Stronghold Caverns", 13)}
+            <!-- OCEAN & ISLAND OF THE UTRAEANS LABELS (True Lore Geography) -->
+            ${label(284, 532, "ARAN OCEAN", 17.5, '#76abd1', 'middle', '2.8')}
+            ${label(642, 198, "ARAN OCEAN", 13.5, '#689cc4', 'middle', '2.2')}
+            ${label(1148, 944, "BAY OF EHB", 16, '#76abd1', 'middle', '2.5')}
+            ${label(318, 50, "ISLAND OF THE UTRAEANS", 17, '#f2be98', 'middle', '1.8')}
+            ${label(202, 102, "The Great Clock", 15, '#ffe399')}
+            ${label(162, 222, "Halls of the Great Clock", 12)}
+            ${label(236, 282, "Tunnels of the Great Clock", 12)}
+            ${label(278, 158, "Great Clock", 12)}
+            ${label(278, 171, "Wastelands", 12)}
+            ${label(396, 128, "Stronghold Caverns", 12)}
+            ${label(502, 156, "Inner Stronghold", 12)}
+            ${label(398, 192, "Zaurask Stronghold", 14.5, '#ffd6ad')}
+            ${label(346, 240, "Stronghold Tunnel", 12)}
+            ${label(512, 232, "Stronghold Gate", 12)}
+            ${label(486, 282, "The Ramparts", 12.5)}
+            ${label(414, 366, "Neener's Emporium", 14.5, '#f3d2ff')}
 
-            ${label(1132, 578, "LANDS OF THE GREAT CLOCK", 16, '#f5cb78', 'middle', '1.1')}
-            ${label(1054, 628, "Great Clock Wastelands", 13.5)}
-            ${label(1188, 694, "Tunnels of the Great Clock", 13)}
-            ${label(1056, 766, "Halls of the Great Clock", 13)}
-            ${label(1168, 916, "The Great Clock", 16, '#ffe399')}
-
-            <!-- CARVED METALLIC SILVER/GOLD ATLAS TITLE (OVER OPEN NORTHERN SEA) -->
-            <g transform="translate(765, 62)">
+            <!-- CARVED METALLIC SILVER/GOLD ATLAS TITLE (TOP CENTER-RIGHT OVER OPEN OCEAN) -->
+            <g transform="translate(918, 66)">
                 <line x1="-225" y1="36" x2="225" y2="36" stroke="#c89e4c" stroke-width="1.4" opacity="0.65"/>
                 <circle cx="-225" cy="36" r="2.6" fill="#f3d48c" opacity="0.8"/>
                 <circle cx="225" cy="36" r="2.6" fill="#f3d48c" opacity="0.8"/>
-                <text x="0" y="0" text-anchor="middle" font-family="'Cinzel', serif" font-size="30" font-weight="800" fill="#e8edf2" stroke="#070b10" stroke-width="5.5" paint-order="stroke" stroke-linejoin="round" letter-spacing="2.4">THE UTRAEAN PENINSULA</text>
-                <text x="0" y="25" text-anchor="middle" font-family="'Cinzel', serif" font-size="13.2" font-weight="700" fill="#e9c16c" stroke="#070b10" stroke-width="3.6" paint-order="stroke" stroke-linejoin="round" letter-spacing="1.6">&amp; EASTERN ARANNA REACHES</text>
+                <text x="0" y="0" text-anchor="middle" font-family="'Cinzel', serif" font-size="29" font-weight="800" fill="#e8edf2" stroke="#070b10" stroke-width="5.5" paint-order="stroke" stroke-linejoin="round" letter-spacing="2.2">THE UTRAEAN PENINSULA</text>
+                <text x="0" y="25" text-anchor="middle" font-family="'Cinzel', serif" font-size="13.2" font-weight="700" fill="#e9c16c" stroke="#070b10" stroke-width="3.6" paint-order="stroke" stroke-linejoin="round" letter-spacing="1.6">&amp; ISLAND OF THE UTRAEANS</text>
             </g>
 
             <!-- STEEL & BRASS 8-POINT COMPASS ROSE (TOP RIGHT) -->
@@ -5990,7 +5988,7 @@
                     <text x="166" y="63"><tspan fill="#f0c35e" font-weight="700">11</tspan> Drake Nest</text>
                     <text x="166" y="79"><tspan fill="#f0c35e" font-weight="700">12</tspan> Hiroth Mausoleum</text>
                     <line x1="166" y1="87" x2="320" y2="87" stroke="rgba(224,141,85,0.38)" stroke-width="1"/>
-                    <text x="166" y="101" font-family="'Cinzel', serif" font-size="10" font-weight="700" fill="#e89a68">ARANNA REACHES</text>
+                    <text x="166" y="101" font-family="'Cinzel', serif" font-size="9.5" font-weight="700" fill="#e89a68">ISLAND OF THE UTRAEANS</text>
                     <text x="166" y="117"><tspan fill="#e89a68" font-weight="700">13</tspan> Stronghold Tunnel</text>
                     <text x="166" y="133"><tspan fill="#e89a68" font-weight="700">14</tspan> Stronghold Caverns</text>
                     <text x="166" y="149"><tspan fill="#e89a68" font-weight="700">15</tspan> Clock Tunnels</text>
