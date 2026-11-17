@@ -176,35 +176,22 @@ def build_world_locations(mp_map: LazyTank, exp_map: LazyTank) -> bytes:
 
 
 def build_quests(mp_map: LazyTank, exp_map: LazyTank) -> bytes:
-    """Merge dsx_chapter_4/5 and a8_pad into MpWorld quests.gas."""
+    """Merge a8_pad into stock MpWorld quests.gas without activating [chapters]."""
     mp_q = mp_map.get("world/maps/multiplayer_world/quests/quests.gas").decode("latin1")
     exp_q = exp_map.get("world/maps/map_expansion/quests/quests.gas").decode("latin1")
 
-    chap4 = extract_blocks(exp_q, r"(?m)^[ \t]*\[dsx_chapter_4\]")
-    chap5 = extract_blocks(exp_q, r"(?m)^[ \t]*\[dsx_chapter_5\]")
     a8_pad = extract_blocks(exp_q, r"(?m)^[ \t]*\[a8_pad\]")
-    if len(chap4) != 1 or len(chap5) != 1 or len(a8_pad) != 1:
-        raise RuntimeError(
-            f"Expected 1 each of dsx_chapter_4/5 & a8_pad, found {len(chap4)}, {len(chap5)}, {len(a8_pad)}"
-        )
-
-    chapters_block = (
-        "[chapters]\r\n"
-        "{\r\n"
-        "\t" + chap4[0][3].lstrip().replace("\r\n", "\n").replace("\n", "\r\n") + "\r\n"
-        "\t" + chap5[0][3].lstrip().replace("\r\n", "\n").replace("\n", "\r\n") + "\r\n"
-        "}\r\n\r\n"
-    )
+    if len(a8_pad) != 1:
+        raise RuntimeError(f"Expected 1 [a8_pad] block in Expansion, found {len(a8_pad)}")
 
     quests_matches = extract_blocks(mp_q, r"(?m)^[ \t]*\[quests\]")
     if len(quests_matches) != 1:
         raise RuntimeError(f"Expected 1 active [quests] block in MpWorld, found {len(quests_matches)}")
-    _, q_start, _, _ = quests_matches[0]
 
-    # Insert [chapters] before [quests], and insert [a8_pad] before [quests] closing brace
-    with_chapters = mp_q[:q_start] + chapters_block + mp_q[q_start:]
+    # Preserve stock MpWorld with no active [chapters] block so UIJournal::Populate
+    # stays on its flat quest list path (showing all 27 UP quests alongside a8_pad).
     merged = _insert_before_block_close(
-        with_chapters,
+        mp_q,
         r"(?m)^[ \t]*\[quests\]",
         "\t" + a8_pad[0][3].lstrip(),
     )

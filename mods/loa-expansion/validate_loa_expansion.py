@@ -10,7 +10,7 @@ from typing import Dict, List, Set, Tuple
 from gas_parser import extract_blocks
 from loa_geom import parse_node_mesh_index, parse_sno
 from loa_remapper import REGION_REMAP
-from loa_templates import TemplateVFS
+from loa_templates import CONTAINER_STEMS, TIERS, TemplateVFS, _extract_gold_bounds, mmo_name
 from tank_io import LazyTank
 
 DEFAULT_GAME_DIR = os.environ.get("DSLOA_GAME_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -275,6 +275,35 @@ def validate(game_dir: str, mod_path: str) -> None:
             cblk = merged_templates.get(cname, ("", None))[0].lower()
             if c1w not in cblk or c2w not in cblk:
                 errors.append(f"Template {cname} missing additive 1W ({c1w}) or 2W ({c2w}) entry")
+
+        # Verify post-Hades enemy gold/XP and monotonic Act 8/9 container gold progression.
+        for ename, min_xp, min_g in (
+            ("mmo_loa_dsx_zaurask_fighter", 108000, 22000),
+            ("mmo_loa_dsx_troll_mountain", 138000, 26000),
+            ("mmo_loa_dsx_golem_clockwork", 210000, 35000),
+            ("mmo_loa_dsx_shadow_bigboss", 566720, 110000),
+            ("2w_mmo_loa_dsx_golem_clockwork", 530000, 230000),
+            ("3w_mmo_loa_dsx_shadow_bigboss", 36000000, 1850000),
+        ):
+            eblk = merged_templates.get(ename, ("", None))[0]
+            xp_m = re.search(r"experience_value\s*=\s*([0-9.]+)\s*;", eblk, re.I)
+            gb = _extract_gold_bounds(eblk)
+            if not xp_m or float(xp_m.group(1)) < min_xp:
+                errors.append(f"Enemy {ename} XP below {min_xp}: {xp_m.group(1) if xp_m else None}")
+            if not gb or gb[0] < min_g:
+                errors.append(f"Enemy {ename} gold min below {min_g}: {gb}")
+        for cstem in CONTAINER_STEMS:
+            cgold = [
+                _extract_gold_bounds(merged_templates.get(mmo_name(pfx.lower() + cstem).lower(), ("", None))[0])
+                for _, pfx, _ in TIERS
+            ]
+            if any(cgold) and (any(x is None for x in cgold) or not (cgold[0][0] < cgold[1][0] < cgold[2][0])):
+                errors.append(f"Non-monotonic container gold on {cstem}: {cgold}")
+        for tier_key, pfx, _ in TIERS:
+            g_r2a = _extract_gold_bounds(merged_templates[mmo_name(pfx.lower() + "crate_dsx_a9_r2a-01").lower()][0])
+            g_r3 = _extract_gold_bounds(merged_templates[mmo_name(pfx.lower() + "crate_dsx_a9_r3-01").lower()][0])
+            if not (g_r2a and g_r3 and g_r3[0] > g_r2a[0]):
+                errors.append(f"Tier {tier_key} crate a9_r3-01 regressed below a9_r2a-01: {(g_r2a, g_r3)}")
         print(f"[3/8] Templates validated: {len(mod_tpl_names)} mod templates over {len(merged_templates)} total VFS templates")
 
         # 4. Region GUID / SCID / Node GUID uniqueness across all 80 MpWorld regions + LOA10 checks
@@ -548,10 +577,25 @@ def validate(game_dir: str, mod_path: str) -> None:
             errors.append(f"Missing moods in multiplayer_world/moods1.gas ({len(missing_moods)}): {missing_moods[:10]}")
 
         q_txt = strip_gas_comments(vfs.get("world/maps/multiplayer_world/quests/quests.gas").decode("latin1"))
-        for req_q in ("[dsx_chapter_4]", "[dsx_chapter_5]", "[a8_pad]"):
+        if re.search(r"^\s*\[chapters\]", q_txt, re.I | re.M):
+            errors.append("Unexpected active [chapters] block in quests.gas (hides UP quests in journal)")
+        q_blocks = extract_blocks(q_txt, r"(?mi)^[ \t]*\[quests\]")
+        if len(q_blocks) != 1:
+            errors.append(f"Expected 1 active [quests] block in quests.gas, found {len(q_blocks)}")
+        else:
+            quest_entries: List[str] = []
+            q_depth = 0
+            for q_line in q_blocks[0][3].splitlines():
+                q_s = q_line.strip()
+                if q_depth == 1 and q_s.startswith("[") and q_s.endswith("]"):
+                    quest_entries.append(q_s)
+                q_depth += q_s.count("{") - q_s.count("}")
+            if len(quest_entries) != 28 or "[a8_pad]" not in quest_entries:
+                errors.append(f"Expected 28 quest entries in quests.gas (27 UP + [a8_pad]), found {len(quest_entries)}: {quest_entries}")
+        for req_q in ("[quest_trella_rune]", "[quest_zabar_hovart]", "[quest_townstones]", "[quest_crystwind]", "[a8_pad]"):
             if req_q not in q_txt:
                 errors.append(f"Missing {req_q} in quests.gas")
-        for img in ("b_gui_ig_mnu_jnl_chapter_04", "b_gui_ig_mnu_jnl_chapter_05", "b_gui_ig_mnu_jnl_quest_pad"):
+        for img in ("b_gui_ig_mnu_jnl_quest_23", "b_gui_ig_mnu_jnl_quest_24", "b_gui_ig_mnu_jnl_quest_pad"):
             if not vfs.has_asset(img):
                 errors.append(f"Missing quest image asset {img}")
 

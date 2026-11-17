@@ -377,36 +377,43 @@ def _fmt_num(val: float) -> str:
 
 # Role multipliers/floors keyed by (tier, role) -> dict of parameters.
 _ROLE_PARAMS: Dict[Tuple[str, str], Dict[str, float]] = {
-    ("1w", "swarm"): {"xp_mult": 18.0, "xp_floor": 24000, "hp_mult": 1.95, "hp_floor": 780, "def_mult": 1.80, "def_floor": 390, "dmg_mult": 1.65, "dmg_min_floor": 125.0, "dmg_max_floor": 155.0, "skill_floor": 38},
-    ("2w", "swarm"): {"xp_mult": 2.6, "xp_floor": 145000, "hp_mult": 1.55, "hp_floor": 1450, "def_mult": 1.55, "def_floor": 780, "dmg_mult": 1.30, "dmg_min_floor": 230.0, "dmg_max_floor": 315.0, "skill_floor": 72},
+    ("1w", "swarm"): {"xp_mult": 18.0, "xp_floor": 45000, "hp_mult": 1.95, "hp_floor": 780, "def_mult": 1.80, "def_floor": 390, "dmg_mult": 1.65, "dmg_min_floor": 125.0, "dmg_max_floor": 155.0, "skill_floor": 38},
+    ("2w", "swarm"): {"xp_mult": 2.6, "xp_floor": 165000, "hp_mult": 1.55, "hp_floor": 1450, "def_mult": 1.55, "def_floor": 780, "dmg_mult": 1.30, "dmg_min_floor": 230.0, "dmg_max_floor": 315.0, "skill_floor": 72},
     ("3w", "swarm"): {"xp_mult": 2.6, "xp_floor": 4200000, "hp_mult": 1.55, "hp_floor": 2250, "def_mult": 1.55, "def_floor": 1120, "dmg_mult": 1.30, "dmg_min_floor": 330.0, "dmg_max_floor": 450.0, "skill_floor": 106},
 
-    ("1w", "bomb"): {"xp_mult": 5.5, "xp_floor": 24000, "hp_mult": 2.00, "hp_floor": 210, "def_mult": 1.80, "def_floor": 210, "dmg_mult": 1.60, "dmg_min_floor": 360.0, "dmg_max_floor": 430.0, "skill_floor": 40},
+    ("1w", "bomb"): {"xp_mult": 5.5, "xp_floor": 45000, "hp_mult": 2.00, "hp_floor": 210, "def_mult": 1.80, "def_floor": 210, "dmg_mult": 1.60, "dmg_min_floor": 360.0, "dmg_max_floor": 430.0, "skill_floor": 40},
     ("2w", "bomb"): {"xp_mult": 2.5, "xp_floor": 180000, "hp_mult": 1.80, "hp_floor": 380, "def_mult": 1.60, "def_floor": 380, "dmg_mult": 1.32, "dmg_min_floor": 650.0, "dmg_max_floor": 860.0, "skill_floor": 76},
     ("3w", "bomb"): {"xp_mult": 2.5, "xp_floor": 4800000, "hp_mult": 1.80, "hp_floor": 560, "def_mult": 1.60, "def_floor": 540, "dmg_mult": 1.32, "dmg_min_floor": 920.0, "dmg_max_floor": 1220.0, "skill_floor": 110},
 
     ("1w", "core"): {"xp_mult": 36.0, "xp_floor": 108000, "hp_mult": 2.05, "hp_floor": 1750, "def_mult": 1.90, "def_floor": 670, "dmg_mult": 1.70, "dmg_min_floor": 190.0, "dmg_max_floor": 225.0, "skill_floor": 45},
-    ("2w", "core"): {"xp_mult": 3.5, "xp_floor": 295000, "hp_mult": 1.55, "hp_floor": 2800, "def_mult": 1.55, "def_floor": 1220, "dmg_mult": 1.32, "dmg_min_floor": 330.0, "dmg_max_floor": 440.0, "skill_floor": 78},
-    ("3w", "core"): {"xp_mult": 3.8, "xp_floor": 8800000, "hp_mult": 1.55, "hp_floor": 4000, "def_mult": 1.55, "def_floor": 1720, "dmg_mult": 1.32, "dmg_min_floor": 460.0, "dmg_max_floor": 610.0, "skill_floor": 112},
+    ("2w", "core"): {"xp_mult": 3.5, "xp_floor": 320000, "hp_mult": 1.55, "hp_floor": 2800, "def_mult": 1.55, "def_floor": 1220, "dmg_mult": 1.32, "dmg_min_floor": 330.0, "dmg_max_floor": 440.0, "skill_floor": 78},
+    ("3w", "core"): {"xp_mult": 3.8, "xp_floor": 9800000, "hp_mult": 1.55, "hp_floor": 4000, "def_mult": 1.55, "def_floor": 1720, "dmg_mult": 1.32, "dmg_min_floor": 460.0, "dmg_max_floor": 610.0, "skill_floor": 112},
 
-    ("1w", "elite"): {"xp_mult": 56.0, "xp_floor": 165000, "hp_mult": 2.05, "hp_floor": 2850, "def_mult": 1.80, "def_floor": 900, "dmg_mult": 1.45, "dmg_min_floor": 240.0, "dmg_max_floor": 300.0, "skill_floor": 48},
-    ("2w", "elite"): {"xp_mult": 4.5, "xp_floor": 390000, "hp_mult": 1.55, "hp_floor": 4400, "def_mult": 1.50, "def_floor": 1500, "dmg_mult": 1.25, "dmg_min_floor": 420.0, "dmg_max_floor": 560.0, "skill_floor": 82},
-    ("3w", "elite"): {"xp_mult": 4.8, "xp_floor": 11200000, "hp_mult": 1.55, "hp_floor": 6400, "def_mult": 1.50, "def_floor": 2100, "dmg_mult": 1.25, "dmg_min_floor": 590.0, "dmg_max_floor": 790.0, "skill_floor": 116},
+    ("1w", "elite"): {"xp_mult": 56.0, "xp_floor": 210000, "hp_mult": 2.05, "hp_floor": 2850, "def_mult": 1.80, "def_floor": 900, "dmg_mult": 1.45, "dmg_min_floor": 240.0, "dmg_max_floor": 300.0, "skill_floor": 48},
+    ("2w", "elite"): {"xp_mult": 4.5, "xp_floor": 530000, "hp_mult": 1.55, "hp_floor": 4400, "def_mult": 1.50, "def_floor": 1500, "dmg_mult": 1.25, "dmg_min_floor": 420.0, "dmg_max_floor": 560.0, "skill_floor": 82},
+    ("3w", "elite"): {"xp_mult": 4.8, "xp_floor": 16200000, "hp_mult": 1.55, "hp_floor": 6400, "def_mult": 1.50, "def_floor": 2100, "dmg_mult": 1.25, "dmg_min_floor": 590.0, "dmg_max_floor": 790.0, "skill_floor": 116},
 
     ("1w", "boss"): {"xp_mult": 105.0, "xp_floor": 325000, "hp_mult": 2.75, "hp_floor": 5600, "def_mult": 2.15, "def_floor": 1120, "dmg_mult": 1.65, "dmg_min_floor": 315.0, "dmg_max_floor": 395.0, "skill_floor": 52},
-    ("2w", "boss"): {"xp_mult": 6.5, "xp_floor": 580000, "hp_mult": 1.90, "hp_floor": 8600, "def_mult": 1.75, "def_floor": 1800, "dmg_mult": 1.32, "dmg_min_floor": 520.0, "dmg_max_floor": 690.0, "skill_floor": 88},
-    ("3w", "boss"): {"xp_mult": 6.5, "xp_floor": 14800000, "hp_mult": 1.90, "hp_floor": 12500, "def_mult": 1.75, "def_floor": 2550, "dmg_mult": 1.32, "dmg_min_floor": 740.0, "dmg_max_floor": 980.0, "skill_floor": 122},
+    ("2w", "boss"): {"xp_mult": 6.5, "xp_floor": 820000, "hp_mult": 1.90, "hp_floor": 8600, "def_mult": 1.75, "def_floor": 1800, "dmg_mult": 1.32, "dmg_min_floor": 520.0, "dmg_max_floor": 690.0, "skill_floor": 88},
+    ("3w", "boss"): {"xp_mult": 6.5, "xp_floor": 25000000, "hp_mult": 1.90, "hp_floor": 12500, "def_mult": 1.75, "def_floor": 2550, "dmg_mult": 1.32, "dmg_min_floor": 740.0, "dmg_max_floor": 980.0, "skill_floor": 122},
 
     ("1w", "final_boss"): {"xp_mult": 140.0, "xp_floor": 560000, "hp_mult": 3.60, "hp_floor": 11000, "def_mult": 2.35, "def_floor": 1440, "dmg_mult": 1.85, "dmg_min_floor": 390.0, "dmg_max_floor": 495.0, "skill_floor": 62},
-    ("2w", "final_boss"): {"xp_mult": 8.5, "xp_floor": 950000, "hp_mult": 2.10, "hp_floor": 16800, "def_mult": 1.75, "def_floor": 2350, "dmg_mult": 1.40, "dmg_min_floor": 660.0, "dmg_max_floor": 880.0, "skill_floor": 98},
-    ("3w", "final_boss"): {"xp_mult": 8.5, "xp_floor": 21500000, "hp_mult": 2.10, "hp_floor": 24500, "def_mult": 1.70, "def_floor": 3250, "dmg_mult": 1.40, "dmg_min_floor": 950.0, "dmg_max_floor": 1260.0, "skill_floor": 136},
+    ("2w", "final_boss"): {"xp_mult": 8.5, "xp_floor": 1350000, "hp_mult": 2.10, "hp_floor": 16800, "def_mult": 1.75, "def_floor": 2350, "dmg_mult": 1.40, "dmg_min_floor": 660.0, "dmg_max_floor": 880.0, "skill_floor": 98},
+    ("3w", "final_boss"): {"xp_mult": 8.5, "xp_floor": 36000000, "hp_mult": 2.10, "hp_floor": 24500, "def_mult": 1.70, "def_floor": 3250, "dmg_mult": 1.40, "dmg_min_floor": 950.0, "dmg_max_floor": 1260.0, "skill_floor": 136},
+}
+
+# Act 9 / high-Act-8 core enemy XP floors so Act 9 enemies advance beyond Act 8 Ramparts.
+_ACT9_CORE_XP_FLOORS: Dict[str, float] = {
+    "1w": 138000,
+    "2w": 390000,
+    "3w": 11800000,
 }
 
 # Per-stem post-Grescal benchmark floors (matches/beats Utraean UP Act 9 counterparts).
 _STEM_FLOOR_OVERRIDES: Dict[Tuple[str, str], Dict[str, float]] = {
     ("dsx_lava_spirit", "1w"): {"xp": 175000, "hp": 1950, "def": 820, "dmg_min": 255.0, "dmg_max": 295.0, "skill": 59},
-    ("dsx_lava_spirit", "2w"): {"xp": 400000, "hp": 3100, "def": 1450, "dmg_min": 410.0, "dmg_max": 500.0, "skill": 92},
-    ("dsx_lava_spirit", "3w"): {"xp": 11800000, "hp": 4300, "def": 1950, "dmg_min": 560.0, "dmg_max": 720.0, "skill": 124},
+    ("dsx_lava_spirit", "2w"): {"xp": 440000, "hp": 3100, "def": 1450, "dmg_min": 410.0, "dmg_max": 500.0, "skill": 92},
+    ("dsx_lava_spirit", "3w"): {"xp": 13200000, "hp": 4300, "def": 1950, "dmg_min": 560.0, "dmg_max": 720.0, "skill": 124},
     ("dsx_fury", "1w"): {"hp": 3950},
     ("dsx_fury", "2w"): {"hp": 6800},
     ("dsx_fury", "3w"): {"hp": 9800},
@@ -419,19 +426,48 @@ _POTIONS_BY_TIER = {
 }
 
 _LOOT_BY_TIER = {
-    "1w": {
-        "wpn": "68-92", "amr": "155-265", "rare_wpn": "85-115", "rare_amr": "225-350",
-        "gold_min": 2400, "gold_max": 5200, "boss_gold_min": 6500, "boss_gold_max": 12500,
-    },
-    "2w": {
-        "wpn": "175-245", "amr": "365-575", "rare_wpn": "225-285", "rare_amr": "485-680",
-        "gold_min": 28000, "gold_max": 64000, "boss_gold_min": 75000, "boss_gold_max": 145000,
-    },
-    "3w": {
-        "wpn": "255-350", "amr": "535-765", "rare_wpn": "305-395", "rare_amr": "675-895",
-        "gold_min": 185000, "gold_max": 395000, "boss_gold_min": 450000, "boss_gold_max": 890000,
-    },
+    "1w": {"wpn": "68-92", "amr": "155-265", "rare_wpn": "85-115", "rare_amr": "225-350"},
+    "2w": {"wpn": "175-245", "amr": "365-575", "rare_wpn": "225-285", "rare_amr": "485-680"},
+    "3w": {"wpn": "255-350", "amr": "535-765", "rare_wpn": "305-395", "rare_amr": "675-895"},
 }
+
+# Gold drops keyed by (tier, bucket) -> (chance, min, max, piles_range_or_None).
+# Calibrated against Volcanic Caverns (`hades`: 18.5k-37.8k trash, 58k-71k bosses in 1W;
+# 111k-293k / 380k-429k in 2W; 335k-890k / 1.16M-1.30M in 3W) so post-Hades LoA regions
+# never regress on either visible pile size or expected gold per kill.
+_ENEMY_GOLD_TABLE: Dict[Tuple[str, str], Tuple[str, int, int, Optional[str]]] = {
+    ("1w", "swarm"):      ("0.18", 10000,   16000,   None),
+    ("1w", "core_lo"):    ("0.20", 22000,   30000,   None),
+    ("1w", "core_mid"):   ("0.22", 26000,   36000,   None),
+    ("1w", "elite"):      ("0.25", 35000,   48000,   None),
+    ("1w", "boss"):       ("1.0",  75000,   95000,   "4 - 6"),
+    ("1w", "final_boss"): ("1.0",  110000,  150000,  "6 - 8"),
+
+    ("2w", "swarm"):      ("0.18", 95000,   135000,  None),
+    ("2w", "core_lo"):    ("0.20", 145000,  215000,  None),
+    ("2w", "core_mid"):   ("0.22", 175000,  255000,  None),
+    ("2w", "elite"):      ("0.25", 230000,  320000,  None),
+    ("2w", "boss"):       ("1.0",  430000,  540000,  "4 - 6"),
+    ("2w", "final_boss"): ("1.0",  650000,  850000,  "6 - 8"),
+
+    ("3w", "swarm"):      ("0.18", 300000,  440000,  None),
+    ("3w", "core_lo"):    ("0.20", 440000,  650000,  None),
+    ("3w", "core_mid"):   ("0.22", 520000,  760000,  None),
+    ("3w", "elite"):      ("0.25", 680000,  950000,  None),
+    ("3w", "boss"):       ("1.0",  1250000, 1550000, "4 - 6"),
+    ("3w", "final_boss"): ("1.0",  1850000, 2400000, "6 - 8"),
+}
+
+
+def _resolve_enemy_gold(tier: str, role: str, act_band: str) -> Tuple[str, int, int, Optional[str]]:
+    """Return `(chance, min, max, piles)` gold tuning for an enemy role and progression band."""
+    if role in ("swarm", "bomb"):
+        bucket = "swarm"
+    elif role == "core":
+        bucket = "core_lo" if act_band == "act8_lo" else "core_mid"
+    else:
+        bucket = role
+    return _ENEMY_GOLD_TABLE[(tier, bucket)]
 
 
 def _resolve_enemy_base_stats(vfs: TemplateVFS, tpl_name: str) -> Dict[str, float]:
@@ -478,7 +514,8 @@ def compute_scaled_stats(vfs: TemplateVFS, stem: str) -> Dict[str, Dict[str, flo
         p = _ROLE_PARAMS[(tier, role)]
         ov = _STEM_FLOOR_OVERRIDES.get((stem, tier), {})
         r = raw_by_tier[tier]
-        xp = max(r["xp"] * p["xp_mult"], p["xp_floor"], ov.get("xp", 0.0))
+        act_xp_floor = _ACT9_CORE_XP_FLOORS[tier] if (role == "core" and (stem in _ACT9_MID_ENEMY_STEMS or stem in _ACT9_HI_ENEMY_STEMS)) else 0.0
+        xp = max(r["xp"] * p["xp_mult"], p["xp_floor"], act_xp_floor, ov.get("xp", 0.0))
         hp = max(r["hp"] * p["hp_mult"], p["hp_floor"], ov.get("hp", 0.0))
         mana = max(r["mana"] * (1.25 if tier == "1w" else 1.20), r["mana"])
         df = max(r["def"] * p["def_mult"], p["def_floor"], ov.get("def", 0.0))
@@ -634,12 +671,12 @@ def _build_pcontent_block(
     is_boss: bool,
     es_lines: Tuple[str, ...] = (),
     vet_band: Optional[str] = None,
+    role: str = "core",
+    act_band: str = "act8_lo",
 ) -> str:
     lp = _LOOT_BY_TIER[tier]
     hp_pot, mp_pot, rj_pot = _POTIONS_BY_TIER[tier]
-    gmin = lp["boss_gold_min"] if is_boss else lp["gold_min"]
-    gmax = lp["boss_gold_max"] if is_boss else lp["gold_max"]
-    g_chance = "0.75" if is_boss else "0.28"
+    g_chance, gmin, gmax, g_piles = _resolve_enemy_gold(tier, role, act_band)
     gear_chance = "0.60" if is_boss else "0.24"
     rare_chance = "0.35" if is_boss else "0.06"
     uniq_chance = "0.25" if is_boss else "0.02"
@@ -658,6 +695,13 @@ def _build_pcontent_block(
             + _format_oneof_drop_block(ch_u, vd["uniq"])
         )
 
+    gold_extra = ""
+    if g_piles:
+        gold_extra = (
+            f"\t\t\t\t\tmin_pile = {gmin // 10};\n"
+            f"\t\t\t\t\tpiles = {g_piles};\n"
+        )
+
     return (
         "\t\t[pcontent]\n"
         "\t\t{\n"
@@ -669,7 +713,8 @@ def _build_pcontent_block(
         f"\t\t\t\t\tchance = {g_chance};\n"
         f"\t\t\t\t\tmin = {gmin};\n"
         f"\t\t\t\t\tmax = {gmax};\n"
-        "\t\t\t\t}\n"
+        + gold_extra
+        + "\t\t\t\t}\n"
         "\t\t\t\t[oneof*]\n"
         "\t\t\t\t{\n"
         "\t\t\t\t\tchance = 0.22;\n"
@@ -834,8 +879,16 @@ def _emit_enemy_template(
             rebuilt = rebuilt[:s] + cleaned + rebuilt[e:]
         out = rebuilt
 
-    vet_band = _enemy_1w_veteran_band(stem) if tier == "1w" else None
-    pcontent_sub = _build_pcontent_block(tier, is_boss, tuple(es_seen), vet_band=vet_band)
+    act_band = _enemy_1w_veteran_band(stem)
+    vet_band = act_band if tier == "1w" else None
+    pcontent_sub = _build_pcontent_block(
+        tier,
+        is_boss,
+        tuple(es_seen),
+        vet_band=vet_band,
+        role=role,
+        act_band=act_band,
+    )
     inv_found = _get_subblock(out, "inventory", top_level=True)
     if inv_found:
         inv_blk = inv_found[2]
@@ -1188,9 +1241,9 @@ def _upgrade_range_token(expr: str, scale_map: Dict[str, Tuple[int, int]]) -> st
 
 
 _CONTAINER_RANGES = {
-    "1w": {"wpn": (70, 96), "rare_wpn": (88, 118), "amr": (175, 290), "rare_amr": (235, 360), "acc": (70, 96), "rare_acc": (88, 118), "spell": (28, 44), "spellbook": (70, 140), "gold_mult": 2.4},
-    "2w": {"wpn": (190, 260), "rare_wpn": (235, 305), "amr": (385, 620), "rare_amr": (510, 720), "acc": (190, 260), "rare_acc": (235, 305), "spell": (58, 86), "spellbook": (120, 200), "gold_mult": 18.0},
-    "3w": {"wpn": (285, 390), "rare_wpn": (325, 425), "amr": (560, 980), "rare_amr": (720, 1150), "acc": (285, 390), "rare_acc": (325, 425), "spell": (82, 108), "spellbook": (160, 240), "gold_mult": 95.0},
+    "1w": {"wpn": (70, 96), "rare_wpn": (88, 118), "amr": (175, 290), "rare_amr": (235, 360), "acc": (70, 96), "rare_acc": (88, 118), "spell": (28, 44), "spellbook": (70, 140)},
+    "2w": {"wpn": (190, 260), "rare_wpn": (235, 305), "amr": (385, 620), "rare_amr": (510, 720), "acc": (190, 260), "rare_acc": (235, 305), "spell": (58, 86), "spellbook": (120, 200)},
+    "3w": {"wpn": (285, 390), "rare_wpn": (325, 425), "amr": (560, 980), "rare_amr": (720, 1150), "acc": (285, 390), "rare_acc": (325, 425), "spell": (82, 108), "spellbook": (160, 240)},
 }
 
 # Additive Veteran (2W) ranges injected into 1W containers (post-Neener Act 8 -> Act 9)
@@ -1260,6 +1313,39 @@ def _veteran_container_companion(expr: str, vet_cfg: Dict[str, Tuple[int, int]])
     return None
 
 
+_CONTAINER_GOLD_SCALING: Dict[Tuple[str, bool], Tuple[float, int]] = {
+    ("1w", False): (11.0, 13500),
+    ("2w", False): (72.0, 72000),
+    ("3w", False): (230.0, 240000),
+    ("1w", True):  (15.0, 28000),
+    ("2w", True):  (95.0, 165000),
+    ("3w", True):  (300.0, 500000),
+}
+
+
+def _extract_gold_bounds(blk: str) -> Optional[Tuple[int, int]]:
+    """Return `(min, max)` from the `[gold*]` block in `blk`, if present."""
+    g_sub = _get_subblock(blk, "gold*")
+    if not g_sub:
+        return None
+    m_min = re.search(r"min\s*=\s*(\d+)", g_sub[2], re.I)
+    m_max = re.search(r"max\s*=\s*(\d+)", g_sub[2], re.I)
+    if not (m_min and m_max):
+        return None
+    return int(m_min.group(1)), int(m_max.group(1))
+
+
+def _set_scalar_preserving_closing_indent(sub: str, key: str, value: str, indent: str) -> str:
+    """Update or insert a GAS scalar while preserving the closing brace indentation."""
+    rx = re.compile(rf"(?mi)((?:^|[{{;])[ \t]*)((?:[fbixs][ \t]+)?){re.escape(key)}[ \t]*=[^;\r\n]*;")
+    if rx.search(sub):
+        return _set_scalar_in_block(sub, key, value, indent)
+    end_brace = sub.rfind("}")
+    line_start = sub.rfind("\n", 0, end_brace)
+    close_indent = sub[line_start + 1:end_brace] if line_start != -1 else ""
+    return sub[:end_brace].rstrip() + f"\n{indent}{key} = {value};\n{close_indent}" + sub[end_brace:]
+
+
 def _emit_container_template(vfs: TemplateVFS, stem: str, tier: str, pfx: str) -> str:
     vanilla = pfx.lower() + stem
     blk = vfs.get_block(vanilla)
@@ -1274,17 +1360,22 @@ def _emit_container_template(vfs: TemplateVFS, stem: str, tier: str, pfx: str) -
     g_sub = _get_subblock(out, "gold*")
     if g_sub:
         _, _, gb = g_sub
-        m_min = re.search(r"min\s*=\s*(\d+)", gb, re.I)
-        m_max = re.search(r"max\s*=\s*(\d+)", gb, re.I)
-        if m_min and m_max:
-            v1 = int(m_min.group(1))
-            v2 = int(m_max.group(1))
-            mult = cfg["gold_mult"] if v2 < 10000 else {"1w": 2.4, "2w": 2.2, "3w": 2.0}[tier]
-            floor_min = {"1w": 2800, "2w": 36000, "3w": 240000}[tier]
+        # Always scale from vanilla 1W container gold so 2W/3W crates (like a8_secret, a9_r3,
+        # and set chests whose vanilla 2W/3W kept 1W gold) still progress cleanly across acts.
+        base_bounds = _extract_gold_bounds(vfs.get_block(stem)) or _extract_gold_bounds(out)
+        if base_bounds:
+            v1, v2 = base_bounds
+            is_spec = "-spec" in stem or stem.endswith("-mp")
+            mult, floor_min = _CONTAINER_GOLD_SCALING[(tier, is_spec)]
             nmin = max(int(v1 * mult), floor_min)
-            nmax = max(int(v2 * mult), int(nmin * 1.8))
+            nmax = max(int(v2 * mult), int(nmin * 1.5))
             gb = _set_scalar_in_block(gb, "min", str(nmin), "\t\t\t\t")
             gb = _set_scalar_in_block(gb, "max", str(nmax), "\t\t\t\t")
+            if is_spec:
+                ch_m = re.search(r"chance\s*=\s*([0-9.]+)\s*;", gb, re.I)
+                if ch_m and float(ch_m.group(1)) < 0.5:
+                    gb = _set_scalar_in_block(gb, "chance", "0.5", "\t\t\t\t")
+                gb = _set_scalar_preserving_closing_indent(gb, "piles", "3 - 5", "\t\t\t\t")
             out = _upsert_subblock(out, "gold*", gb)
 
     hp_pot, mp_pot, rj_pot = _POTIONS_BY_TIER[tier]
@@ -1918,6 +2009,32 @@ def _self_test() -> None:
         cb = parsed[mmo_name(cstem).lower()].lower()
         if req_1w not in cb or req_2w not in cb:
             errors.append(f"Container {cstem} missing 1W ({req_1w}) or additive 2W ({req_2w}) entry")
+
+    # Verify post-Hades enemy gold and XP progression across Act 8 -> Act 9 and all 3 tiers.
+    gold_checks = (
+        ("mmo_loa_dsx_zaurask_fighter", 22000, 30000),
+        ("mmo_loa_dsx_troll_mountain", 26000, 36000),
+        ("mmo_loa_dsx_golem_clockwork", 35000, 48000),
+        ("mmo_loa_dsx_shadow_bigboss", 110000, 150000),
+        ("2w_mmo_loa_dsx_zaurask_fighter", 145000, 215000),
+        ("3w_mmo_loa_dsx_shadow_bigboss", 1850000, 2400000),
+    )
+    for ename, g_lo, g_hi in gold_checks:
+        gb = _extract_gold_bounds(parsed[ename])
+        if gb != (g_lo, g_hi):
+            errors.append(f"Enemy {ename} gold mismatch: expected {(g_lo, g_hi)}, got {gb}")
+
+    for cstem in CONTAINER_STEMS:
+        g_tiers = [_extract_gold_bounds(parsed[mmo_name(pfx.lower() + cstem).lower()]) for _, pfx, _ in TIERS]
+        if any(g is not None for g in g_tiers):
+            if any(g is None for g in g_tiers) or not (g_tiers[0][0] < g_tiers[1][0] < g_tiers[2][0]):
+                errors.append(f"Non-monotonic container gold on {cstem}: {g_tiers}")
+    for tier_key, pfx, _ in TIERS:
+        g_r2a = _extract_gold_bounds(parsed[mmo_name(pfx.lower() + "crate_dsx_a9_r2a-01").lower()])
+        g_r3 = _extract_gold_bounds(parsed[mmo_name(pfx.lower() + "crate_dsx_a9_r3-01").lower()])
+        g_c4 = _extract_gold_bounds(parsed[mmo_name(pfx.lower() + "dsx_set_clockwork_4-mp").lower()])
+        if not (g_r2a and g_r3 and g_c4 and g_r3[0] > g_r2a[0] and g_c4[0] > g_r2a[0]):
+            errors.append(f"Tier {tier_key} Act 9 r3/set chest regression vs r2a: {(g_r2a, g_r3, g_c4)}")
 
     assert not errors, "Self-test errors:\n" + "\n".join(errors)
     print(f"OK: {len(files)} files, {len(parsed)} templates validated with 0 errors ({len(weapon_roles)} weapon clones/tier, {len(spell_roles)} spell clones/tier).")
