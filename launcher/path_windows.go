@@ -9,13 +9,7 @@ import (
 	"unsafe"
 )
 
-// spacelessPath returns a path without spaces for dir (which must exist): DSLOA.exe's command-line
-// parser ignores quoted "user_path=..." arguments .
-func spacelessPath(dir, account string) string {
-	if !strings.Contains(dir, " ") {
-		return dir
-	}
-	_ = os.MkdirAll(dir, 0o755)
+func shortPath(dir string) string {
 	p, _ := syscall.UTF16PtrFromString(dir)
 	buf := make([]uint16, 1024)
 	get := syscall.NewLazyDLL("kernel32.dll").NewProc("GetShortPathNameW")
@@ -24,8 +18,28 @@ func spacelessPath(dir, account string) string {
 			return s
 		}
 	}
-	alt := filepath.Join(os.Getenv("SystemDrive")+`\`, "SiegeMMO", account)
+	return ""
+}
+
+// spacelessPath returns a path without spaces for dir (which must exist): DSLOA.exe's command-line
+// parser ignores quoted "user_path=..." arguments .
+func spacelessPath(dir, account string) string {
+	if !strings.Contains(dir, " ") {
+		return dir
+	}
+	_ = os.MkdirAll(dir, 0o755)
+	if s := shortPath(dir); s != "" {
+		return s
+	}
+	sysDrive := os.Getenv("SystemDrive")
+	if sysDrive == "" {
+		sysDrive = "C:"
+	}
+	alt := filepath.Join(sysDrive+`\`, "Dungeon Siege MMO", account)
 	_ = os.MkdirAll(alt, 0o755)
+	if s := shortPath(alt); s != "" {
+		return s
+	}
 	return alt
 }
 

@@ -125,3 +125,32 @@ func TestKeepLocalCopyRefusesAnEmptyProfile(t *testing.T) {
 		t.Fatal("an empty profile must not produce a copy that looks like a character")
 	}
 }
+
+func TestMigrateLegacyRoot(t *testing.T) {
+	root := t.TempDir()
+	// No SiegeMMO folder -> no-op
+	if _, _, ok := migrateLegacyRoot(root); ok {
+		t.Fatal("expected false when SiegeMMO does not exist")
+	}
+	// Create SiegeMMO/player1/Save/hero.dsparty
+	oldSub := filepath.Join(root, "SiegeMMO", "player1", "Save")
+	if err := os.MkdirAll(oldSub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(oldSub, "hero.dsparty"), []byte("save"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	oldDir, newDir, ok := migrateLegacyRoot(root)
+	if !ok {
+		t.Fatal("expected migrateLegacyRoot to succeed")
+	}
+	if filepath.Base(oldDir) != "SiegeMMO" || filepath.Base(newDir) != "Dungeon Siege MMO" {
+		t.Fatalf("unexpected paths: %s -> %s", oldDir, newDir)
+	}
+	if _, err := os.Stat(oldDir); !os.IsNotExist(err) {
+		t.Fatalf("expected oldDir to be gone, stat err=%v", err)
+	}
+	if b, err := os.ReadFile(filepath.Join(newDir, "player1", "Save", "hero.dsparty")); err != nil || string(b) != "save" {
+		t.Fatalf("migrated file missing or corrupt: %v %q", err, string(b))
+	}
+}

@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-const version = "1.2.0"
+const version = "1.2.1"
 
 type Settings struct {
 	PortalURL   string `json:"portal_url"` // e.g. http://my-server.example.com:8440
@@ -66,6 +66,7 @@ func main() {
 	_ = os.MkdirAll(filepath.Join(gameDir, "SiegeHostLogs"), 0o755)
 	logFile, _ = os.OpenFile(filepath.Join(gameDir, "SiegeHostLogs", "launcher.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	say("==== SiegeLauncher %s ====", version)
+	migrateLegacyFolders()
 	if err := run(); err != nil {
 		say("")
 		say("ERROR: %v", err)
@@ -1695,4 +1696,63 @@ func changeAccountName(in *bufio.Reader) {
 		}
 	}
 	say("Account renamed from %s to %s. Your character and online saves moved with it; log in with the new name from now on.", old, res.Name)
+}
+
+// migrateLegacyRoot renames <root>\SiegeMMO to <root>\Dungeon Siege MMO if the old folder exists.
+func migrateLegacyRoot(root string) (string, string, bool) {
+	if root == "" {
+		return "", "", false
+	}
+	oldDir := filepath.Join(root, "SiegeMMO")
+	info, err := os.Stat(oldDir)
+	if err != nil || !info.IsDir() {
+		return "", "", false
+	}
+	newDir := filepath.Join(root, "Dungeon Siege MMO")
+	if _, err := os.Stat(newDir); os.IsNotExist(err) {
+		if err := os.Rename(oldDir, newDir); err == nil {
+			return oldDir, newDir, true
+		}
+	}
+	if err := os.MkdirAll(newDir, 0o755); err != nil {
+		return "", "", false
+	}
+	entries, err := os.ReadDir(oldDir)
+	if err != nil {
+		return "", "", false
+	}
+	for _, e := range entries {
+		src := filepath.Join(oldDir, e.Name())
+		dst := filepath.Join(newDir, e.Name())
+		if _, err := os.Stat(dst); os.IsNotExist(err) {
+			_ = os.Rename(src, dst)
+		}
+	}
+	if rem, err := os.ReadDir(oldDir); err == nil && len(rem) == 0 {
+		_ = os.Remove(oldDir)
+		return oldDir, newDir, true
+	}
+	return "", "", false
+}
+
+func migrateLegacyFolders() {
+	var roots []string
+	sysDrive := os.Getenv("SystemDrive")
+	if sysDrive == "" && runtime.GOOS == "windows" {
+		sysDrive = "C:"
+	}
+	if sysDrive != "" {
+		roots = append(roots, sysDrive+`\`)
+	}
+	if vol := filepath.VolumeName(gameDir); vol != "" {
+		vroot := vol + `\`
+		if len(roots) == 0 || !strings.EqualFold(roots[0], vroot) {
+			roots = append(roots, vroot)
+		}
+	}
+	for _, r := range roots {
+		if oldDir, newDir, ok := migrateLegacyRoot(r); ok {
+			say("Renamed %s -> %s", oldDir, newDir)
+		}
+	}
 }
