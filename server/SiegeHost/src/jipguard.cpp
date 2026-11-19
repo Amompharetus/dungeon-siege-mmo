@@ -1,6 +1,6 @@
 // jipguard.cpp — the staging-screen freeze fix (0.7.3). See jipguard.h for the decision it uses.
 //
-// THE FREEZE, EXACTLY
+// THE FREEZE, EXACTLY (RE-10)
 // The world enters ws_mp_ingame_jip (0x29) the moment a connection is created, and stays there until
 // the joiner is fully in the world. Two independent things then stop the world on EVERY machine:
 //
@@ -150,7 +150,7 @@ const DWORD kJoinPanelGlobal = 0x007ACF94;
 const DWORD kPausedUiGlobal = 0x007ACFA4;
 const DWORD kPlayerPanelsGlobal = 0x007ACF90;
 
-// Player layout: +0x55 JIP flag (Player::RCSetJIP 0x00569C2E), +0xCC the player's own world
+// Player layout (RE-10): +0x55 JIP flag (Player::RCSetJIP 0x00569C2E), +0xCC the player's own world
 // state (Player::RCSetWorldState 0x0056B8E1). Both are replicated to every machine, so this reads
 // the same on the game server and on a player's PC.
 const int kPlayerJipFlag = 0x55;
@@ -352,6 +352,18 @@ extern "C" bool __cdecl SiegeHost_JipHold() {
     bool hold = HoldNow(worldState);
     if (hold) ++g_holds; else ++g_releases;
     return hold;
+}
+
+// Side-effect-free query used by portraitfix.cpp's Gate patch: true only when the game is in
+// ws_mp_ingame_jip and a real join load/pause is actively holding the world (not when running
+// unpaused while another player sits in the staging lobby).
+bool JG_IsRealJoinHolding() {
+    void* wsObj = eng::WorldState_Singleton();
+    if (!wsObj) return true;
+    int worldState = *(int*)((char*)wsObj + 0x20);
+    if (worldState != JG_WS_MP_INGAME_JIP) return false;
+    if (g_disabled) return true;
+    return g_paid || HoldNow(worldState);
 }
 
 // Redirected from the world-state handler's own SystemPause calls (see kPauseEnterVa/kPauseLeaveVa).

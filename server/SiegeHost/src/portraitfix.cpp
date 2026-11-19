@@ -20,6 +20,7 @@
 #include <cwchar>
 #include "engine.h"
 #include "areagroups.h"
+#include "portraitfilter.h"
 
 namespace {
 const DWORD kFtolVa = 0x0063DFD0;
@@ -98,7 +99,7 @@ void PortraitFixInstall() {
         g_dx, g_dy, kSiteX, kSiteY);
 }
 
-// ---- LAB ONLY (SIEGEHOST_CHATDIAG=1): why the party panel rebuild's gate fails. ----
+// ---- LAB ONLY (SIEGEHOST_CHATDIAG=1): why the party panel rebuild's gate fails (RE-11 §6). ----
 namespace {
 const auto Gate = (bool(__thiscall*)(void*))0x0051A4C9;
 const auto RenderPortrait = (bool(__thiscall*)(void*, void*))0x0051A5D0;
@@ -167,6 +168,19 @@ namespace {
 const DWORD kValidVa = 0x00569054;
 const DWORD kValidSites[] = {0x00519935, 0x00519F8C, 0x0051A548};
 const auto FindTeam = (void*(__thiscall*)(void*, DWORD))0x0056FC53;
+const auto Player_GetParty = (void*(__thiscall*)(void*))0x0056C31A;
+// TeamPortraits::Gate (0x0051A4C9) checks `worldState == 0x28` strictly at 0x0051A4CF..0x0051A4E0
+// and rejects ws_mp_ingame_jip (0x29) AFTER Rebuild (0x00519E9E) has already hidden all 7 slots.
+// Replace those 18 bytes with a call to SiegeHost_PortraitGateStateOk so unpaused 0x29 (e.g. while
+// another player sits in the staging screen lobby) keeps same-area portraits visible.
+const DWORD kGateStateVa = 0x0051A4CF;
+const DWORD kGateFailVa  = 0x0051A5CC;
+const BYTE kGateStateExpect[18] = {
+    0xA1, 0x44, 0xCF, 0x7A, 0x00,        // mov eax, [0x7acf44]
+    0x83, 0x78, 0x20, 0x28,              // cmp dword ptr [eax+0x20], 0x28
+    0x89, 0x4D, 0xFC,                    // mov [ebp-4], ecx
+    0x0F, 0x85, 0xEB, 0x00, 0x00, 0x00,  // jne 0x51a5cc
+};
 int kMaxOthers = 7;  // SIEGEHOST_PANEL_MAX (lab only) can lower it to test the limit
 wchar_t g_hostHero[64] = L"ServerHost";
 bool g_hideHost = false, g_nearby = false, g_filterOn = false;
@@ -176,18 +190,37 @@ bool IsHostHero(void* pl) {
     return w && wcscmp(w, g_hostHero) == 0;
 }
 unsigned AreaGroup(void* pl) { return areagroups::ForLocation(*(unsigned*)((char*)pl + 0xF4)); }
+// Matches Rebuild (0x00519FD5..0x00519FFD) and Gate (0x0051A57B..0x0051A598) 1-to-1:
+// true only when the player has a spawned party with a non-null lead hero Go.
+bool PlayerHasSpawnedHero(void* pl) {
+    void* party = Player_GetParty(pl);
+    if (!party) return false;
+    void** b = *(void***)((char*)party + 0x88);
+    void** e = *(void***)((char*)party + 0x8C);
+    return b && e && b != e && *b != nullptr;
+}
 // Would the stock loops show q at all, and does our filter keep it (before the limit of 7)?
 bool Shown(void* srv, void* q, void* me, DWORD myId, void* myTeam) {
-    if (!eng::Player_IsValid(q) || (g_hideHost && IsHostHero(q))) return false;
+    if (!eng::Player_IsValid(q)) return false;
     const wchar_t* hero = *(const wchar_t**)((char*)q + 0x58);
-    if (!hero || !*hero) return false;  // no hero yet (still on the character screen): nothing to show
+    bool hasHeroName = (hero && *hero);
     DWORD qid = *(DWORD*)((char*)q + 0xC);
-    if (qid == myId || FindTeam(srv, qid) != myTeam) return false;
-    if (g_nearby) {
-        unsigned a = AreaGroup(q), b = AreaGroup(me);
-        if (a && b && a != b) return false;
-    }
-    return true;
+    bool isLocal = (qid == myId);
+    bool sameTeam = (!isLocal && FindTeam(srv, qid) == myTeam);
+    bool isJip = (*((unsigned char*)q + 0x55) != 0);
+    bool hasSpawnedHero = (sameTeam && !isJip && hasHeroName) ? PlayerHasSpawnedHero(q) : false;
+    return PortraitFilterShouldShowPlayer(
+        true,
+        IsHostHero(q),
+        g_hideHost,
+        hasHeroName,
+        isLocal,
+        sameTeam,
+        isJip,
+        hasSpawnedHero,
+        g_nearby,
+        AreaGroup(q),
+        AreaGroup(me));
 }
 // The players the panel should show now, in order (at most kMaxOthers).
 int ShownList(void* out[], int cap) {
@@ -241,6 +274,37 @@ void PanelFilterTick() {
     }
     memcpy(last, list, sizeof(void*) * n); lastN = n; lastGroup = g;
 }
+extern "C" bool __cdecl SiegeHost_PortraitGateStateOk() {
+    void* wsObj = *(void**)0x007ACF44;
+    if (!wsObj) return false;
+    int ws = *(int*)((char*)wsObj + 0x20);
+    return PortraitGateAllowsWorldState(ws, JG_IsRealJoinHolding());
+}
+static void PanelGateJipFixInstall() {
+    BYTE* p = (BYTE*)kGateStateVa;
+    if (memcmp(p, kGateStateExpect, sizeof kGateStateExpect) != 0) {
+        Log("PortraitFix: VERIFY FAILED at 0x%08lX - party panel JIP gate patch not installed.", kGateStateVa);
+        return;
+    }
+    BYTE code[sizeof kGateStateExpect];
+    code[0] = 0x89; code[1] = 0x4D; code[2] = 0xFC;  // mov [ebp-4], ecx
+    code[3] = 0xE8;                                  // call SiegeHost_PortraitGateStateOk
+    *(int32_t*)(code + 4) = (int32_t)((DWORD)&SiegeHost_PortraitGateStateOk - (kGateStateVa + 8));
+    code[8] = 0x84; code[9] = 0xC0;                  // test al, al
+    code[10] = 0x0F; code[11] = 0x84;                // je 0x51a5cc
+    *(int32_t*)(code + 12) = (int32_t)(kGateFailVa - (kGateStateVa + 16));
+    code[16] = 0x90; code[17] = 0x90;                // nop; nop
+    DWORD o;
+    if (!VirtualProtect(p, sizeof code, PAGE_EXECUTE_READWRITE, &o)) {
+        Log("PortraitFix: VirtualProtect failed at 0x%08lX (error %lu) - party panel JIP gate not patched.",
+            kGateStateVa, GetLastError());
+        return;
+    }
+    memcpy(p, code, sizeof code);
+    VirtualProtect(p, sizeof code, o, &o);
+    FlushInstructionCache(GetCurrentProcess(), p, sizeof code);
+    Log("PortraitFix: party panel gate allows unpaused ws_mp_ingame_jip (patched 0x%08lX).", kGateStateVa);
+}
 void PanelHostFilterInstall() {
     for (DWORD s : kValidSites) {
         BYTE* p = (BYTE*)s;
@@ -260,6 +324,7 @@ void PanelHostFilterInstall() {
         g_nearby ? ", only those in your area (the table in src/areagroups.h, new in 0.8.1)" : "",
         g_hideHost ? (std::string(", without '") + Cfg().hostCharacter + "' (the server's host character)").c_str() : "",
         kValidSites[0], kValidSites[1], kValidSites[2]);
+    PanelGateJipFixInstall();
 }
 
 // ---- LAB ONLY, game server (SIEGEHOST_LAB_MOVELOC="1001@40,501@100"): once 3 players are in (ServerHost +

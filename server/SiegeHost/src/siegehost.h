@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <string>
 
-#define SIEGEHOST_VERSION "1.5.26"
+#define SIEGEHOST_VERSION "1.5.27"
 
 enum class Role { None, Server, Client };
 
@@ -88,6 +88,7 @@ std::string JG_HeartbeatLines();
 void JG_InstallJipGuard();              // 0.7.3: the staging-screen freeze fix (src/jipguard.h)
 std::string JG_JipSelfCheck();
 void JG_JipTick();                      // every frame, main thread, both roles
+bool JG_IsRealJoinHolding();            // true only when ws_mp_ingame_jip is actively holding for a loading joiner
 std::string JG_JipHeartbeatLines();
 void JipQueueInstall();                 // 0.8.6: ready-first joining (src/jipqueue.cpp)
 void JipQueueTick();
