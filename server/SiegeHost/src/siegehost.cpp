@@ -1,6 +1,6 @@
 // SiegeHost — runtime extension DLL for Dungeon Siege: Legends of Aranna (DSLOA.exe v1.50 community build)
 // Loaded automatically as a version.dll proxy placed next to DSLOA.exe.
-// See server/SiegeHost/README.md
+// See 04-server/SiegeHost/README.md and 03-analysis/RE-01-player-cap-and-ids.md
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -226,13 +226,13 @@ static void BuildSlotPatches(std::vector<Patch>& out) {
     int n = g_cfg.maxSlots;       // number of slots (indices 0..n-1)
     BYTE last = (BYTE)(n - 1);    // last valid index
     BYTE last4 = (BYTE)((n - 1) * 4);
-    // Server slot-count sites (vanilla 9 slots)
+    // RE-01 §3: Server slot-count sites (vanilla 9 slots)
     out.push_back({"Server::Server  vector resize(9)", 0x0056DFC5, {0x6A, 0x09}, {0x6A, (BYTE)n}});
     out.push_back({"Server::Server  create loop (<=8)", 0x0056E004, {0x83, 0x7D, 0x08, 0x08}, {0x83, 0x7D, 0x08, last}});
     out.push_back({"Server::~Server destroy loop (<=0x20)", 0x0056E1C6, {0x83, 0xFB, 0x20}, {0x83, 0xFB, last4}});
     out.push_back({"Server::FindFreeSlot loop (<=0x20)", 0x0056E239, {0x83, 0xFF, 0x20}, {0x83, 0xFF, last4}});
     out.push_back({"Server::Reset recreate loop (<=8)", 0x0056E9DB, {0x83, 0xFE, 0x08}, {0x83, 0xFE, last}});
-    // GoDb::ResetPlayerXferState (0x005528D1) allocates GoDb+0x3d8 (GoCreateReq) and
+    // RE-41 / RE-01: GoDb::ResetPlayerXferState (0x005528D1) allocates GoDb+0x3d8 (GoCreateReq) and
     // GoDb+0x3e0 (GoCloneReq) delta-compression tables sized to 8 (indexed by bsr(PlayerId)-1, 0..n-2).
     // Without resizing to n-1 (30), slot >= 9 causes OOB heap corruption & crash on both server and client.
     out.push_back({"GoDb::ResetPlayerXferState +3d8 (8)", 0x005528E2, {0x6A, 0x08}, {0x6A, last}});
@@ -244,7 +244,7 @@ static void BuildSlotPatches(std::vector<Patch>& out) {
 }
 
 static void BuildMaxPlayersPatch(std::vector<Patch>& out) {
-    // NetPipe session setter (0x56FED5) stores max players at [session+0xD8].
+    // RE-01 §5: NetPipe session setter (0x56FED5) stores max players at [session+0xD8].
     // Called by Server::RCSetMaxPlayers, NetPipe host and the client when it receives the app desc.
     // mov eax,[esp+8]; mov ecx,esi  ->  push N; pop eax; mov ecx,esi; nop
     BYTE n = (BYTE)g_cfg.maxPlayers;
@@ -951,6 +951,39 @@ static void ImeDisableInstall() {
     Log("ImeDisableInstall: DSLOA internal ImeUi disabled and StaticWndProc hooked.");
 }
 
+// 1.5.28: Prevent DSLOA.exe from installing its global WH_KEYBOARD_LL hook (0x00414678 ->
+// LowLevelKeyboardProc 0x004148F2) on the main render thread. When DSLOA is unfocused in
+// multiplayer, its main thread throttles to 10 FPS via Sleep(~95ms) (0x00416029), stalling every
+// keystroke across all other Windows programs while the thread sleeps.
+// Changing `jne +0x17` (0x75) at 0x0041466A to `jmp +0x17` (0xEB) takes the engine's own
+// built-in IsDebuggerPresent() skip branch cleanly to 0x00414683.
+static void DisableLowLevelKeyboardHookInstall() {
+    static const DWORD kCheckVa = 0x00414663;
+    static const DWORD kPatchVa = 0x0041466A;
+    static const BYTE kExpect[32] = {
+        0xE8, 0x0F, 0xAD, 0x00, 0x00,        // call 0x0041f377 (IsDebuggerPresent)
+        0x84, 0xC0,                          // test al, al
+        0x75, 0x17,                          // jne 0x00414683
+        0x8B, 0x46, 0x6C,                    // mov eax, [esi+0x6c]
+        0x53,                                // push ebx (dwThreadId = 0)
+        0x50,                                // push eax (hMod)
+        0x68, 0xF2, 0x48, 0x41, 0x00,        // push 0x004148f2
+        0x6A, 0x0D,                          // push 0x0d (WH_KEYBOARD_LL)
+        0xFF, 0x15, 0xCC, 0x93, 0x72, 0x00,  // call [user32!SetWindowsHookExA]
+        0xA3, 0x44, 0x9E, 0x7A, 0x00,        // mov [0x007a9e44], eax
+    };
+    if (memcmp((const void*)kCheckVa, kExpect, sizeof(kExpect)) != 0) {
+        Log("LowLevelKbdHook: VERIFY FAILED at 0x%08lX - hook skip NOT patched.", kCheckVa);
+        return;
+    }
+    const BYTE jmpShort = 0xEB;  // jmp +0x17 -> 0x00414683
+    if (WriteCode(kPatchVa, &jmpShort, 1)) {
+        Log("LowLevelKbdHook: disabled DSLOA global WH_KEYBOARD_LL hook at 0x%08lX (prevents background typing lag in other apps).", kPatchVa);
+    } else {
+        Log("LowLevelKbdHook: WriteCode failed at 0x%08lX (error %lu).", kPatchVa, GetLastError());
+    }
+}
+
 static LRESULT CALLBACK HookedWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if (msg == WM_INPUTLANGCHANGEREQUEST) {
         HKL targetHkl = (HKL)lParam;
@@ -994,6 +1027,12 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
     if (!g_mainThread) {
         g_mainThread = GetCurrentThreadId();
         EnsureThreadMessageHooksInstalled(false);
+        HHOOK* gameKbdHook = (HHOOK*)0x007A9E44;
+        if (*gameKbdHook) {
+            UnhookWindowsHookEx(*gameKbdHook);
+            *gameKbdHook = nullptr;
+            Log("LowLevelKbdHook: unhooked existing DSLOA WH_KEYBOARD_LL hook.");
+        }
         Log("Main loop detected on thread %lu (PeekMessageA).", g_mainThread);
     }
     if (GetCurrentThreadId() == g_mainThread) {
@@ -1288,6 +1327,7 @@ static void Startup() {
 
     DsloaSehFilterInstall();
     ImeDisableInstall();
+    DisableLowLevelKeyboardHookInstall();
 
     std::vector<Patch> patches;
     if (g_cfg.maxSlots != 9) BuildSlotPatches(patches);
