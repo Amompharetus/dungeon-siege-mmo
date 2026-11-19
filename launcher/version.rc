@@ -1,7 +1,7 @@
 1 ICON "app.ico"
 1 VERSIONINFO
-FILEVERSION 1,2,1,0
-PRODUCTVERSION 1,2,1,0
+FILEVERSION 1,2,3,0
+PRODUCTVERSION 1,2,3,0
 FILEFLAGSMASK 0x3fL
 FILEFLAGS 0x0L
 FILEOS 0x40004L
@@ -14,12 +14,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Dungeon Siege MMO Community"
             VALUE "FileDescription", "Dungeon Siege MMO Launcher"
-            VALUE "FileVersion", "1.2.1.0"
+            VALUE "FileVersion", "1.2.3.0"
             VALUE "InternalName", "SiegeLauncher"
             VALUE "LegalCopyright", "Dungeon Siege MMO"
             VALUE "OriginalFilename", "SiegeLauncher.exe"
             VALUE "ProductName", "Dungeon Siege MMO"
-            VALUE "ProductVersion", "1.2.1.0"
+            VALUE "ProductVersion", "1.2.3.0"
         END
     END
     BLOCK "VarFileInfo"

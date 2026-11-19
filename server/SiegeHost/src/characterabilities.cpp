@@ -6,6 +6,7 @@
 //   [R] Combat Magic Ability: Flame Nova (expanding elemental blast + heavy fire damage)
 
 #include "characterabilities.h"
+#include "ability_cooldown.h"
 #include "buffui_helpers.h"
 #include "sharedstash.h"
 #include "siegehost.h"
@@ -144,16 +145,16 @@ struct PowerDef {
     const char* statKey;
     const char* statDisplay;
     float reqLevel;
-    DWORD cooldownMs;
-    DWORD lastUsedMs;
 };
 
 PowerDef g_powers[4] = {
-    { 'Q', "Whirling Cleave",  "melee",        "Melee",        30.0f, 30000, 0 },
-    { 'W', "Shrapnel Blast",   "ranged",       "Ranged",       30.0f, 30000, 0 },
-    { 'E', "Aegis of Renewal", "nature magic", "Nature Magic", 30.0f, 30000, 0 },
-    { 'R', "Flame Nova",       "combat magic", "Combat Magic", 30.0f, 30000, 0 }
+    { 'Q', "Whirling Cleave",  "melee",        "Melee",        30.0f },
+    { 'W', "Shrapnel Blast",   "ranged",       "Ranged",       30.0f },
+    { 'E', "Aegis of Renewal", "nature magic", "Nature Magic", 30.0f },
+    { 'R', "Flame Nova",       "combat magic", "Combat Magic", 30.0f }
 };
+
+abilitycd::CooldownTracker g_clientAbilityCd;
 
 bool g_eatNextChar = false;
 WPARAM g_eatCharVal = 0;
@@ -1166,7 +1167,7 @@ void CharacterAbilities_Init() {
         }
     }
 
-    Log("initialized - 4 stat-tied abilities ready (Q: Cleave, W: Shrapnel, E: Aegis, R: Nova) with shared 30s cooldown & Native BuffUI.");
+    Log("initialized - 4 stat-tied abilities ready (Q: Cleave, W: Shrapnel, E: Aegis, R: Nova) with 30s personal / 15s staggered cooldown & Native BuffUI.");
 }
 
 bool CharacterAbilities_OnReceivePacket(bool isServer, DWORD /*senderDpnid*/, const BYTE* data, DWORD size) {
@@ -1199,32 +1200,47 @@ static void UpdateBuffUI();
 static bool TriggerAbility(int slot);
 static volatile int g_queuedUiSlot = -1;
 
-struct ServerHeroSharedCd {
-    uint32_t heroGoid;
-    DWORD    lastUsedMs;
-};
-static ServerHeroSharedCd s_serverHeroCds[64] = {};
+static void CollectUnlockedAbilities(void* actor, bool unlocked[abilitycd::kSlotCount]) {
+    for (int i = 0; i < abilitycd::kSlotCount; ++i) {
+        float lvl = (actor && Readable(actor, 0x40)) ? GoActor_GetSkillLevel(actor, g_powers[i].statKey) : 0.0f;
+        unlocked[i] = (lvl >= g_powers[i].reqLevel);
+    }
+}
 
-static bool CheckAndRecordServerSharedCd(uint32_t heroGoid) {
-    if (!heroGoid) return false;
+struct ServerHeroCd {
+    uint32_t                   heroGoid;
+    DWORD                      lastActivityMs;
+    abilitycd::CooldownTracker cd;
+};
+static ServerHeroCd s_serverHeroCds[64] = {};
+
+static bool CheckAndRecordServerCd(uint32_t heroGoid, int slot, void* actor) {
+    if (!heroGoid || slot < 0 || slot >= abilitycd::kSlotCount) return false;
     DWORD now = GetTickCount();
+    bool unlocked[abilitycd::kSlotCount] = {};
+    CollectUnlockedAbilities(actor, unlocked);
+    if (!unlocked[slot]) return false;
+
     int freeSlot = -1;
     for (int i = 0; i < 64; ++i) {
         if (s_serverHeroCds[i].heroGoid == heroGoid) {
-            // Allow 1.5s tolerance for network latency jitter on the 30s shared cooldown
-            if (s_serverHeroCds[i].lastUsedMs != 0 && (DWORD)(now - s_serverHeroCds[i].lastUsedMs) < 28500) {
+            // Allow 1.5s latency tolerance on the 30s personal cooldown and 1.0s on the 15s staggered cooldown
+            if (!s_serverHeroCds[i].cd.CanUse(slot, now, 1500u, 1000u)) {
                 return false;
             }
-            s_serverHeroCds[i].lastUsedMs = now ? now : 1;
+            s_serverHeroCds[i].cd.OnUse(slot, now, unlocked);
+            s_serverHeroCds[i].lastActivityMs = now ? now : 1;
             return true;
         }
-        if (freeSlot == -1 && (s_serverHeroCds[i].heroGoid == 0 || (DWORD)(now - s_serverHeroCds[i].lastUsedMs) >= 60000)) {
+        if (freeSlot == -1 && (s_serverHeroCds[i].heroGoid == 0 || (DWORD)(now - s_serverHeroCds[i].lastActivityMs) >= 60000)) {
             freeSlot = i;
         }
     }
     if (freeSlot == -1) freeSlot = 0;
-    s_serverHeroCds[freeSlot].heroGoid   = heroGoid;
-    s_serverHeroCds[freeSlot].lastUsedMs = now ? now : 1;
+    s_serverHeroCds[freeSlot].heroGoid       = heroGoid;
+    s_serverHeroCds[freeSlot].lastActivityMs = now ? now : 1;
+    s_serverHeroCds[freeSlot].cd.Reset();
+    s_serverHeroCds[freeSlot].cd.OnUse(slot, now, unlocked);
     return true;
 }
 
@@ -1298,7 +1314,7 @@ void CharacterAbilities_Tick() {
         if (level < g_powers[pkt.slot].reqLevel) continue;
 
         if (serverLocal && pkt.isBroadcast == 0) {
-            if (!CheckAndRecordServerSharedCd(pkt.heroGoid)) {
+            if (!CheckAndRecordServerCd(pkt.heroGoid, pkt.slot, actor)) {
                 continue;
             }
         }
@@ -1395,9 +1411,7 @@ static void UpdateAbilityUI() {
     uint32_t curHeroGoid = *(uint32_t*)((char*)hero + 0x4C);
     if (curHeroGoid != 0 && curHeroGoid != s_lastClientHeroGoid) {
         s_lastClientHeroGoid = curHeroGoid;
-        for (int i = 0; i < 4; ++i) {
-            g_powers[i].lastUsedMs = 0;
-        }
+        g_clientAbilityCd.Reset();
     }
 
     void* slotsPanel = eng::FindWindow("window_slots_panel_1", "character_awp");
@@ -1449,24 +1463,15 @@ static void UpdateAbilityUI() {
     }
 
     DWORD now = GetTickCount();
+    g_clientAbilityCd.Expire(now);
     bool isAliveConscious = IsCharacterAliveAndConscious(hero);
 
     for (int i = 0; i < 4; ++i) {
         float level = (actor && Readable(actor, 0x40)) ? GoActor_GetSkillLevel(actor, g_powers[i].statKey) : 0.0f;
         bool isLocked = (level < g_powers[i].reqLevel);
 
-        float cdRemaining = 0.0f;
-        if (g_powers[i].lastUsedMs != 0 && (DWORD)(now - g_powers[i].lastUsedMs) < g_powers[i].cooldownMs) {
-            cdRemaining = (float)(g_powers[i].cooldownMs - (DWORD)(now - g_powers[i].lastUsedMs)) / 1000.0f;
-        }
-
-        bool justOffCd = false;
-        if (g_powers[i].lastUsedMs != 0 && cdRemaining <= 0.0f) {
-            DWORD elapsed = (DWORD)(now - g_powers[i].lastUsedMs);
-            if (elapsed >= g_powers[i].cooldownMs && elapsed < g_powers[i].cooldownMs + 400) {
-                justOffCd = true;
-            }
-        }
+        float cdRemaining = (float)g_clientAbilityCd.RemainingMs(i, now) / 1000.0f;
+        bool justOffCd = g_clientAbilityCd.JustCameReady(i, now);
 
         float alpha = 1.0f;
         char cdStr[16] = "";
@@ -1892,11 +1897,12 @@ static bool TriggerAbility(int slot) {
         return false;
     }
 
-    // Check shared 30-second cooldown
+    // Check per-ability / staggered cooldown
     DWORD now = GetTickCount();
-    if (g_powers[slot].lastUsedMs != 0 && (DWORD)(now - g_powers[slot].lastUsedMs) < g_powers[slot].cooldownMs) {
+    uint32_t remMs = g_clientAbilityCd.RemainingMs(slot, now);
+    if (remMs > 0) {
         Go_PlayVoiceSound(hero, "order_out_of_mana", false);
-        float remaining = (float)(g_powers[slot].cooldownMs - (DWORD)(now - g_powers[slot].lastUsedMs)) / 1000.0f;
+        float remaining = (float)remMs / 1000.0f;
         char buf[128];
         snprintf(buf, sizeof(buf), "%s cooling down (%.1fs remaining).",
                  g_powers[slot].name, remaining);
@@ -1904,11 +1910,11 @@ static bool TriggerAbility(int slot) {
         return false;
     }
 
-    // Successfully trigger ability — put all 4 character abilities on the shared 30-second cooldown!
-    DWORD stamp = now ? now : 1;
-    for (int i = 0; i < 4; ++i) {
-        g_powers[i].lastUsedMs = stamp;
-    }
+    // Successfully trigger ability: 30s cooldown on the used ability, 15s on other unlocked abilities
+    // (without touching any ability that is still on its own 30s cooldown).
+    bool unlocked[abilitycd::kSlotCount] = {};
+    CollectUnlockedAbilities(actor, unlocked);
+    g_clientAbilityCd.OnUse(slot, now, unlocked);
 
     bool serverLocal = IsServerLocal();
     ExecuteCharacterAbility(slot, hero, level, serverLocal);
