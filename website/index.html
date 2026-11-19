@@ -336,7 +336,7 @@
 
         @media (min-width: 1101px) {
             #view-realms.grid-servers {
-                max-width: min(1240px, calc(100vw - 340px));
+                max-width: min(1360px, calc(100vw - 340px));
                 margin: 25px auto 0;
             }
         }
@@ -427,7 +427,7 @@
         */
         .roster-head {
             display: grid;
-            grid-template-columns: 1.42fr 0.90fr 1.33fr 1.95fr;
+            grid-template-columns: 1.95fr 0.56fr 1.24fr 1.85fr;
             column-gap: 0px;
             align-items: center;
             padding: 11px 16px;
@@ -460,7 +460,7 @@
 
         .roster-row {
             display: grid;
-            grid-template-columns: 1.42fr 0.90fr 1.33fr 1.95fr;
+            grid-template-columns: 1.95fr 0.56fr 1.24fr 1.85fr;
             column-gap: 0px;
             align-items: center;
             padding: 10px 8px;
@@ -5701,7 +5701,7 @@
             html += `
                 <div class="roster-row">
                     <div class="col-adventurer">
-                        <div class="hero-name">${escapeHTML(p.character_name || 'Hero')}</div>
+                        <div class="hero-name" title="${escapeHTML(p.character_name || 'Hero')}">${escapeHTML(p.character_name || 'Hero')}</div>
                         <div class="account-tag">Account: <span>${escapeHTML(p.account_name || '')}</span></div>
                     </div>
                     <div class="col-level">
@@ -6249,7 +6249,7 @@
                 <div class="roster-row ladder-row">
                     <div class="col-rank">#${rank}</div>
                     <div class="col-adventurer">
-                        <div class="hero-name">${escapeHTML(p.character_name || 'Hero')}</div>
+                        <div class="hero-name" title="${escapeHTML(p.character_name || 'Hero')}">${escapeHTML(p.character_name || 'Hero')}</div>
                         <div class="account-tag">
                             Account: <span>${escapeHTML(p.account_name || '')}</span>
                             <span class="lastseen-mobile"> • <span class="lastseen-mobile-text ${isOnline ? 'is-online' : ''}">${isOnline ? '🟢 ' : ''}${escapeHTML(lastSeenText)}</span></span>
