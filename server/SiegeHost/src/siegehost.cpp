@@ -232,6 +232,11 @@ static void BuildSlotPatches(std::vector<Patch>& out) {
     out.push_back({"Server::~Server destroy loop (<=0x20)", 0x0056E1C6, {0x83, 0xFB, 0x20}, {0x83, 0xFB, last4}});
     out.push_back({"Server::FindFreeSlot loop (<=0x20)", 0x0056E239, {0x83, 0xFF, 0x20}, {0x83, 0xFF, last4}});
     out.push_back({"Server::Reset recreate loop (<=8)", 0x0056E9DB, {0x83, 0xFE, 0x08}, {0x83, 0xFE, last}});
+    // GoDb::ResetPlayerXferState (0x005528D1) allocates GoDb+0x3d8 (GoCreateReq) and
+    // GoDb+0x3e0 (GoCloneReq) delta-compression tables sized to 8 (indexed by bsr(PlayerId)-1, 0..n-2).
+    // Without resizing to n-1 (30), slot >= 9 causes OOB heap corruption & crash on both server and client.
+    out.push_back({"GoDb::ResetPlayerXferState +3d8 (8)", 0x005528E2, {0x6A, 0x08}, {0x6A, last}});
+    out.push_back({"GoDb::ResetPlayerXferState +3e0 (8)", 0x005528F8, {0x6A, 0x08}, {0x6A, last}});
     if (g_cfg.patchTeams) {
         out.push_back({"Server::RSJoinTeam friend loop A", 0x0056F9BB, {0x83, 0x7D, 0xE4, 0x08}, {0x83, 0x7D, 0xE4, last}});
         out.push_back({"Server::RSJoinTeam friend loop B", 0x0056FA44, {0x83, 0x7D, 0xF8, 0x08}, {0x83, 0x7D, 0xF8, last}});
@@ -347,6 +352,12 @@ static HRESULT WINAPI HookedHandler(PVOID pvCtx, DWORD id, PVOID msg) {
         if (SharedStash_OnReceivePacket(ctx->role[0] == 's', m[1], (const BYTE*)m[3], m[4])) {
             return S_OK;
         }
+        if (DoorFix_OnReceivePacket(ctx->role[0] == 's', m[1], (const BYTE*)m[3], m[4])) {
+            return S_OK;
+        }
+    }
+    if (id == 0xFFFF0009 && msg && ctx->role[0] == 's') {
+        DoorFix_OnPlayerDestroyed(((DWORD*)msg)[1]);
     }
     HRESULT hr = ctx->role[0] == 's' ? JG_ServerMessage(id, msg, ctx->original, ctx->userCtx)
                                      : ctx->original(ctx->userCtx, id, msg);
@@ -424,11 +435,13 @@ static HRESULT InitCommon(InitializeFn orig, const char* role, void* self, PVOID
 static HRESULT WINAPI HookServerInit(void* self, PVOID ctx, PFNDPNMESSAGEHANDLER pfn, DWORD flags) {
     CharacterAbilities_SetDirectPlay(nullptr, self);
     SharedStash_SetDirectPlay(nullptr, self);
+    DoorFix_SetDirectPlay(nullptr, self);
     return InitCommon(g_origServerInit, "server", self, ctx, pfn, flags);
 }
 static HRESULT WINAPI HookClientInit(void* self, PVOID ctx, PFNDPNMESSAGEHANDLER pfn, DWORD flags) {
     CharacterAbilities_SetDirectPlay(self, nullptr);
     SharedStash_SetDirectPlay(self, nullptr);
+    DoorFix_SetDirectPlay(self, nullptr);
     return InitCommon(g_origClientInit, "client", self, ctx, pfn, flags);
 }
 
@@ -994,8 +1007,8 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         JG_JipTick();  // both roles: the join freeze is a per-machine thing (src/jipguard.h)
         CharacterAbilities_Tick();
         SharedStash_Tick();
-        if (g_cfg.role == Role::Server) { AutoHostTick(); LabMoveLocTick(); AreaScaleTick(); ShopStockTick(); InvFixTick(); QuestModeTick(); JipQueueTick(); PvpZoneTick(); }
-        else if (g_cfg.role == Role::Client) { AutoJoinTick(); InvFixTick(); QuestModeTick(); ShopStockClientTick(); ChatFixTick(); ChatHistoryTick(); PartyPanelTick(); PanelFilterTick(); ChatDiagTick(); PartyPanelDiagTick(); }
+        if (g_cfg.role == Role::Server) { AutoHostTick(); LabMoveLocTick(); AreaScaleTick(); ShopStockTick(); InvFixTick(); QuestModeTick(); JipQueueTick(); PvpZoneTick(); DoorFixTick(); }
+        else if (g_cfg.role == Role::Client) { AutoJoinTick(); InvFixTick(); QuestModeTick(); ShopStockClientTick(); ChatFixTick(); ChatHistoryTick(); PartyPanelTick(); PanelFilterTick(); ChatDiagTick(); PartyPanelDiagTick(); DoorFixTick(); }
     }
     BOOL res = g_origPeek(msg, wnd, fmin, fmax, remove);
     if (GetCurrentThreadId() == g_mainThread && g_gameHwnd) {
@@ -1294,8 +1307,8 @@ static void Startup() {
     CharacterAbilities_Init();
     SharedStash_Init();
     StagingImportDisableInstall();
-    if (g_cfg.role == Role::Server) { AreaScaleInstall(); ShopStockInstall(); InvFixInstall(); McpFixInstall(); QuestModeInstall(); JipQueueInstall(); }
-    else { InvFixInstall(); McpFixInstall(); QuestModeInstall(); ShopStockClientInstall(); }   // 0.9.0: the backpack cap has to come off on a player's own machine too
+    if (g_cfg.role == Role::Server) { AreaScaleInstall(); ShopStockInstall(); InvFixInstall(); McpFixInstall(); QuestModeInstall(); JipQueueInstall(); DoorFixInstall(); }
+    else { InvFixInstall(); McpFixInstall(); QuestModeInstall(); ShopStockClientInstall(); DoorFixInstall(); }   // 0.9.0: the backpack cap has to come off on a player's own machine too
     if (g_cfg.role == Role::Client) { ChatFixInstall(); PartyPanelInstall(); PortraitFixInstall(); if (g_cfg.showOtherPlayers) PanelHostFilterInstall(); PortraitDiagInstall(); ChatDiagInstall(); AreaScaleClientDiagInstall(); }
     else if (g_cfg.role == Role::None) { ChatFixGameMsgCooldownInstall(); }
 

@@ -576,6 +576,16 @@ def validate(game_dir: str, mod_path: str) -> None:
         if missing_moods:
             errors.append(f"Missing moods in multiplayer_world/moods1.gas ({len(missing_moods)}): {missing_moods[:10]}")
 
+        mm_raw = mod.get("world/global/moods/dsx_mood_manager.skrit")
+        if not mm_raw:
+            errors.append("Missing world/global/moods/dsx_mood_manager.skrit override in Z_LoA_Expansion.dsres")
+        else:
+            mm_txt = mm_raw.decode("latin1")
+            if 'GetBool( "in_area_nine" )' in mm_txt:
+                errors.append("dsx_mood_manager.skrit still uses global GameAuditor 'in_area_nine' (leaks sky flashing to UP)")
+            if 'WorldMap.GetRegionNameForNode' not in mm_txt or '"a9_r1_mesa"' not in mm_txt:
+                errors.append("dsx_mood_manager.skrit missing a9_r1_mesa region scoping in RandomizeWeather$")
+
         q_txt = strip_gas_comments(vfs.get("world/maps/multiplayer_world/quests/quests.gas").decode("latin1"))
         if re.search(r"^\s*\[chapters\]", q_txt, re.I | re.M):
             errors.append("Unexpected active [chapters] block in quests.gas (hides UP quests in journal)")

@@ -7,6 +7,7 @@ Combines:
   index/stitch_index.gas
 - Global resources: world/global/elevators.gas,
   world/global/moods/multiplayer_world/moods1.gas,
+  world/global/moods/dsx_mood_manager.skrit,
   world/global/siege_nodes/loa_expansion/loa_expansion_nodes.gas
 """
 from __future__ import annotations
@@ -310,6 +311,91 @@ def build_moods(logic_res: LazyTank, exp_res: LazyTank) -> bytes:
     return (mp_moods + payload).encode("latin1")
 
 
+def build_mood_manager(exp_res: LazyTank) -> bytes:
+    """Scope Area 9 wasteland weather/sky randomization to a9_r1_mesa instead of global GameAuditor bool.
+
+    Vanilla Expansion.dsres dsx_mood_manager.skrit checks GameAuditor.GetDb.GetBool("in_area_nine"),
+    which is a world-wide flag set by a9_r1_mesa triggers and never cleared on Displacer/Recall/Death.
+    On a multiplayer server that causes every outdoor player in Utraean Peninsula (UP) to get
+    random flashing sky/fog colors, lightning, rock/hail storms, and distorted TimeOfDay speed.
+    """
+    txt = exp_res.get("world/global/moods/dsx_mood_manager.skrit").decode("latin1")
+
+    old_vars = (
+        "bool rock_storm$\t\t\t\t\t= false;\t// is the rock storm going?\r\n"
+        "bool hail_storm$\t\t\t\t\t= false;\t// is the hail storm going?"
+    )
+    new_vars = (
+        "bool rock_storm$\t\t\t\t\t= false;\t// is the rock storm going?\r\n"
+        "bool hail_storm$\t\t\t\t\t= false;\t// is the hail storm going?\r\n"
+        "bool was_randomizing$\t\t\t\t= false;\t// tracks leaving a9_r1_mesa so fog/TimeOfDay reset immediately"
+    )
+    if old_vars not in txt:
+        raise RuntimeError("dsx_mood_manager.skrit: failed to locate storm state globals")
+    txt = txt.replace(old_vars, new_vars, 1)
+
+    old_fn = (
+        "bool RandomizeWeather$( Goid target$ )\r\n"
+        "{\r\n"
+        "\treturn !Victory.IsQuestCompleted( \"a1_staff\", target$ ) && GameAuditor.GetDb.GetBool( \"in_area_nine\" );\r\n"
+        "}"
+    )
+    new_fn = (
+        "bool RandomizeWeather$( Goid target$ )\r\n"
+        "{\r\n"
+        "\tif ( !target$.IsValid() || !target$.Go.HasPlacement() ) { return false; }\r\n"
+        "\tstring regionName$ = WorldMap.GetRegionNameForNode( target$.Go.Placement.Position.Node );\r\n"
+        "\tif ( !StringTool.SameNoCase( regionName$, \"a9_r1_mesa\" ) ) { return false; }\r\n"
+        "\treturn !Victory.IsQuestCompleted( \"a1_staff\", target$ );\r\n"
+        "}"
+    )
+    if old_fn not in txt:
+        raise RuntimeError("dsx_mood_manager.skrit: failed to locate RandomizeWeather$()")
+    txt = txt.replace(old_fn, new_fn, 1)
+
+    old_tick = "\t// Time to play with weather\r\n"
+    new_tick = (
+        "\t// Reset fog/weather/clock immediately when leaving a9_r1_mesa back to UP or interior areas\r\n"
+        "\tbool isRandomizing$ = RandomizeWeather$( focusedGo$ );\r\n"
+        "\tif ( was_randomizing$ && !isRandomizing$ )\r\n"
+        "\t{\r\n"
+        "\t\trock_storm$ = false;\r\n"
+        "\t\thail_storm$ = false;\r\n"
+        "\t\tLastHour$ = -1;\r\n"
+        "\t\tstring exitMood$ = Mood.GetGoRequestedMood( focusedGo$ );\r\n"
+        "\t\tif ( StringTool.SameNoCase( exitMood$, \"a9_random_weather\" ) )\r\n"
+        "\t\t{\r\n"
+        "\t\t\tMood.GetGoMoodSetting( focusedGo$ ).bLightning = false;\r\n"
+        "\t\t\tMood.GetGoMoodSetting( focusedGo$ ).bRainEnabled = false;\r\n"
+        "\t\t\tMood.GetGoMoodSetting( focusedGo$ ).bSnowEnabled = false;\r\n"
+        "\t\t\tMood.ForceUpdateRain( 0 );\r\n"
+        "\t\t\tMood.ForceUpdateSnow( 0 );\r\n"
+        "\t\t}\r\n"
+        "\t\telse\r\n"
+        "\t\t{\r\n"
+        "\t\t\tMood.GetGoMoodSetting( focusedGo$ ).fogDensity = Mood.GetOriginalMoodSetting( exitMood$ ).fogDensity;\r\n"
+        "\t\t\tMood.GetGoMoodSetting( focusedGo$ ).fogNearDist = Mood.GetOriginalMoodSetting( exitMood$ ).fogNearDist;\r\n"
+        "\t\t\tMood.GetGoMoodSetting( focusedGo$ ).fogFarDist = Mood.GetOriginalMoodSetting( exitMood$ ).fogFarDist;\r\n"
+        "\t\t\tMood.GetGoMoodSetting( focusedGo$ ).fogLowDetNearDist = Mood.GetOriginalMoodSetting( exitMood$ ).fogLowDetNearDist;\r\n"
+        "\t\t\tMood.GetGoMoodSetting( focusedGo$ ).fogLowDetFarDist = Mood.GetOriginalMoodSetting( exitMood$ ).fogLowDetFarDist;\r\n"
+        "\t\t\tMood.GetGoMoodSetting( focusedGo$ ).bLightning = Mood.GetOriginalMoodSetting( exitMood$ ).bLightning;\r\n"
+        "\t\t\tMood.ForceUpdateRain( 0 );\r\n"
+        "\t\t}\r\n"
+        "\t\t#only(game) [[\r\n"
+        "\t\tTimeOfDay.SetRealMinutesModifier( 1.0 );\r\n"
+        "\t\t]];\r\n"
+        "\t}\r\n"
+        "\twas_randomizing$ = isRandomizing$;\r\n"
+        "\r\n"
+        "\t// Time to play with weather\r\n"
+    )
+    if old_tick not in txt:
+        raise RuntimeError("dsx_mood_manager.skrit: failed to locate weather tick anchor")
+    txt = txt.replace(old_tick, new_tick, 1)
+
+    return txt.encode("latin1")
+
+
 def build_siege_nodes(
     reg_files: Dict[str, bytes],
     terrain_res: LazyTank,
@@ -381,6 +467,7 @@ def build_expansion_tank(game_dir: str, out_path: str) -> Tuple[int, int]:
         files["world/maps/multiplayer_world/index/stitch_index.gas"] = build_stitch_index(mp_map, exp_map)
         files["world/global/elevators.gas"] = build_elevators(exp_res)
         files["world/global/moods/multiplayer_world/moods1.gas"] = build_moods(logic_res, exp_res)
+        files["world/global/moods/dsx_mood_manager.skrit"] = build_mood_manager(exp_res)
         siege_bytes, siege_count = build_siege_nodes(reg_files, terrain_res, exp_res)
         files["world/global/siege_nodes/loa_expansion/loa_expansion_nodes.gas"] = siege_bytes
 
@@ -395,7 +482,7 @@ def build_expansion_tank(game_dir: str, out_path: str) -> Tuple[int, int]:
         )
         print(
             f"Built {out_path}: {nfiles} files ({len(tpl_files)} template, "
-            f"{len(reg_files)} region, 7 metadata; {siege_count} siege_nodes), "
+            f"{len(reg_files)} region, 8 metadata; {siege_count} siege_nodes), "
             f"{size_bytes:,} bytes, priority=0x5500"
         )
         return nfiles, size_bytes

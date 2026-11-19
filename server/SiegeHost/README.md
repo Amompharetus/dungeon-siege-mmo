@@ -24,6 +24,7 @@ Current version: **1.5.26**
 | **Inventory & Shop Fixes** | Server | Fixes inventory overflow so picked-up items properly route into backpacks; restocks merchant shelves once per world cycle; places the Fury Eye on the bandit boss. |
 | **Area Scaling** | Server | Scales monster difficulty and density based on players present in the local area group rather than the global player count. |
 | **UI & Chat Quality of Life** | Client | Adds nearby-only party panel filtering, corrects portrait centering, extends chat line duration, and rate-limits out-of-mana warning messages. |
+| **Door Sync & 30-Player GoDb Fixes** | Both | Client↔server `"SHDR"` door sync & self-heal recovers missing client doors (`SyncGoToClient`), purged/invisible door meshes (`nema::Aspect::Reconstitute`), and stale blocking `Done$` gear doors; patches `GoDb::ResetPlayerXferState` (`+0x3D8`/`+0x3E0`) for 30 slots and splits `SCreateGo`/`SCloneGo` broadcasts when > 8 remote players are online. |
 
 ---
 

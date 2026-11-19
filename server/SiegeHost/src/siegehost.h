@@ -119,3 +119,4 @@ bool ChatFix_AllowGameMessageWide(const wchar_t* text);
 bool IsActorDrinkingPotion(void* go);
 std::string JG_GetAccountForDpnid(DWORD dpnid);
 #include "sharedstash.h"
+#include "doorfix.h"
