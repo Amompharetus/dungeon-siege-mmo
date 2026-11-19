@@ -690,7 +690,22 @@ def validate(game_dir: str, mod_path: str) -> None:
             missing_locs = sorted(expected_loa_locs - seen_locs)
             if missing_locs:
                 errors.append(f"Missing LoA world_location triggers in {diff}: {missing_locs}")
-        print(f"[7/8] Metadata & Displacers validated.")
+        # Verify world/contentdb/pcontent.skrit pricing patch is present and syntactically balanced
+        pc_skrit_raw = mod.get("world/contentdb/pcontent.skrit")
+        if not pc_skrit_raw:
+            errors.append("Z_LoA_Expansion.dsres missing world/contentdb/pcontent.skrit")
+        else:
+            pc_skrit = pc_skrit_raw.decode("latin1")
+            check_gas_syntax(pc_skrit, "world/contentdb/pcontent.skrit", errors)
+            for needle in (
+                "int calc_gold_value$( ePContentType type$ )",
+                "CalcModifierGoldValue$( type$, modifier_power_0$, modifier_power_1$ )",
+                "if ( value$ > 1000000.0 )",
+                "2150000.0 * (excess$ / (excess$ + 3500000.0))",
+            ):
+                if needle not in pc_skrit:
+                    errors.append(f"world/contentdb/pcontent.skrit missing expected snippet: {needle!r}")
+        print(f"[7/8] Metadata, Displacers & pcontent.skrit validated.")
         print(f"[8/8] Summary: {len(errors)} errors, {len(warnings)} warnings")
         for w in warnings:
             print(f"  WARN: {w}")

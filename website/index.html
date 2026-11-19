@@ -7703,15 +7703,19 @@ function initWikiView() {
             const isCurrency = (it.id === 'gold');
             if (!isCurrency) {
                 const sellVal = (typeof it.sell_value === 'number' && it.sell_value > 0) ? it.sell_value : ((typeof it.gold_value === 'number' && it.gold_value > 0) ? it.gold_value : null);
+                const sellValMax = (typeof it.sell_value_max === 'number' && it.sell_value_max > (sellVal || 0)) ? it.sell_value_max : null;
                 if (sellVal != null && sellVal > 0) {
-                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Sell Value</span><span class="stat-val gold"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/gold.png?v=4" alt="Gold">${Number(sellVal).toLocaleString()} Gold</span></div>`;
+                    const sellText = sellValMax ? `${Number(sellVal).toLocaleString()} &rarr; ${Number(sellValMax).toLocaleString()} Gold` : `${Number(sellVal).toLocaleString()} Gold`;
+                    statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Sell Value</span><span class="stat-val gold"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/gold.png?v=4" alt="Gold">${sellText}</span></div>`;
                 }
                 if (it.buy_value === 'Drop Only') {
                     statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Buy Value</span><span class="stat-val" style="color:#94a3b8; font-weight:600;">Drop Only</span></div>`;
                 } else if (sellVal != null && sellVal > 0) {
                     const buyVal = (typeof it.buy_value === 'number' && it.buy_value > 0) ? it.buy_value : Math.round(sellVal * 3);
+                    const buyValMax = (typeof it.buy_value_max === 'number' && it.buy_value_max > (buyVal || 0)) ? it.buy_value_max : (sellValMax ? Math.round(sellValMax * 3) : null);
                     if (buyVal != null && buyVal > 0) {
-                        statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Buy Value</span><span class="stat-val gold"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/gold.png?v=4" alt="Gold">${Number(buyVal).toLocaleString()} Gold</span></div>`;
+                        const buyText = buyValMax ? `${Number(buyVal).toLocaleString()} &rarr; ${Number(buyValMax).toLocaleString()} Gold` : `${Number(buyVal).toLocaleString()} Gold`;
+                        statsRows += `<div class="wiki-stat-row"><span class="stat-lbl">Buy Value</span><span class="stat-val gold"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/gold.png?v=4" alt="Gold">${buyText}</span></div>`;
                     }
                 }
             }
@@ -7953,15 +7957,19 @@ function initWikiView() {
         const isCurrency = (item.id === 'gold');
         if (!isCurrency) {
             const mSellVal = (typeof item.sell_value === 'number' && item.sell_value > 0) ? item.sell_value : ((typeof item.gold_value === 'number' && item.gold_value > 0) ? item.gold_value : null);
+            const mSellValMax = (typeof item.sell_value_max === 'number' && item.sell_value_max > (mSellVal || 0)) ? item.sell_value_max : null;
             if (mSellVal != null && mSellVal > 0) {
-                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Sell Value</span><span class="stat-val gold"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/gold.png?v=4" alt="Gold">${Number(mSellVal).toLocaleString()} Gold</span></div>`;
+                const mSellText = mSellValMax ? `${Number(mSellVal).toLocaleString()} &rarr; ${Number(mSellValMax).toLocaleString()} Gold` : `${Number(mSellVal).toLocaleString()} Gold`;
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Sell Value</span><span class="stat-val gold"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/gold.png?v=4" alt="Gold">${mSellText}</span></div>`;
             }
             if (item.buy_value === 'Drop Only') {
                 statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Buy Value</span><span class="stat-val" style="color:#94a3b8; font-weight:600;">Drop Only</span></div>`;
             } else if (mSellVal != null && mSellVal > 0) {
                 const mBuyVal = (typeof item.buy_value === 'number' && item.buy_value > 0) ? item.buy_value : Math.round(mSellVal * 3);
+                const mBuyValMax = (typeof item.buy_value_max === 'number' && item.buy_value_max > (mBuyVal || 0)) ? item.buy_value_max : (mSellValMax ? Math.round(mSellValMax * 3) : null);
                 if (mBuyVal != null && mBuyVal > 0) {
-                    statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Buy Value</span><span class="stat-val gold"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/gold.png?v=4" alt="Gold">${Number(mBuyVal).toLocaleString()} Gold</span></div>`;
+                    const mBuyText = mBuyValMax ? `${Number(mBuyVal).toLocaleString()} &rarr; ${Number(mBuyValMax).toLocaleString()} Gold` : `${Number(mBuyVal).toLocaleString()} Gold`;
+                    statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Buy Value</span><span class="stat-val gold"><img class="wiki-stat-icon" src="/static/wiki_icons/gui/gold.png?v=4" alt="Gold">${mBuyText}</span></div>`;
                 }
             }
         }

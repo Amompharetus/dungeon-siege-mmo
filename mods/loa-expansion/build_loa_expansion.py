@@ -396,6 +396,491 @@ def build_mood_manager(exp_res: LazyTank) -> bytes:
     return txt.encode("latin1")
 
 
+def build_pcontent_skrit(exp_res: LazyTank) -> bytes:
+    """Patch Expansion.dsres world/contentdb/pcontent.skrit calc_gold_value$ so Elite
+    shop items never overflow max_party_gold (9,999,999 buy / 3,333,333 sell) into
+    'Priceless', while keeping prices strictly increasing and level-befitting."""
+    txt = exp_res.get("world/contentdb/pcontent.skrit").decode("latin1")
+    anchor = "int calc_gold_value$( ePContentType type$ )"
+    idx = txt.find(anchor)
+    if idx == -1:
+        raise RuntimeError("pcontent.skrit: failed to locate calc_gold_value$")
+
+    new_calc_gold_value = """int calc_gold_value$( ePContentType type$ )
+{
+\t// given power and the item itself, calculate the gold value of the
+\t// item based on its power and the power of its modifiers. note that
+\t// the incoming item_power is the unmodified "native" power of the
+\t// item and its variation.
+\t
+\t// input: item_power_min$\t\t\t<< from original query
+\t// input: item_power_max$\t\t\t<< from original query
+\t// input: item_power$\t\t\t\t<< modified for gold value calc, based on innate item traits
+\t// input: item_specific_type$
+\t// input: item_subtype$
+\t// input: item_length$
+\t// input: item_material$
+\t// input: item_two_handed$
+\t// input: modifier_power_0$;
+\t// input: modifier_power_1$;
+\t
+\tfloat value$ = 0;
+\tfloat tot$ = 0;
+\tfloat exp$ = 0;
+\tfloat mod_gold$ = 0;
+\tfloat cap_mod$ = 0;
+\tfloat ex$ = 0;
+\tfloat excess$ = 0;
+\t
+\tif ( type$ == PT_WEAPON )
+\t{
+\t\tif ( item_power$ > 0 )
+\t\t{
+\t\t\titem_power$ = item_power$ - (item_power$ * ((((item_power_max$ - item_power_min$) / 2) / item_power$) / 10));
+\t\t}
+\t\ttot$ = item_power$ + modifier_power_0$ + modifier_power_1$;
+\t\t
+\t\tif ( item_specific_type$ == PT_RANGED )
+\t\t{
+\t\t\tif ( item_subtype$ ~= "bow" ) && (item_length$ ~= "s")
+\t\t\t{
+\t\t\t\tif ( tot$ >= 227.5 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 7 + ((((tot$ * 0.90909) * 1.17) * 0.2) ** (2.93 + (1/(tot$/117))));
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 6 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 7 + (((tot$ * 0.90909) * 0.2) ** 3.6);
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 0 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = ((tot$ * 0.90909) * 1.5);
+\t\t\t\t}
+\t\t\t}
+\t\t\telse if ( item_subtype$ ~= "bow" ) && (item_length$ ~= "m")
+\t\t\t{
+\t\t\t\tif ( tot$ >= 227.5 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 10 + ((((tot$ * 0.847458) * 1.17) * 0.2) ** (2.93 + (1/(tot$/117))));
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 6 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 10 + (((tot$ * 0.847458) * 0.2) ** 3.6);
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 0 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 2 + ((tot$ * 0.847458) * 1.5);
+\t\t\t\t}
+\t\t\t}
+\t\t\telse if ( item_subtype$ ~= "bow" ) && (item_length$ ~= "l")
+\t\t\t{
+\t\t\t\tif ( tot$ >= 227.5 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 15 + ((((tot$ * 0.763359) * 1.17) * 0.2) ** (2.93 + (1/(tot$/117))));
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 6 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 15 + (((tot$ * 0.763359) * 0.2) ** 3.6);
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 0 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 4 + ((tot$ * 0.763359) * 1.5);
+\t\t\t\t}
+\t\t\t}
+\t\t\telse if ( item_subtype$ ~= "crossbow" ) && (item_length$ ~= "m")
+\t\t\t{
+\t\t\t\tif ( tot$ >= 227.5 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 20 + ((((tot$ * 1.282051) * 1.17) * 0.2) ** (2.93 + (1/(tot$/117))));
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 6 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 20 + (((tot$ * 1.282051) * 0.2) ** 3.6);
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 0 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 8 + ((tot$ * 1.282051) * 1.5);
+\t\t\t\t}
+\t\t\t}
+\t\t\telse if ( item_subtype$ ~= "crossbow" ) && (item_length$ ~= "l")
+\t\t\t{
+\t\t\t\tif ( tot$ >= 227.5 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 25 + ((((tot$ * 1.052632) * 1.17) * 0.2) ** (2.93 + (1/(tot$/117))));
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 6 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 25 + (((tot$ * 1.052632) * 0.2) ** 3.6);
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 0 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 10 + ((tot$ * 1.052632) * 1.5);
+\t\t\t\t}
+\t\t\t}
+\t\t\telse if ( item_subtype$ ~= "minigun" )
+\t\t\t{
+\t\t\t\tif ( tot$ >= 227.5 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 25 + ((((tot$ * 0.7) * 1.17) * 0.2) ** (2.93 + (1/(tot$/117))));
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 121 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 25 + (((tot$ * 0.7) * 0.2) ** 3.6);
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 103 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 25 + (((tot$ * 0.8) * 0.2) ** 3.6);
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 0.1 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 25 + (((tot$ * 1.1) * 0.2) ** 3.6);
+\t\t\t\t}
+\t\t\t\telse
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 22;
+\t\t\t\t}
+\t\t\t}
+\t\t\telse
+\t\t\t{
+\t\t\t\tif ( tot$ >= 227.5 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 25 + ((((tot$ * 1) * 1.17) * 0.2) ** (2.93 + (1/(tot$/117))));
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 6 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 25 + (((tot$ * 1) * 0.2) ** 3.6);
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 0 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 10 + ((tot$ * 1) * 1.5);
+\t\t\t\t}
+\t\t\t}
+\t\t}
+\t\telse if ( item_specific_type$ == PT_MELEE )
+\t\t{
+\t\t\tif ( item_subtype$ ~= "staff" )
+\t\t\t{
+\t\t\t\tif ( tot$ >= 227.5 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 5 + ((((tot$ * 0.862) * 1.19) * 0.19) ** (2.9 + (1/(tot$/109))));
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 6 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 5 + (((tot$ * 0.862) * 0.19) ** 3.5);
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 0 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 1 + ((tot$ * 0.862) * 1.2);
+\t\t\t\t}
+\t\t\t}
+\t\t\telse if ( item_two_handed$ )
+\t\t\t{
+\t\t\t\tif ( tot$ >= 227.5 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 5 + ((((tot$ * 0.79365) * 1.19) * 0.19) ** (2.9 + (1/(tot$/109))));
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 6 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 5 + (((tot$ * 0.79365) * 0.19) ** 3.5);
+\t\t\t\t}
+\t\t\t\telse if ( item_power$ >= 0 )
+\t\t\t\t{
+\t\t\t\t\tvalue$ = 1 + ((tot$ * 0.79365) * 1.2);
+\t\t\t\t}
+\t\t\t}
+\t\t\telse if ( tot$ >= 227.5 )
+\t\t\t{
+\t\t\t\tvalue$ = 5 + ((((tot$ * 1) * 1.19) * 0.19) ** (2.9 + (1/(tot$/109))));
+\t\t\t}
+\t\t\telse if ( item_power$ >= 6 )
+\t\t\t{
+\t\t\t\tvalue$ = 5 + ((tot$ * 0.19) ** 3.5);
+\t\t\t}
+\t\t\telse if ( item_power$ >= 0.1 )
+\t\t\t{
+\t\t\t\tvalue$ = (tot$ * 1.2);
+\t\t\t}
+\t\t\telse
+\t\t\t{
+\t\t\t\tvalue$ = 10;
+\t\t\t}
+\t\t}
+\t}
+\telse if ( type$ == PT_ARMOR )
+\t{
+\t\tfloat MAGE_ARMOR_CONST$ = 0.45;
+\t\tfloat RANGER_ARMOR_CONST$ = 0.65;
+\t\t
+\t\tif ( item_specific_type$ == PT_SHIELD )
+\t\t{
+\t\t\tif ( item_subtype$ ~= "m" )
+\t\t\t{
+\t\t\t\titem_power$ = item_power$ / MAGE_ARMOR_CONST$;
+\t\t\t}
+\t\t\tif ( item_subtype$ ~= "r" )
+\t\t\t{
+\t\t\t\titem_power$ = item_power$ / RANGER_ARMOR_CONST$;
+\t\t\t}
+\t\t\ttot$ = item_power$ + modifier_power_0$ + modifier_power_1$;
+\t\t\t
+\t\t\tif ( tot$ >= 97 )
+\t\t\t{
+\t\t\t\texp$ = 3.6 - (tot$ / 575);
+\t\t\t\tif ( exp$ < 3.05 ) { exp$ = 3.05; }
+\t\t\t\tvalue$ = 10 + (((tot$ * 5.54) * 0.092) ** exp$) * 0.18;
+\t\t\t}
+\t\t\telse if ( item_power$ >= 0.1 )
+\t\t\t{
+\t\t\t\tvalue$ = 10 + ((((tot$ * 5.54) * 0.092) ** 3.439) * 0.18);
+\t\t\t}
+\t\t\telse
+\t\t\t{
+\t\t\t\tvalue$ = 9;
+\t\t\t}
+\t\t\t
+\t\t\tif ( item_subtype$ ~= "m" )
+\t\t\t{
+\t\t\t\tif ( item_power$ >= 30 ) { value$ *= 1.6; }
+\t\t\t\telse { value$ *= 1.8; }
+\t\t\t}
+\t\t\tif ( item_subtype$ ~= "r" )
+\t\t\t{
+\t\t\t\tif ( item_power$ >= 37 ) { value$ *= 1.3; }
+\t\t\t\telse { value$ *= 1.45; }
+\t\t\t}
+\t\t}
+\t\telse if ( item_specific_type$ == PT_HELM )
+\t\t{
+\t\t\tif ( item_subtype$ ~= "m" )
+\t\t\t{
+\t\t\t\titem_power$ = item_power$ / MAGE_ARMOR_CONST$;
+\t\t\t}
+\t\t\tif ( item_subtype$ ~= "r" )
+\t\t\t{
+\t\t\t\titem_power$ = item_power$ / RANGER_ARMOR_CONST$;
+\t\t\t}
+\t\t\ttot$ = item_power$ + modifier_power_0$ + modifier_power_1$;
+\t\t\t
+\t\t\tif ( tot$ >= 68 )
+\t\t\t{
+\t\t\t\texp$ = 3.6 - (tot$ / 400);
+\t\t\t\tif ( exp$ < 3.05 ) { exp$ = 3.05; }
+\t\t\t\tvalue$ = 7 + (((tot$ * 8.31) * 0.092) ** exp$) * 0.12;
+\t\t\t}
+\t\t\telse if ( item_power$ >= 0.1 )
+\t\t\t{
+\t\t\t\tvalue$ = 7 + ((((tot$ * 8.31) * 0.092) ** 3.439) * 0.12);
+\t\t\t}
+\t\t\telse
+\t\t\t{
+\t\t\t\tvalue$ = 6;
+\t\t\t}
+\t\t\t
+\t\t\tif ( item_subtype$ ~= "m" )
+\t\t\t{
+\t\t\t\tif ( item_power$ >= 19 ) { value$ *= 1.6; }
+\t\t\t\telse { value$ *= 1.8; }
+\t\t\t}
+\t\t\tif ( item_subtype$ ~= "r" )
+\t\t\t{
+\t\t\t\tif ( item_power$ >= 23 ) { value$ *= 1.3; }
+\t\t\t\telse { value$ *= 1.45; }
+\t\t\t}
+\t\t}
+\t\telse if ( item_specific_type$ == PT_GLOVES )
+\t\t{
+\t\t\tif ( item_subtype$ ~= "m" )
+\t\t\t{
+\t\t\t\titem_power$ = item_power$ / MAGE_ARMOR_CONST$;
+\t\t\t}
+\t\t\tif ( item_subtype$ ~= "r" )
+\t\t\t{
+\t\t\t\titem_power$ = item_power$ / RANGER_ARMOR_CONST$;
+\t\t\t}
+\t\t\ttot$ = item_power$ + modifier_power_0$ + modifier_power_1$;
+\t\t\t
+\t\t\tif ( tot$ >= 53 )
+\t\t\t{
+\t\t\t\texp$ = 3.6 - (tot$ / 315);
+\t\t\t\tif ( exp$ < 3.05 ) { exp$ = 3.05; }
+\t\t\t\tvalue$ = 2 + (((tot$ * 11.083) * 0.092) ** exp$) * 0.09;
+\t\t\t}
+\t\t\telse if ( item_power$ >= 0.1 )
+\t\t\t{
+\t\t\t\tvalue$ = 2 + ((((tot$ * 11.083) * 0.092) ** 3.439) * 0.09);
+\t\t\t}
+\t\t\telse
+\t\t\t{
+\t\t\t\tvalue$ = 1;
+\t\t\t}
+\t\t\t
+\t\t\tif ( item_subtype$ ~= "m" )
+\t\t\t{
+\t\t\t\tif ( item_power$ >= 13 ) { value$ *= 1.6; }
+\t\t\t\telse { value$ *= 1.8; }
+\t\t\t}
+\t\t\tif ( item_subtype$ ~= "r" )
+\t\t\t{
+\t\t\t\tif ( item_power$ >= 18 ) { value$ *= 1.3; }
+\t\t\t\telse { value$ *= 1.45; }
+\t\t\t}
+\t\t}
+\t\telse if ( item_specific_type$ == PT_BOOTS )
+\t\t{
+\t\t\tif ( item_subtype$ ~= "m" )
+\t\t\t{
+\t\t\t\titem_power$ = item_power$ / MAGE_ARMOR_CONST$;
+\t\t\t}
+\t\t\tif ( item_subtype$ ~= "r" )
+\t\t\t{
+\t\t\t\titem_power$ = item_power$ / RANGER_ARMOR_CONST$;
+\t\t\t}
+\t\t\ttot$ = item_power$ + modifier_power_0$ + modifier_power_1$;
+\t\t\t
+\t\t\tif ( tot$ >= 20 )
+\t\t\t{
+\t\t\t\texp$ = 3.6 - (tot$ / 360);
+\t\t\t\tif ( exp$ < 3.05 ) { exp$ = 3.05; }
+\t\t\t\tvalue$ = 3 + (((tot$ * 9.5) * 0.092) ** exp$) * 0.11;
+\t\t\t}
+\t\t\telse if ( item_power$ >= 0.1 )
+\t\t\t{
+\t\t\t\tvalue$ = 3 + ((((tot$ * 9.5) * 0.092) ** 3.439) * 0.11);
+\t\t\t}
+\t\t\telse
+\t\t\t{
+\t\t\t\tvalue$ = 2;
+\t\t\t}
+\t\t\t
+\t\t\tif ( item_subtype$ ~= "m" )
+\t\t\t{
+\t\t\t\tif ( item_power$ >= 14 ) { value$ *= 1.6; }
+\t\t\t\telse { value$ *= 1.8; }
+\t\t\t}
+\t\t\tif ( item_subtype$ ~= "r" )
+\t\t\t{
+\t\t\t\tif ( item_power$ >= 19 ) { value$ *= 1.3; }
+\t\t\t\telse { value$ *= 1.45; }
+\t\t\t}
+\t\t}
+\t\telse if ( item_material$ ~= "ro" )
+\t\t{
+\t\t\ttot$ = item_power$ + modifier_power_0$ + modifier_power_1$;
+\t\t\tif ( tot$ >= 40 )
+\t\t\t{
+\t\t\t\texp$ = 3.4 - (tot$ / 860);
+\t\t\t\tif ( exp$ < 2.85 ) { exp$ = 2.85; }
+\t\t\t\tvalue$ = 25 + (((tot$ * 2.8) * 0.117) ** exp$);
+\t\t\t}
+\t\t\telse if ( item_power$ >= 0.1 )
+\t\t\t{
+\t\t\t\tvalue$ = 10 + (((tot$ * 2.8) * 0.117) ** 3.4);
+\t\t\t}
+\t\t\telse
+\t\t\t{
+\t\t\t\tvalue$ = 8;
+\t\t\t}
+\t\t}
+\t\telse if ( item_subtype$ ~= "m" )
+\t\t{
+\t\t\ttot$ = item_power$ + modifier_power_0$ + modifier_power_1$;
+\t\t\tif ( tot$ >= 62.2 )
+\t\t\t{
+\t\t\t\texp$ = 3.4 - (tot$ / 1600);
+\t\t\t\tif ( exp$ < 2.90 ) { exp$ = 2.90; }
+\t\t\t\tvalue$ = 10 + (((tot$ * 2.216) * 0.117) ** exp$);
+\t\t\t}
+\t\t\telse if ( item_power$ >= 10 )
+\t\t\t{
+\t\t\t\tvalue$ = 6 + (((tot$ * 2.216) * 0.117) ** 3.4);
+\t\t\t}
+\t\t\telse if ( item_power$ >= 0 )
+\t\t\t{
+\t\t\t\tvalue$ = 4 + (tot$ * 3);
+\t\t\t}
+\t\t}
+\t\telse if ( item_subtype$ ~= "r" )
+\t\t{
+\t\t\ttot$ = item_power$ + modifier_power_0$ + modifier_power_1$;
+\t\t\tif ( tot$ >= 99 )
+\t\t\t{
+\t\t\t\texp$ = 3.45 - (tot$ / 2500);
+\t\t\t\tif ( exp$ < 2.95 ) { exp$ = 2.95; }
+\t\t\t\tvalue$ = 10 + (((tot$ * 1.537) * 0.102) ** exp$);
+\t\t\t}
+\t\t\telse if ( item_power$ >= 11 )
+\t\t\t{
+\t\t\t\tvalue$ = 6 + (((tot$ * 1.537) * 0.102) ** 3.45);
+\t\t\t}
+\t\t\telse if ( item_power$ >= 0 )
+\t\t\t{
+\t\t\t\tvalue$ = 4.5 + (tot$ * 1.5);
+\t\t\t}
+\t\t}
+\t\telse if ( item_subtype$ ~= "f" )
+\t\t{
+\t\t\ttot$ = item_power$ + modifier_power_0$ + modifier_power_1$;
+\t\t\tif ( tot$ >= 268.3 )
+\t\t\t{
+\t\t\t\texp$ = 3.497 - (tot$ / 3350);
+\t\t\t\tif ( exp$ < 3.00 ) { exp$ = 3.00; }
+\t\t\t\tvalue$ = 8 + ((tot$ * 0.092) ** exp$);
+\t\t\t}
+\t\t\telse if ( item_power$ >= 35 )
+\t\t\t{
+\t\t\t\tvalue$ = 4 + ((tot$ * 0.092) ** 3.439);
+\t\t\t}
+\t\t\telse if ( item_power$ >= 16 )
+\t\t\t{
+\t\t\t\tvalue$ = ((tot$ - 2) * 2);
+\t\t\t}
+\t\t\telse if ( item_power$ >= 0 )
+\t\t\t{
+\t\t\t\tvalue$ = 3.5 + (tot$ * 1.5);
+\t\t\t}
+\t\t}
+\t\telse
+\t\t{
+\t\t\tvalue$ = 2.0;
+\t\t}
+\t}
+
+\t// add in modifier gold values (if any), smoothly tapering the 2-mod surcharge on
+\t// weapons/armor so Elite rolls stay proportional to item tier instead of exploding
+\tmod_gold$ = CalcModifierGoldValue$( type$, modifier_power_0$, modifier_power_1$ );
+\tif ( (type$ == PT_WEAPON) || (type$ == PT_ARMOR) )
+\t{
+\t\tif ( mod_gold$ > 0 )
+\t\t{
+\t\t\tcap_mod$ = (value$ * 0.65) + 500.0;
+\t\t\tif ( mod_gold$ > cap_mod$ )
+\t\t\t{
+\t\t\t\tex$ = mod_gold$ - cap_mod$;
+\t\t\t\tmod_gold$ = cap_mod$ + ((value$ * 0.35) * (ex$ / (ex$ + cap_mod$)));
+\t\t\t}
+\t\t}
+\t}
+\tvalue$ += mod_gold$;
+
+\t// Smooth asymptotic ceiling above 1,000,000 sell (3,000,000 buy):
+\t// strictly increasing with power/level, asymptotically approaching 3,150,000 sell
+\t// (9,450,000 buy at 2x shop markup) so no item exceeds max_party_gold (9,999,999).
+\tif ( value$ > 1000000.0 )
+\t{
+\t\texcess$ = value$ - 1000000.0;
+\t\tvalue$ = 1000000.0 + (2150000.0 * (excess$ / (excess$ + 3500000.0)));
+\t}
+
+\treturn ( Math.Round( value$ ) );
+}
+
+//////////////////////////////////////////////////////////////////////
+""".replace("\r\n", "\n").replace("\n", "\r\n")
+
+    out = txt[:idx] + new_calc_gold_value
+    return out.encode("latin1")
+
+
 def build_siege_nodes(
     reg_files: Dict[str, bytes],
     terrain_res: LazyTank,
@@ -468,6 +953,7 @@ def build_expansion_tank(game_dir: str, out_path: str) -> Tuple[int, int]:
         files["world/global/elevators.gas"] = build_elevators(exp_res)
         files["world/global/moods/multiplayer_world/moods1.gas"] = build_moods(logic_res, exp_res)
         files["world/global/moods/dsx_mood_manager.skrit"] = build_mood_manager(exp_res)
+        files["world/contentdb/pcontent.skrit"] = build_pcontent_skrit(exp_res)
         siege_bytes, siege_count = build_siege_nodes(reg_files, terrain_res, exp_res)
         files["world/global/siege_nodes/loa_expansion/loa_expansion_nodes.gas"] = siege_bytes
 
@@ -482,7 +968,7 @@ def build_expansion_tank(game_dir: str, out_path: str) -> Tuple[int, int]:
         )
         print(
             f"Built {out_path}: {nfiles} files ({len(tpl_files)} template, "
-            f"{len(reg_files)} region, 8 metadata; {siege_count} siege_nodes), "
+            f"{len(reg_files)} region, 9 metadata; {siege_count} siege_nodes), "
             f"{size_bytes:,} bytes, priority=0x5500"
         )
         return nfiles, size_bytes
