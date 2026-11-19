@@ -22,24 +22,26 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
 
-const version = "1.2.3"
+const version = "1.2.4"
 
 type Settings struct {
-	PortalURL   string `json:"portal_url"` // e.g. http://my-server.example.com:8440
-	Account     string `json:"account"`
-	Token       string `json:"token"`
-	ExtraArgs   string `json:"extra_args"` // extra DSLOA.exe arguments, e.g. "fullscreen=true"
-	Width       int    `json:"width"`
-	Height      int    `json:"height"`
-	Fullscreen  bool   `json:"fullscreen"`   // old (<= 0.6.0), ignored: see Display
-	Display     string `json:"display"`      // "fullscreen" (default), "window" (Width x Height), or 0.7.5 "game" = pass nothing, let DSLOA decide
-	Resolution  string `json:"resolution"`   // 0.7.2: "" / "auto" = the desktop resolution in full screen; otherwise "WxH", e.g. "2560x1080"
-	SyncMinutes int    `json:"sync_minutes"` // upload interval while playing
-	ServerID    string `json:"server_id"`    // last chosen game server (region), e.g. "na" / "eu"
+	PortalURL       string `json:"portal_url"` // e.g. http://my-server.example.com:8440
+	Account         string `json:"account"`
+	Token           string `json:"token"`
+	ExtraArgs       string `json:"extra_args"` // extra DSLOA.exe arguments, e.g. "fullscreen=true"
+	Width           int    `json:"width"`
+	Height          int    `json:"height"`
+	Fullscreen      bool   `json:"fullscreen"`   // old (<= 0.6.0), ignored: see Display
+	Display         string `json:"display"`      // "fullscreen" (default), "window" (Width x Height), or 0.7.5 "game" = pass nothing, let DSLOA decide
+	Resolution      string `json:"resolution"`   // 0.7.2: "" / "auto" = the desktop resolution in full screen; otherwise "WxH", e.g. "2560x1080"
+	SyncMinutes     int    `json:"sync_minutes"` // upload interval while playing
+	ServerID        string `json:"server_id"`    // last chosen game server (region), e.g. "na" / "eu"
+	DiscordPresence *bool  `json:"discord_presence,omitempty"`
 }
 
 var (
@@ -474,6 +476,19 @@ func run() error {
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
 
+	initPlayers, _ := strconv.Atoi(strings.TrimSpace(status.Game["players"]))
+	stopPresence := startDiscordPresence(discordPresenceConfig{
+		GamePID:    cmd.Process.Pid,
+		GameDir:    gameDir,
+		ProfileDir: profile,
+		ServerID:   settings.ServerID,
+		RealmName:  status.ServerName,
+		Players:    initPlayers,
+		MaxPlayers: status.MaxPlayers,
+		Started:    started,
+	})
+	defer stopPresence()
+
 	say("Playing. Keep this window open: your character is backed up online every %d minutes and when the game closes.", settings.SyncMinutes)
 	saveDir := filepath.Join(profile, "Save")
 	lastHash := hashDir(saveDir)
@@ -508,6 +523,7 @@ func run() error {
 				}
 			}
 		case err := <-done:
+			stopPresence()
 			say("Game closed (%v). Uploading your character...", errOrOK(err))
 			if failedToStart(err, time.Since(started)) {
 				say("")
@@ -1621,6 +1637,7 @@ func accountMenu(inviteRequired bool) error {
 		// 0.8.10: there is no display choice any more. The game always starts in full screen, so the
 		// only thing left to change is the resolution.
 		fmt.Printf("  4) Screen resolution: %s\n", resolutionLabel())
+		fmt.Printf("  5) Discord Rich Presence: %s\n", discordPresenceLabel())
 		fmt.Println("  Press Enter to go back")
 		fmt.Print("Choice: ")
 		c, _ := in.ReadString('\n')
@@ -1631,6 +1648,11 @@ func accountMenu(inviteRequired bool) error {
 			changeAccountName(in)
 		case "4":
 			chooseResolution(in)
+		case "5":
+			v := !discordPresenceEnabled()
+			settings.DiscordPresence = &v
+			saveSettings()
+			say("Discord Rich Presence: %s. It applies the next time the game starts.", discordPresenceLabel())
 		case "3":
 			old := settings.Account
 			settings.Token, settings.Account = "", ""
