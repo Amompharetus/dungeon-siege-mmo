@@ -665,13 +665,14 @@ func truncateRunes(s string, maxLen int) string {
 }
 
 func buildDiscordActivity(started time.Time, phase string, ch localCharInfo, serverID, realmName string, players, maxPlayers int) *discordActivity {
+	_ = serverID
 	details := phase
 	if details == "" {
 		var parts []string
 		if ch.Level > 0 && ch.Class != "" {
-			parts = append(parts, fmt.Sprintf("Lv %d %s", ch.Level, ch.Class))
+			parts = append(parts, fmt.Sprintf("Level %d %s", ch.Level, ch.Class))
 		} else if ch.Level > 0 {
-			parts = append(parts, fmt.Sprintf("Lv %d Adventurer", ch.Level))
+			parts = append(parts, fmt.Sprintf("Level %d Adventurer", ch.Level))
 		} else if ch.Class != "" {
 			parts = append(parts, ch.Class)
 		}
@@ -705,17 +706,11 @@ func buildDiscordActivity(started time.Time, phase string, ch localCharInfo, ser
 	}
 
 	if realmName != "" {
-		act.State = truncateRunes(realmName+" realm", 128)
+		state := realmName
 		if players > 0 && maxPlayers > 0 {
-			pid := "dsmmo"
-			if serverID != "" {
-				pid = "dsmmo-" + strings.ToLower(serverID)
-			}
-			act.Party = &discordParty{
-				ID:   pid,
-				Size: [2]int{players, maxPlayers},
-			}
+			state = fmt.Sprintf("%s (%d / %d)", realmName, players, maxPlayers)
 		}
+		act.State = truncateRunes(state, 128)
 	}
 	return act
 }

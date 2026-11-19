@@ -80,14 +80,14 @@ func TestBuildDiscordActivityFormats(t *testing.T) {
 	act := buildDiscordActivity(started, "", localCharInfo{
 		Name: "Aragorn", Level: 70, Class: "Grand Master", Location: "Halls of the Great Clock",
 	}, "na", "North America", 3, 30)
-	if act.Details != "Lv 70 Grand Master · Halls of the Great Clock" {
+	if act.Details != "Level 70 Grand Master · Halls of the Great Clock" {
 		t.Fatalf("unexpected details: %q", act.Details)
 	}
-	if act.State != "North America realm" {
+	if act.State != "North America (3 / 30)" {
 		t.Fatalf("unexpected state: %q", act.State)
 	}
-	if act.Party == nil || act.Party.Size != [2]int{3, 30} || act.Party.ID != "dsmmo-na" {
-		t.Fatalf("unexpected party: %+v", act.Party)
+	if act.Party != nil {
+		t.Fatalf("expected nil party (count formatted in state), got: %+v", act.Party)
 	}
 	if act.Assets.LargeImage != "logo" || act.Assets.LargeText != "Playing as Aragorn" {
 		t.Fatalf("unexpected assets: %+v", act.Assets)
@@ -103,11 +103,17 @@ func TestBuildDiscordActivityFormats(t *testing.T) {
 	if stg.Details != "Picking a character" {
 		t.Fatalf("expected staging details, got %q", stg.Details)
 	}
+	if stg.State != "North America (2 / 30)" {
+		t.Fatalf("expected state without realm, got %q", stg.State)
+	}
 
 	// Brand-new character with no save yet
 	fresh := buildDiscordActivity(started, "", localCharInfo{}, "eu", "Central Europe", 1, 30)
 	if fresh.Details != "Adventuring" {
 		t.Fatalf("expected Adventuring fallback, got %q", fresh.Details)
+	}
+	if fresh.State != "Central Europe (1 / 30)" {
+		t.Fatalf("unexpected eu state: %q", fresh.State)
 	}
 	if fresh.Assets.LargeText != "Dungeon Siege: Legends of Aranna MMO" {
 		t.Fatalf("unexpected fallback large text: %q", fresh.Assets.LargeText)

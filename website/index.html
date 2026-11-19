@@ -5677,48 +5677,51 @@
 
     function renderPlayers(containerId, players) {
         const container = document.getElementById(containerId);
+        if (!container) return;
+        let html = '';
         if (!players || players.length === 0) {
-            container.innerHTML = `
+            html = `
                 <div class="empty-state">
                     <div class="empty-title">No Adventurers Online</div>
                     <div class="empty-desc">The taverns and trails of the Peninsula are currently quiet in this realm.</div>
                 </div>
             `;
-            return;
-        }
+        } else {
+            // Always rank from higher level to lower; tie-breaker: character name alphabetical
+            const sorted = [...players].sort((a, b) => {
+                const lvlA = a.level || 0;
+                const lvlB = b.level || 0;
+                if (lvlB !== lvlA) return lvlB - lvlA;
+                return (a.character_name || '').localeCompare(b.character_name || '');
+            });
 
-        // Always rank from higher level to lower; tie-breaker: character name alphabetical
-        const sorted = [...players].sort((a, b) => {
-            const lvlA = a.level || 0;
-            const lvlB = b.level || 0;
-            if (lvlB !== lvlA) return lvlB - lvlA;
-            return (a.character_name || '').localeCompare(b.character_name || '');
-        });
-
-        let html = '';
-        sorted.forEach(p => {
-            const loc = p.location || 'Staging Screen';
-            html += `
-                <div class="roster-row">
-                    <div class="col-adventurer">
-                        <div class="hero-name" title="${escapeHTML(p.character_name || 'Hero')}">${escapeHTML(p.character_name || 'Hero')}</div>
-                        <div class="account-tag">Account: <span>${escapeHTML(p.account_name || '')}</span></div>
-                    </div>
-                    <div class="col-level">
-                        <div class="level-shield">
-                            <span class="level-val">${p.level || 1}</span>
+            sorted.forEach(p => {
+                const loc = p.location || 'Staging Screen';
+                html += `
+                    <div class="roster-row">
+                        <div class="col-adventurer">
+                            <div class="hero-name" title="${escapeHTML(p.character_name || 'Hero')}">${escapeHTML(p.character_name || 'Hero')}</div>
+                            <div class="account-tag">Account: <span>${escapeHTML(p.account_name || '')}</span></div>
+                        </div>
+                        <div class="col-level">
+                            <div class="level-shield">
+                                <span class="level-val">${p.level || 1}</span>
+                            </div>
+                        </div>
+                        <div class="col-class">
+                            <span class="class-pill">${escapeHTML(p.class || 'Adventurer')}</span>
+                        </div>
+                        <div class="col-location">
+                            <span class="location-pill">${escapeHTML(loc)}</span>
                         </div>
                     </div>
-                    <div class="col-class">
-                        <span class="class-pill">${escapeHTML(p.class || 'Adventurer')}</span>
-                    </div>
-                    <div class="col-location">
-                        <span class="location-pill">${escapeHTML(loc)}</span>
-                    </div>
-                </div>
-            `;
-        });
-        container.innerHTML = html;
+                `;
+            });
+        }
+        if (container.dataset.lastHtml !== html) {
+            container.innerHTML = html;
+            container.dataset.lastHtml = html;
+        }
     }
 
     function renderProgrammaticWorldMap(containerId, ns) {
@@ -6088,89 +6091,145 @@
             return pListHtml;
         }
 
-        let html = '';
+        // Reconcile markers in-place keyed by data-area-id so periodic /api/status polls
+        // never recreate hovered .map-marker elements or close open tooltips.
+        const desired = [];
 
-        // 1. Always render the 9 canonical town & portal hub anchors
+        // 1. Always keep the 9 canonical town & portal hub anchors
         TOWNS.forEach(t => {
             const list = areaMap[t.id] || [];
             const isActive = list.length > 0;
+            desired.push({
+                id: t.id,
+                name: t.name,
+                req: t.req,
+                posClass: t.posClass,
+                left: t.left,
+                top: t.top,
+                isActive,
+                list,
+                pListHtml: isActive ? generateTooltipPlayerList(list) : '',
+            });
+        });
 
-            if (isActive) {
-                const pListHtml = generateTooltipPlayerList(list);
-                html += `
-                    <div class="map-marker active ${t.posClass}" style="left: ${t.left}; top: ${t.top};">
-                        <div class="radar-ping"></div>
-                        <div class="radar-ping-secondary"></div>
-                        <div class="marker-beacon">${list.length}</div>
-                        <div class="town-tag">${t.name}</div>
-                        <div class="map-tooltip">
-                            <div class="tooltip-header">
-                                <span class="tooltip-town">${t.name}</span>
-                                <span class="tooltip-count">${list.length} Adventurer${list.length === 1 ? '' : 's'}</span>
-                            </div>
-                            <div class="tooltip-player-list">
-                                ${pListHtml}
-                            </div>
+        // 2. Dynamic radar beacon dots for active wilderness / dungeon areas
+        for (const key in MAP_AREAS) {
+            const area = MAP_AREAS[key];
+            if (area.isTown) continue;
+            const list = areaMap[key] || [];
+            if (list.length > 0) {
+                desired.push({
+                    id: key,
+                    name: area.name,
+                    req: '',
+                    posClass: area.posClass,
+                    left: area.left,
+                    top: area.top,
+                    isActive: true,
+                    list,
+                    pListHtml: generateTooltipPlayerList(list),
+                });
+            }
+        }
+
+        const existingById = new Map();
+        Array.from(markersContainer.children).forEach(el => {
+            if (el.dataset && el.dataset.areaId) {
+                existingById.set(el.dataset.areaId, el);
+            } else {
+                el.remove();
+            }
+        });
+
+        const wantedIds = new Set(desired.map(m => m.id));
+        existingById.forEach((el, id) => {
+            if (!wantedIds.has(id)) {
+                el.remove();
+                existingById.delete(id);
+            }
+        });
+
+        desired.forEach(m => {
+            const cls = `map-marker ${m.isActive ? 'active' : 'idle'} ${m.posClass}`;
+            const countText = `${m.list.length} Adventurer${m.list.length === 1 ? '' : 's'}`;
+            const sig = m.isActive ? `A|${m.list.length}|${m.pListHtml}` : `I|${m.req}`;
+
+            let el = existingById.get(m.id);
+            if (!el) {
+                el = document.createElement('div');
+                el.dataset.areaId = m.id;
+                el.className = cls;
+                el.style.left = m.left;
+                el.style.top = m.top;
+                markersContainer.appendChild(el);
+            } else {
+                if (el.className !== cls) el.className = cls;
+                if (el.style.left !== m.left) el.style.left = m.left;
+                if (el.style.top !== m.top) el.style.top = m.top;
+                if (el.dataset.renderSig === sig) {
+                    return; // Unchanged: leave DOM completely untouched so hover & animations stay smooth
+                }
+            }
+
+            const wasActive = el.dataset.isActive === '1';
+            if (m.isActive && wasActive && el.querySelector('.tooltip-player-list')) {
+                // Active -> active update: patch inner text/list in-place without recreating tooltip
+                const beacon = el.querySelector('.marker-beacon');
+                const countEl = el.querySelector('.tooltip-count');
+                const listEl = el.querySelector('.tooltip-player-list');
+                if (beacon) beacon.textContent = String(m.list.length);
+                if (countEl) countEl.textContent = countText;
+                if (listEl) listEl.innerHTML = m.pListHtml;
+            } else if (m.isActive) {
+                el.innerHTML = `
+                    <div class="radar-ping"></div>
+                    <div class="radar-ping-secondary"></div>
+                    <div class="marker-beacon">${m.list.length}</div>
+                    <div class="town-tag">${m.name}</div>
+                    <div class="map-tooltip">
+                        <div class="tooltip-header">
+                            <span class="tooltip-town">${m.name}</span>
+                            <span class="tooltip-count">${countText}</span>
+                        </div>
+                        <div class="tooltip-player-list">
+                            ${m.pListHtml}
                         </div>
                     </div>
                 `;
             } else {
-                html += `
-                    <div class="map-marker idle ${t.posClass}" style="left: ${t.left}; top: ${t.top};">
-                        <div class="marker-beacon"></div>
-                        <div class="town-tag">${t.name} (${t.req})</div>
-                        <div class="map-tooltip">
-                            <div class="tooltip-header">
-                                <span class="tooltip-town">${t.name}</span>
-                                <span class="tooltip-req">Requires ${t.req}</span>
-                            </div>
-                            <div style="font-size: 11px; color: #8b949e; text-align: center; padding: 4px 0;">No active adventurers</div>
+                el.innerHTML = `
+                    <div class="marker-beacon"></div>
+                    <div class="town-tag">${m.name} (${m.req})</div>
+                    <div class="map-tooltip">
+                        <div class="tooltip-header">
+                            <span class="tooltip-town">${m.name}</span>
+                            <span class="tooltip-req">Requires ${m.req}</span>
                         </div>
+                        <div style="font-size: 11px; color: #8b949e; text-align: center; padding: 4px 0;">No active adventurers</div>
                     </div>
                 `;
             }
+            el.dataset.isActive = m.isActive ? '1' : '0';
+            el.dataset.renderSig = sig;
         });
-
-        // 2. Render dynamic radar beacon dots for any wilderness / dungeon areas where adventurers are active
-        for (const key in MAP_AREAS) {
-            const area = MAP_AREAS[key];
-            if (area.isTown) continue;
-
-            const list = areaMap[key] || [];
-            if (list.length > 0) {
-                const pListHtml = generateTooltipPlayerList(list);
-                html += `
-                    <div class="map-marker active ${area.posClass}" style="left: ${area.left}; top: ${area.top};">
-                        <div class="radar-ping"></div>
-                        <div class="radar-ping-secondary"></div>
-                        <div class="marker-beacon">${list.length}</div>
-                        <div class="town-tag">${area.name}</div>
-                        <div class="map-tooltip">
-                            <div class="tooltip-header">
-                                <span class="tooltip-town">${area.name}</span>
-                                <span class="tooltip-count">${list.length} Adventurer${list.length === 1 ? '' : 's'}</span>
-                            </div>
-                            <div class="tooltip-player-list">
-                                ${pListHtml}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        markersContainer.innerHTML = html;
 
         if (stagingPlayers.length > 0) {
             if (stagingBeaconElem) stagingBeaconElem.style.display = 'block';
             if (stagingNamesElem) {
-                stagingNamesElem.innerHTML = stagingPlayers.map(p => 
+                const stagingHtml = stagingPlayers.map(p =>
                     `${escapeHTML(p.character_name || 'Hero')} (Level ${p.level || 1} ${escapeHTML(p.class || 'Adventurer')})`
                 ).join(', ');
+                if (stagingNamesElem.dataset.lastHtml !== stagingHtml) {
+                    stagingNamesElem.innerHTML = stagingHtml;
+                    stagingNamesElem.dataset.lastHtml = stagingHtml;
+                }
             }
         } else {
             if (stagingBeaconElem) stagingBeaconElem.style.display = 'none';
-            if (stagingNamesElem) stagingNamesElem.innerText = 'No adventurers in staging screen';
+            if (stagingNamesElem && stagingNamesElem.dataset.lastHtml !== '__empty__') {
+                stagingNamesElem.innerText = 'No adventurers in staging screen';
+                stagingNamesElem.dataset.lastHtml = '__empty__';
+            }
         }
     }
 
@@ -6269,7 +6328,10 @@
                 </div>
             `;
         });
-        container.innerHTML = html;
+        if (container.dataset.lastHtml !== html) {
+            container.innerHTML = html;
+            container.dataset.lastHtml = html;
+        }
     }
 
     // ========================================================
