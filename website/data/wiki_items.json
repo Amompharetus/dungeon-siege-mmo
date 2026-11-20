@@ -192,11 +192,10 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Helmet",
-      "Unique"
+      "Helmet"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -220,7 +219,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 22
@@ -1025,12 +1024,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -1054,7 +1053,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 13
@@ -1073,12 +1072,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -1102,7 +1101,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 13
@@ -1167,12 +1166,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -1196,7 +1195,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 22
@@ -1215,12 +1214,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -1244,7 +1243,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 24
@@ -1263,12 +1262,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -1292,7 +1291,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 24
@@ -1311,12 +1310,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -1340,7 +1339,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 25
@@ -1359,12 +1358,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -1388,7 +1387,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 26
@@ -1407,12 +1406,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -1436,7 +1435,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 27
@@ -1455,12 +1454,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -1484,7 +1483,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 29
@@ -1596,12 +1595,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -1625,7 +1623,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 27
@@ -1993,12 +1991,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -2022,7 +2019,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 15
@@ -2088,12 +2085,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -2117,7 +2113,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 42
@@ -2200,11 +2196,10 @@
     "category": "armor",
     "sub_category": "Boots",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Boots",
-      "Unique"
+      "Boots"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -2228,7 +2223,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 20
@@ -2293,12 +2288,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -2322,7 +2316,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 23
@@ -2341,11 +2335,10 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Helmet",
-      "Unique"
+      "Helmet"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -2369,7 +2362,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 17
@@ -2388,11 +2381,10 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Helmet",
-      "Unique"
+      "Helmet"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -2416,7 +2408,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 29
@@ -2435,11 +2427,10 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Helmet",
-      "Unique"
+      "Helmet"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -2463,7 +2454,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 21
@@ -2717,11 +2708,11 @@
     "category": "armor",
     "sub_category": "Boots",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Boots",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -2745,7 +2736,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 24
@@ -2848,12 +2839,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -2877,7 +2868,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 36
@@ -2896,12 +2887,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -2925,7 +2916,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 38
@@ -2944,12 +2935,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -2973,7 +2964,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 31
@@ -2992,12 +2983,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -3021,7 +3012,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 32
@@ -3040,12 +3031,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -3069,7 +3060,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 34
@@ -3088,12 +3079,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -3117,7 +3108,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 36
@@ -3136,12 +3127,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -3165,7 +3156,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 38
@@ -3184,12 +3175,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Chain",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -3213,7 +3204,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 46
@@ -3232,11 +3223,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -3260,8 +3251,8 @@
     "gold_value": 26830,
     "sell_value": 26830,
     "sell_value_max": 742012,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 80490,
+    "buy_value_max": 2226036,
     "requirements": {
       "strength": 48
     },
@@ -3279,11 +3270,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -3307,8 +3298,8 @@
     "gold_value": 40552,
     "sell_value": 40552,
     "sell_value_max": 858478,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 121656,
+    "buy_value_max": 2575434,
     "requirements": {
       "strength": 53
     },
@@ -3372,12 +3363,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Leather",
-      "Unique"
+      "Leather"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -3401,7 +3391,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 12
@@ -3892,11 +3882,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -3920,7 +3910,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 44
@@ -3986,11 +3976,10 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Helmet",
-      "Unique"
+      "Helmet"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -4014,7 +4003,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 12
@@ -4221,12 +4210,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -4250,7 +4238,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 14
@@ -5079,11 +5067,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -5107,7 +5095,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 31
@@ -5259,12 +5247,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Plate",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -5288,7 +5276,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 49
@@ -5657,11 +5645,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -5685,7 +5673,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 13
@@ -5734,12 +5722,8 @@
     "sell_value_max": null,
     "buy_value": "Drop Only",
     "buy_value_max": null,
-    "requirements": {
-      "intelligence": 39
-    },
-    "requirements_max": {
-      "intelligence": 39
-    },
+    "requirements": {},
+    "requirements_max": null,
     "variants": null,
     "icon": "b_gui_ig_i_a_boot_507"
   },
@@ -5781,12 +5765,8 @@
     "sell_value_max": null,
     "buy_value": "Drop Only",
     "buy_value_max": null,
-    "requirements": {
-      "intelligence": 27
-    },
-    "requirements_max": {
-      "intelligence": 27
-    },
+    "requirements": {},
+    "requirements_max": null,
     "variants": null,
     "icon": "b_gui_ig_i_a_hlmt_422"
   },
@@ -5828,12 +5808,8 @@
     "sell_value_max": null,
     "buy_value": "Drop Only",
     "buy_value_max": null,
-    "requirements": {
-      "intelligence": 27
-    },
-    "requirements_max": {
-      "intelligence": 27
-    },
+    "requirements": {},
+    "requirements_max": null,
     "variants": null,
     "icon": "b_gui_ig_i_a_pos_a4_224"
   },
@@ -6143,12 +6119,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Chain",
-      "Unique"
+      "Chain"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -6172,7 +6147,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 16
@@ -6341,11 +6316,11 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Gloves",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -6369,8 +6344,8 @@
     "gold_value": 12946,
     "sell_value": 12946,
     "sell_value_max": 1742618,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 38838,
+    "buy_value_max": 5227854,
     "requirements": {
       "strength": 49
     },
@@ -6593,12 +6568,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Leather",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -6622,12 +6597,12 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
+    "requirements": {},
+    "requirements_max": {
       "strength": 12
     },
-    "requirements_max": null,
     "variants": [
       {
         "code": "base",
@@ -6635,9 +6610,7 @@
         "defense": 23.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 12
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a1_061"
       },
       {
@@ -6646,9 +6619,7 @@
         "defense": 30.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 12
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a1_062",
         "modifier_min": 1.0,
         "modifier_max": 13.0
@@ -6659,9 +6630,7 @@
         "defense": 52.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 12
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a1_063",
         "modifier_min": 6.0,
         "modifier_max": 28.0
@@ -6703,12 +6672,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Plate",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -6732,7 +6701,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 29
@@ -6751,12 +6720,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -6780,7 +6749,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 11
@@ -6799,12 +6768,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Leather",
-      "Unique"
+      "Leather"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -6828,7 +6796,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 12
@@ -8189,12 +8157,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Plate",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -8218,7 +8186,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 12
@@ -8262,11 +8230,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -8290,8 +8258,8 @@
     "gold_value": 33190,
     "sell_value": 33190,
     "sell_value_max": 770027,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 99570,
+    "buy_value_max": 2310081,
     "requirements": {
       "strength": 50
     },
@@ -8823,11 +8791,10 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Gloves",
-      "Unique"
+      "Gloves"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -8851,7 +8818,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 13
@@ -8870,12 +8837,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -8899,7 +8865,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 12
@@ -8918,11 +8884,10 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Helmet",
-      "Unique"
+      "Helmet"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -8946,7 +8911,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 14
@@ -9152,12 +9117,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -9181,7 +9146,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 12
@@ -9434,12 +9399,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Chain",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -9463,7 +9428,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 20
@@ -9567,12 +9532,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Leather",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -9596,7 +9561,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {},
     "requirements_max": null,
@@ -9611,12 +9576,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -9640,7 +9605,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 49
@@ -9659,12 +9624,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -9688,7 +9653,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 40
@@ -9707,12 +9672,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -9736,7 +9701,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 40
@@ -9755,12 +9720,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -9784,7 +9749,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 42
@@ -9803,12 +9768,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -9832,7 +9797,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 43
@@ -9851,12 +9816,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -9880,7 +9845,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 45
@@ -9899,12 +9864,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -9928,7 +9893,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 47
@@ -9993,11 +9958,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -10021,7 +9986,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 40
@@ -11367,12 +11332,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Chain",
-      "Unique"
+      "Chain"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -11396,7 +11360,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 14
@@ -11509,11 +11473,10 @@
     "category": "armor",
     "sub_category": "Boots",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Boots",
-      "Unique"
+      "Boots"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -11537,7 +11500,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 17
@@ -11556,11 +11519,10 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Helmet",
-      "Unique"
+      "Helmet"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -11584,7 +11546,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 34
@@ -11649,11 +11611,10 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Gloves",
-      "Unique"
+      "Gloves"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -11677,7 +11638,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 18
@@ -11743,11 +11704,10 @@
     "category": "armor",
     "sub_category": "Boots",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Boots",
-      "Unique"
+      "Boots"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -11771,7 +11731,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 39
@@ -11790,11 +11750,10 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Helmet",
-      "Unique"
+      "Helmet"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -11818,7 +11777,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 23
@@ -11884,12 +11843,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -11913,7 +11871,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 37
@@ -12294,12 +12252,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Leather",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -12323,7 +12281,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 12
@@ -12342,12 +12300,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Plate",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -12371,7 +12329,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 34
@@ -12830,11 +12788,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -12858,8 +12816,8 @@
     "gold_value": 24917,
     "sell_value": 24917,
     "sell_value_max": 734151,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 74751,
+    "buy_value_max": 2202453,
     "requirements": {
       "strength": 47
     },
@@ -12877,12 +12835,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -12906,7 +12864,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 13
@@ -13391,12 +13349,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -13420,7 +13377,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 12
@@ -13625,12 +13582,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -13654,7 +13610,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 18
@@ -14110,11 +14066,11 @@
     "category": "armor",
     "sub_category": "Boots",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Boots",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -14138,7 +14094,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 18
@@ -14302,12 +14258,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Plate",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -14331,7 +14287,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 24
@@ -14536,11 +14492,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -14564,7 +14520,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 18
@@ -15339,11 +15295,11 @@
     "category": "armor",
     "sub_category": "Boots",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Boots",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -15367,7 +15323,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 29
@@ -15623,11 +15579,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -15651,7 +15607,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 16
@@ -15670,11 +15626,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -15698,7 +15654,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {},
     "requirements_max": null,
@@ -15713,11 +15669,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -15741,7 +15697,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 19
@@ -15854,12 +15810,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Leather",
-      "Unique"
+      "Leather"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -15883,12 +15838,12 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
+    "requirements": {},
+    "requirements_max": {
       "strength": 13
     },
-    "requirements_max": null,
     "variants": [
       {
         "code": "base",
@@ -15896,9 +15851,7 @@
         "defense": 11.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 13
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a1_002"
       },
       {
@@ -15954,9 +15907,7 @@
     "sell_value_max": null,
     "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
-      "strength": 24
-    },
+    "requirements": {},
     "requirements_max": {
       "strength": 29
     },
@@ -15967,9 +15918,7 @@
         "defense": 1.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 24
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_boot_001"
       },
       {
@@ -15978,9 +15927,7 @@
         "defense": 1.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 24
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_boot_040",
         "modifier_min": 1.0,
         "modifier_max": 2.0
@@ -16145,9 +16092,7 @@
     "sell_value_max": null,
     "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
-      "strength": 13
-    },
+    "requirements": {},
     "requirements_max": {
       "strength": 31
     },
@@ -16158,9 +16103,7 @@
         "defense": 2.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 13
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_gntl_012"
       },
       {
@@ -16448,11 +16391,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -16476,7 +16419,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 16
@@ -16542,11 +16485,11 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Gloves",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -16570,7 +16513,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 22
@@ -16670,12 +16613,8 @@
     "sell_value_max": null,
     "buy_value": "Drop Only",
     "buy_value_max": null,
-    "requirements": {
-      "strength": 11
-    },
-    "requirements_max": {
-      "strength": 11
-    },
+    "requirements": {},
+    "requirements_max": null,
     "variants": null,
     "icon": "b_gui_ig_i_a_hlmt_441"
   },
@@ -16734,12 +16673,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Leather",
-      "Unique"
+      "Leather"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -16763,7 +16701,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {},
     "requirements_max": null,
@@ -17034,11 +16972,11 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Gloves",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -17062,7 +17000,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 17
@@ -17106,12 +17044,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Leather",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -17135,12 +17073,12 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
+    "requirements": {},
+    "requirements_max": {
       "strength": 15
     },
-    "requirements_max": null,
     "variants": [
       {
         "code": "base",
@@ -17148,9 +17086,7 @@
         "defense": 27.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 15
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a2_057"
       },
       {
@@ -17159,9 +17095,7 @@
         "defense": 35.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 15
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a2_067",
         "modifier_min": 1.0,
         "modifier_max": 9.0
@@ -17237,11 +17171,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -17265,7 +17199,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 45
@@ -17657,12 +17591,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -17686,7 +17620,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 17
@@ -17705,12 +17639,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -17734,7 +17668,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 16
@@ -17753,12 +17687,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -17782,7 +17716,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 18
@@ -17801,12 +17735,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -17830,7 +17764,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 19
@@ -17849,12 +17783,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -17878,7 +17812,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 20
@@ -17897,12 +17831,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Leather",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -17926,7 +17860,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {},
     "requirements_max": null,
@@ -17962,12 +17896,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Leather",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -17991,7 +17925,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 13
@@ -18010,12 +17944,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Chain",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -18039,7 +17973,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 15
@@ -18083,12 +18017,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -18112,7 +18046,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 64
@@ -18454,11 +18388,11 @@
     "category": "armor",
     "sub_category": "Boots",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Boots",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -18482,7 +18416,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 32
@@ -18632,11 +18566,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -18660,7 +18594,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {},
     "requirements_max": null,
@@ -18988,11 +18922,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -19016,7 +18950,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 23
@@ -19035,11 +18969,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -19063,7 +18997,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 42
@@ -19082,12 +19016,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Plate",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -19111,7 +19045,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 14
@@ -19153,11 +19087,11 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Gloves",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -19181,7 +19115,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 13
@@ -19272,12 +19206,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -19301,7 +19235,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 51
@@ -19320,12 +19254,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -19349,7 +19283,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 54
@@ -19368,12 +19302,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -19397,7 +19331,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 56
@@ -19624,11 +19558,11 @@
     "category": "armor",
     "sub_category": "Boots",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Boots",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -19652,12 +19586,12 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
+    "requirements": {},
+    "requirements_max": {
       "strength": 15
     },
-    "requirements_max": null,
     "variants": [
       {
         "code": "base",
@@ -19665,9 +19599,7 @@
         "defense": 3.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 15
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_boot_076"
       },
       {
@@ -20019,12 +19951,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Leather",
-      "Unique"
+      "Leather"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -20048,7 +19979,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 15
@@ -20105,12 +20036,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Leather",
-      "Unique"
+      "Leather"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -20134,12 +20064,12 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
+    "requirements": {},
+    "requirements_max": {
       "strength": 13
     },
-    "requirements_max": null,
     "variants": [
       {
         "code": "base",
@@ -20147,9 +20077,7 @@
         "defense": 18.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 13
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a1_046"
       },
       {
@@ -20158,9 +20086,7 @@
         "defense": 24.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 13
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a1_047",
         "modifier_min": 1.0,
         "modifier_max": 6.0
@@ -20171,9 +20097,7 @@
         "defense": 35.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 13
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a1_049",
         "modifier_min": 2.0,
         "modifier_max": 10.0
@@ -20184,9 +20108,7 @@
         "defense": 47.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 13
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a1_050",
         "modifier_min": 5.0,
         "modifier_max": 14.0
@@ -20664,12 +20586,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Leather",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -20693,7 +20615,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 24
@@ -20735,11 +20657,11 @@
     "category": "armor",
     "sub_category": "Boots",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Boots",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -20763,7 +20685,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 14
@@ -20820,11 +20742,11 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Gloves",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -20848,7 +20770,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 24
@@ -20999,11 +20921,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -21027,7 +20949,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 13
@@ -21540,11 +21462,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -21568,7 +21490,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {},
     "requirements_max": null,
@@ -21583,11 +21505,11 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Gloves",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -21611,7 +21533,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 15
@@ -21655,11 +21577,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -21683,7 +21605,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 36
@@ -21937,12 +21859,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -21966,7 +21888,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 58
@@ -21985,12 +21907,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -22014,7 +21936,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 61
@@ -22033,12 +21955,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Chain",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -22062,7 +21984,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 12
@@ -22258,11 +22180,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -22286,7 +22208,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 15
@@ -22397,11 +22319,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -22425,7 +22347,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 20
@@ -22622,12 +22544,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Cloth",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -22651,7 +22573,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 13
@@ -22670,11 +22592,11 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Gloves",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -22698,7 +22620,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 38
@@ -23085,11 +23007,11 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Gloves",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -23113,7 +23035,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 24
@@ -23402,11 +23324,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -23430,7 +23352,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 26
@@ -23449,11 +23371,11 @@
     "category": "armor",
     "sub_category": "Boots",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Boots",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -23477,7 +23399,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 22
@@ -23582,11 +23504,11 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Gloves",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -23610,7 +23532,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 15
@@ -23629,11 +23551,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -23657,7 +23579,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 20
@@ -23722,11 +23644,11 @@
     "category": "armor",
     "sub_category": "Boots",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Boots",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -23750,7 +23672,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 44
@@ -23867,12 +23789,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Leather",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -23896,7 +23818,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 14
@@ -23915,12 +23837,12 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Body Armor",
       "Plate",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -23944,7 +23866,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 44
@@ -24313,12 +24235,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Leather",
-      "Unique"
+      "Leather"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -24342,11 +24263,9 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
-      "strength": 18
-    },
+    "requirements": {},
     "requirements_max": {
       "strength": 20
     },
@@ -24357,9 +24276,7 @@
         "defense": 19.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 18
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a2_002"
       },
       {
@@ -24368,9 +24285,7 @@
         "defense": 29.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 18
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a2_040",
         "modifier_min": 1.0,
         "modifier_max": 4.0
@@ -24762,11 +24677,11 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Gloves",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -24790,7 +24705,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 29
@@ -25006,11 +24921,11 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Gloves",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -25034,7 +24949,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 28
@@ -25078,12 +24993,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -25107,7 +25021,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 22
@@ -25126,12 +25040,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Chain",
-      "Unique"
+      "Chain"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -25155,7 +25068,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 24
@@ -25225,12 +25138,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Leather",
-      "Unique"
+      "Leather"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -25254,11 +25166,9 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
-      "strength": 12
-    },
+    "requirements": {},
     "requirements_max": {
       "strength": 16
     },
@@ -25269,9 +25179,7 @@
         "defense": 10.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 12
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a1_001"
       },
       {
@@ -25311,12 +25219,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Chain",
-      "Unique"
+      "Chain"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -25340,7 +25247,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 20
@@ -25469,12 +25376,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -25498,12 +25404,12 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
+    "requirements": {},
+    "requirements_max": {
       "strength": 14
     },
-    "requirements_max": null,
     "variants": [
       {
         "code": "base",
@@ -25511,9 +25417,7 @@
         "defense": 50.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 14
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a2_010"
       },
       {
@@ -25725,12 +25629,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Chain",
-      "Unique"
+      "Chain"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -25754,7 +25657,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 12
@@ -25923,12 +25826,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Chain",
-      "Unique"
+      "Chain"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -25952,11 +25854,9 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
-      "strength": 12
-    },
+    "requirements": {},
     "requirements_max": {
       "strength": 14
     },
@@ -25967,9 +25867,7 @@
         "defense": 61.0,
         "damage_min": null,
         "damage_max": null,
-        "requirements": {
-          "strength": 12
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_a_pos_a2_027"
       },
       {
@@ -26251,11 +26149,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -26279,7 +26177,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 13
@@ -26586,12 +26484,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -26615,7 +26512,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 28
@@ -26728,11 +26625,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -26756,7 +26653,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 16
@@ -26864,11 +26761,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -26892,7 +26789,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 13
@@ -26911,11 +26808,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -26939,7 +26836,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 15
@@ -26958,12 +26855,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Leather",
-      "Unique"
+      "Leather"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -26987,7 +26883,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {},
     "requirements_max": null,
@@ -27077,11 +26973,11 @@
     "category": "armor",
     "sub_category": "Helmet",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Helmet",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -27105,7 +27001,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 22
@@ -28038,11 +27934,10 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Gloves",
-      "Unique"
+      "Gloves"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -28066,7 +27961,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 14
@@ -28131,12 +28026,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -28160,13 +28054,13 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
-      "intelligence": 13
+      "intelligence": 14
     },
     "requirements_max": {
-      "intelligence": 13
+      "intelligence": 14
     },
     "variants": null,
     "icon": "b_gui_ig_i_a_pos_a7_236"
@@ -28179,11 +28073,10 @@
     "category": "armor",
     "sub_category": "Boots",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
-      "Boots",
-      "Unique"
+      "Boots"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -28207,7 +28100,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 14
@@ -28226,12 +28119,11 @@
     "category": "armor",
     "sub_category": "Body Armor",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Armor",
       "Body Armor",
-      "Plate",
-      "Unique"
+      "Plate"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -28255,7 +28147,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 12
@@ -28694,11 +28586,11 @@
     "category": "armor",
     "sub_category": "Gloves",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Armor",
       "Gloves",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -28722,7 +28614,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 23
@@ -30893,10 +30785,10 @@
     "set_name": null,
     "set_compare_name": null,
     "set_num_items": null,
-    "damage_min": 43,
-    "damage_max": 47,
-    "damage_min_max": 58,
-    "damage_max_max": 64,
+    "damage_min": null,
+    "damage_max": null,
+    "damage_min_max": null,
+    "damage_max_max": null,
     "range": 5.0,
     "duration": 2,
     "duration_max": 5,
@@ -33637,10 +33529,10 @@
     "set_name": null,
     "set_compare_name": null,
     "set_num_items": null,
-    "damage_min": 10,
-    "damage_max": 10,
-    "damage_min_max": 10,
-    "damage_max_max": 10,
+    "damage_min": 23,
+    "damage_max": 25,
+    "damage_min_max": 56,
+    "damage_max_max": 59,
     "range": 11.0,
     "duration": null,
     "duration_max": null,
@@ -34867,13 +34759,13 @@
     "category": "melee",
     "sub_category": "Polearm",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Melee",
       "Polearm",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -34897,7 +34789,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 23
@@ -35153,13 +35045,12 @@
     "category": "melee",
     "sub_category": "Sword",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Fast",
       "Melee",
       "One-Handed",
-      "Sword",
-      "Unique"
+      "Sword"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -35183,7 +35074,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 15
@@ -36353,13 +36244,12 @@
     "category": "melee",
     "sub_category": "Axe",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Axe",
       "Fast",
       "Melee",
-      "One-Handed",
-      "Unique"
+      "One-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -36383,7 +36273,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 13
@@ -36402,13 +36292,12 @@
     "category": "melee",
     "sub_category": "Dagger",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Dagger",
       "Fast",
       "Melee",
-      "One-Handed",
-      "Unique"
+      "One-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -36432,7 +36321,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 15
@@ -37167,13 +37056,13 @@
     "category": "melee",
     "sub_category": "Staff",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Melee",
+      "Rare",
       "Slow",
       "Staff",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -37197,7 +37086,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 13
@@ -37744,10 +37633,10 @@
     "sell_value_max": null,
     "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
+    "requirements": {},
+    "requirements_max": {
       "strength": 16
     },
-    "requirements_max": null,
     "variants": [
       {
         "code": "base",
@@ -37755,9 +37644,7 @@
         "defense": null,
         "damage_min": 4.0,
         "damage_max": 8.0,
-        "requirements": {
-          "strength": 16
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_w_dgr_003"
       },
       {
@@ -37766,9 +37653,7 @@
         "defense": null,
         "damage_min": 4.0,
         "damage_max": 13.0,
-        "requirements": {
-          "strength": 16
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_w_dgr_004",
         "modifier_min": 1.0,
         "modifier_max": 2.0
@@ -37998,13 +37883,13 @@
     "category": "melee",
     "sub_category": "Staff",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Melee",
+      "Rare",
       "Slow",
       "Staff",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -38028,8 +37913,8 @@
     "gold_value": 6350,
     "sell_value": 6350,
     "sell_value_max": 1234468,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 19050,
+    "buy_value_max": 3703404,
     "requirements": {
       "intelligence": 25
     },
@@ -39065,13 +38950,13 @@
     "category": "melee",
     "sub_category": "Sword",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Fast",
       "Melee",
       "One-Handed",
-      "Sword",
-      "Unique"
+      "Rare",
+      "Sword"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -39095,7 +38980,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 18
@@ -39265,13 +39150,13 @@
     "category": "melee",
     "sub_category": "Axe",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Axe",
       "Melee",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -39295,7 +39180,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 30
@@ -39890,13 +39775,13 @@
     "category": "melee",
     "sub_category": "Axe",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Axe",
       "Fast",
       "Melee",
       "One-Handed",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -39920,7 +39805,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 18
@@ -40314,13 +40199,13 @@
     "category": "melee",
     "sub_category": "Axe",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Axe",
       "Melee",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -40344,7 +40229,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 23
@@ -40580,9 +40465,7 @@
     "sell_value_max": null,
     "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
-      "strength": 12
-    },
+    "requirements": {},
     "requirements_max": {
       "strength": 30
     },
@@ -40593,9 +40476,7 @@
         "defense": null,
         "damage_min": 7.0,
         "damage_max": 10.0,
-        "requirements": {
-          "strength": 12
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_w_hmr_014"
       },
       {
@@ -41129,13 +41010,13 @@
     "category": "melee",
     "sub_category": "Hammer",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Fast",
       "Hammer",
       "Melee",
       "One-Handed",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -41159,8 +41040,8 @@
     "gold_value": 81,
     "sell_value": 81,
     "sell_value_max": 1608450,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 243,
+    "buy_value_max": 4825350,
     "requirements": {
       "strength": 12
     },
@@ -41229,13 +41110,13 @@
     "category": "melee",
     "sub_category": "Hammer",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Hammer",
       "Melee",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -41259,7 +41140,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 24
@@ -41316,13 +41197,13 @@
     "category": "melee",
     "sub_category": "Sword",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Fast",
       "Melee",
       "One-Handed",
-      "Sword",
-      "Unique"
+      "Rare",
+      "Sword"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -41346,8 +41227,8 @@
     "gold_value": 4778,
     "sell_value": 4778,
     "sell_value_max": 1910184,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 14334,
+    "buy_value_max": 5730552,
     "requirements": {
       "strength": 24
     },
@@ -41787,13 +41668,12 @@
     "category": "melee",
     "sub_category": "Staff",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Melee",
       "Slow",
       "Staff",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -41817,7 +41697,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 20
@@ -42224,13 +42104,13 @@
     "category": "melee",
     "sub_category": "Staff",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Melee",
+      "Rare",
       "Slow",
       "Staff",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -42254,7 +42134,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 18
@@ -42363,13 +42243,13 @@
     "category": "melee",
     "sub_category": "Sword",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Melee",
+      "Rare",
       "Slow",
       "Sword",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -42393,8 +42273,8 @@
     "gold_value": 52207,
     "sell_value": 52207,
     "sell_value_max": 2144437,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 156621,
+    "buy_value_max": 6433311,
     "requirements": {
       "strength": 26
     },
@@ -42463,13 +42343,13 @@
     "category": "melee",
     "sub_category": "Sword",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Melee",
+      "Rare",
       "Slow",
       "Sword",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -42493,7 +42373,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 29
@@ -42791,9 +42671,7 @@
     "sell_value_max": null,
     "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
-      "strength": 13
-    },
+    "requirements": {},
     "requirements_max": {
       "strength": 31
     },
@@ -42804,9 +42682,7 @@
         "defense": null,
         "damage_min": 10.0,
         "damage_max": 13.0,
-        "requirements": {
-          "strength": 13
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_w_mce_040"
       },
       {
@@ -43159,13 +43035,13 @@
     "category": "melee",
     "sub_category": "Sword",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Fast",
       "Melee",
       "One-Handed",
-      "Sword",
-      "Unique"
+      "Rare",
+      "Sword"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -43189,8 +43065,8 @@
     "gold_value": 1370,
     "sell_value": 1370,
     "sell_value_max": 1441191,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 4110,
+    "buy_value_max": 4323573,
     "requirements": {
       "strength": 19
     },
@@ -43526,13 +43402,13 @@
     "category": "melee",
     "sub_category": "Mace",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Fast",
       "Mace",
       "Melee",
       "One-Handed",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -43556,7 +43432,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 13
@@ -43941,13 +43817,13 @@
     "category": "melee",
     "sub_category": "Axe",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Axe",
       "Fast",
       "Melee",
       "One-Handed",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -43971,7 +43847,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 15
@@ -44041,13 +43917,13 @@
     "category": "melee",
     "sub_category": "Sword",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Fast",
       "Melee",
       "One-Handed",
-      "Sword",
-      "Unique"
+      "Rare",
+      "Sword"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -44071,7 +43947,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 14
@@ -45331,13 +45207,13 @@
     "category": "melee",
     "sub_category": "Sword",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Fast",
       "Melee",
       "One-Handed",
-      "Sword",
-      "Unique"
+      "Rare",
+      "Sword"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -45361,7 +45237,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 18
@@ -45881,13 +45757,13 @@
     "category": "melee",
     "sub_category": "Mace",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Fast",
       "Mace",
       "Melee",
       "One-Handed",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -45911,7 +45787,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 16
@@ -46436,13 +46312,13 @@
     "category": "melee",
     "sub_category": "Mace",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Fast",
       "Mace",
       "Melee",
       "One-Handed",
-      "Unique"
+      "Rare"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -46466,7 +46342,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 12
@@ -46593,9 +46469,7 @@
     "sell_value_max": null,
     "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
-      "intelligence": 12
-    },
+    "requirements": {},
     "requirements_max": {
       "intelligence": 32
     },
@@ -46606,9 +46480,7 @@
         "defense": null,
         "damage_min": 6.0,
         "damage_max": 8.0,
-        "requirements": {
-          "intelligence": 12
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_w_stf_104"
       },
       {
@@ -46958,13 +46830,13 @@
     "category": "melee",
     "sub_category": "Sword",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Fast",
       "Melee",
       "One-Handed",
-      "Sword",
-      "Unique"
+      "Rare",
+      "Sword"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -46988,8 +46860,8 @@
     "gold_value": 30535,
     "sell_value": 30535,
     "sell_value_max": 1692322,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 91605,
+    "buy_value_max": 5076966,
     "requirements": {
       "strength": 33
     },
@@ -47770,13 +47642,12 @@
     "category": "melee",
     "sub_category": "Mace",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Fast",
       "Mace",
       "Melee",
-      "One-Handed",
-      "Unique"
+      "One-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -47800,7 +47671,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 10
@@ -48065,13 +47936,13 @@
     "category": "melee",
     "sub_category": "Sword",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Fast",
       "Melee",
       "One-Handed",
-      "Sword",
-      "Unique"
+      "Rare",
+      "Sword"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -48095,7 +47966,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 17
@@ -48884,13 +48755,13 @@
     "category": "melee",
     "sub_category": "Hammer",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Hammer",
       "Melee",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -48914,8 +48785,8 @@
     "gold_value": 14276,
     "sell_value": 14276,
     "sell_value_max": 1852239,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 42828,
+    "buy_value_max": 5556717,
     "requirements": {
       "strength": 27
     },
@@ -50029,7 +49900,7 @@
     "damage_min_max": null,
     "damage_max_max": null,
     "range": 10.0,
-    "duration": 0,
+    "duration": 10,
     "duration_max": 10,
     "defense": null,
     "defense_max": null,
@@ -50681,8 +50552,8 @@
     "damage_min_max": null,
     "damage_max_max": null,
     "range": 10.0,
-    "duration": 48,
-    "duration_max": 78,
+    "duration": 7,
+    "duration_max": 18,
     "defense": null,
     "defense_max": null,
     "attack_speed": "Fast",
@@ -55917,13 +55788,13 @@
     "category": "ranged",
     "sub_category": "Bow",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Bow",
       "Ranged",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -55947,7 +55818,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 14,
@@ -56270,13 +56141,13 @@
     "category": "ranged",
     "sub_category": "Bow",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Bow",
       "Ranged",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -56300,7 +56171,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 12,
@@ -56321,13 +56192,13 @@
     "category": "ranged",
     "sub_category": "Bow",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Bow",
       "Ranged",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -56351,7 +56222,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 15,
@@ -56399,13 +56270,12 @@
     "category": "ranged",
     "sub_category": "Crossbow",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Crossbow",
       "Ranged",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -56429,7 +56299,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 10,
@@ -56507,8 +56377,8 @@
         "damage_min": 25.0,
         "damage_max": 39.0,
         "requirements": {
-          "dexterity": 14,
-          "strength": 12
+          "strength": 12,
+          "dexterity": 14
         },
         "icon": "b_gui_ig_i_w_bow_058",
         "modifier_min": 1.0,
@@ -56521,8 +56391,8 @@
         "damage_min": 33.0,
         "damage_max": 51.0,
         "requirements": {
-          "dexterity": 16,
-          "strength": 12
+          "strength": 12,
+          "dexterity": 16
         },
         "icon": "b_gui_ig_i_w_bow_057",
         "modifier_min": 3.0,
@@ -56535,8 +56405,8 @@
         "damage_min": 55.0,
         "damage_max": 83.0,
         "requirements": {
-          "dexterity": 21,
-          "strength": 14
+          "strength": 14,
+          "dexterity": 21
         },
         "icon": "b_gui_ig_i_w_bow_059",
         "modifier_min": 12.0,
@@ -56549,8 +56419,8 @@
         "damage_min": 84.0,
         "damage_max": 128.0,
         "requirements": {
-          "dexterity": 28,
-          "strength": 17
+          "strength": 17,
+          "dexterity": 28
         },
         "icon": "b_gui_ig_i_w_bow_040",
         "modifier_min": 20.0,
@@ -56563,8 +56433,8 @@
         "damage_min": 100.0,
         "damage_max": 152.0,
         "requirements": {
-          "dexterity": 32,
-          "strength": 19
+          "strength": 19,
+          "dexterity": 32
         },
         "icon": "b_gui_ig_i_w_bow_045",
         "modifier_min": 24.0,
@@ -56873,13 +56743,13 @@
     "category": "ranged",
     "sub_category": "Bow",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Bow",
       "Ranged",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -56903,7 +56773,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 12,
@@ -56979,13 +56849,12 @@
     "category": "ranged",
     "sub_category": "Bow",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
       "Bow",
       "Ranged",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -57009,7 +56878,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 12,
@@ -57030,13 +56899,13 @@
     "category": "ranged",
     "sub_category": "Bow",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Bow",
       "Ranged",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -57060,7 +56929,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 12
@@ -57101,8 +56970,8 @@
         "damage_min": 30.0,
         "damage_max": 52.0,
         "requirements": {
-          "dexterity": 16,
-          "strength": 12
+          "strength": 12,
+          "dexterity": 16
         },
         "icon": "b_gui_ig_i_w_bow_096",
         "modifier_min": 6.0,
@@ -57115,8 +56984,8 @@
         "damage_min": 51.0,
         "damage_max": 89.0,
         "requirements": {
-          "dexterity": 21,
-          "strength": 14
+          "strength": 14,
+          "dexterity": 21
         },
         "icon": "b_gui_ig_i_w_bow_097",
         "modifier_min": 14.0,
@@ -57129,8 +56998,8 @@
         "damage_min": 80.0,
         "damage_max": 140.0,
         "requirements": {
-          "dexterity": 29,
-          "strength": 18
+          "strength": 18,
+          "dexterity": 29
         },
         "icon": "b_gui_ig_i_w_bow_098",
         "modifier_min": 22.0,
@@ -57417,14 +57286,8 @@
     "sell_value_max": null,
     "buy_value": "Drop Only",
     "buy_value_max": null,
-    "requirements": {
-      "strength": 11,
-      "dexterity": 13
-    },
-    "requirements_max": {
-      "strength": 11,
-      "dexterity": 13
-    },
+    "requirements": {},
+    "requirements_max": null,
     "variants": null,
     "icon": "b_gui_ig_i_w_bow_310"
   },
@@ -57586,13 +57449,13 @@
     "category": "ranged",
     "sub_category": "Bow",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Bow",
       "Ranged",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -57616,8 +57479,8 @@
     "gold_value": 16995,
     "sell_value": 16995,
     "sell_value_max": 1600347,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 50985,
+    "buy_value_max": 4801041,
     "requirements": {
       "strength": 15,
       "dexterity": 24
@@ -58014,13 +57877,13 @@
     "category": "ranged",
     "sub_category": "Bow",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Bow",
       "Ranged",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -58044,8 +57907,8 @@
     "gold_value": 23391,
     "sell_value": 23391,
     "sell_value_max": 1372461,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 70173,
+    "buy_value_max": 4117383,
     "requirements": {
       "strength": 16,
       "dexterity": 26
@@ -58681,13 +58544,13 @@
     "category": "ranged",
     "sub_category": "Bow",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Bow",
       "Ranged",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -58711,7 +58574,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 13,
@@ -58787,13 +58650,13 @@
     "category": "ranged",
     "sub_category": "Crossbow",
     "source": "Vanilla",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Crossbow",
       "Ranged",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -58817,8 +58680,8 @@
     "gold_value": 75356,
     "sell_value": 75356,
     "sell_value_max": 2281881,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 226068,
+    "buy_value_max": 6845643,
     "requirements": {
       "strength": 19,
       "dexterity": 32
@@ -59076,13 +58939,13 @@
     "category": "ranged",
     "sub_category": "Bow",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Bow",
       "Ranged",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -59106,8 +58969,8 @@
     "gold_value": 6003,
     "sell_value": 6003,
     "sell_value_max": 1743092,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 18009,
+    "buy_value_max": 5229276,
     "requirements": {
       "strength": 15,
       "dexterity": 23
@@ -59370,13 +59233,13 @@
     "category": "ranged",
     "sub_category": "Bow",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Bow",
       "Ranged",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -59400,7 +59263,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 12,
@@ -59567,13 +59430,13 @@
     "category": "ranged",
     "sub_category": "Bow",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
       "Bow",
       "Ranged",
+      "Rare",
       "Slow",
-      "Two-Handed",
-      "Unique"
+      "Two-Handed"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -59597,7 +59460,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 13,
@@ -59690,10 +59553,7 @@
     "sell_value_max": null,
     "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
-      "strength": 13,
-      "dexterity": 18
-    },
+    "requirements": {},
     "requirements_max": {
       "strength": 17,
       "dexterity": 29
@@ -59705,10 +59565,7 @@
         "defense": null,
         "damage_min": 5.0,
         "damage_max": 9.0,
-        "requirements": {
-          "strength": 13,
-          "dexterity": 18
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_w_bow_012"
       },
       {
@@ -59717,10 +59574,7 @@
         "defense": null,
         "damage_min": 9.0,
         "damage_max": 17.0,
-        "requirements": {
-          "strength": 13,
-          "dexterity": 18
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_w_bow_020",
         "modifier_min": 1.0,
         "modifier_max": 3.0
@@ -59732,7 +59586,6 @@
         "damage_min": 15.0,
         "damage_max": 27.0,
         "requirements": {
-          "strength": 13,
           "dexterity": 13
         },
         "icon": "b_gui_ig_i_w_bow_056",
@@ -59837,11 +59690,11 @@
     "sell_value_max": null,
     "buy_value": null,
     "buy_value_max": null,
-    "requirements": {
+    "requirements": {},
+    "requirements_max": {
       "strength": 16,
       "dexterity": 26
     },
-    "requirements_max": null,
     "variants": [
       {
         "code": "base",
@@ -59849,10 +59702,7 @@
         "defense": null,
         "damage_min": 10.0,
         "damage_max": 16.0,
-        "requirements": {
-          "strength": 16,
-          "dexterity": 26
-        },
+        "requirements": {},
         "icon": "b_gui_ig_i_w_bow_062"
       },
       {
@@ -59862,7 +59712,6 @@
         "damage_min": 20.0,
         "damage_max": 32.0,
         "requirements": {
-          "strength": 16,
           "dexterity": 14
         },
         "icon": "b_gui_ig_i_w_bow_064",
@@ -63319,10 +63168,9 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
-      "Shield",
-      "Unique"
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -63346,7 +63194,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 12
@@ -63501,10 +63349,9 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
-      "Shield",
-      "Unique"
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -63528,7 +63375,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 18
@@ -63547,10 +63394,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -63574,7 +63421,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 41
@@ -63758,12 +63605,8 @@
     "sell_value_max": null,
     "buy_value": "Drop Only",
     "buy_value_max": null,
-    "requirements": {
-      "intelligence": 27
-    },
-    "requirements_max": {
-      "intelligence": 27
-    },
+    "requirements": {},
+    "requirements_max": null,
     "variants": null,
     "icon": "b_gui_ig_i_a_shd_618"
   },
@@ -63866,10 +63709,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -63893,7 +63736,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 29
@@ -63912,10 +63755,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -63939,7 +63782,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 26
@@ -64112,10 +63955,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -64139,7 +63982,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 27
@@ -64249,10 +64092,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -64276,7 +64119,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {},
     "requirements_max": null,
@@ -64291,10 +64134,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -64318,7 +64161,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 54
@@ -64337,10 +64180,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -64364,7 +64207,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 13
@@ -64383,10 +64226,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -64410,7 +64253,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 28
@@ -64564,10 +64407,9 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
-      "Shield",
-      "Unique"
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -64591,7 +64433,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 21
@@ -64610,10 +64452,9 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
-      "Shield",
-      "Unique"
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -64637,7 +64478,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 33
@@ -64656,10 +64497,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -64683,7 +64524,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 38
@@ -64753,10 +64594,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -64780,7 +64621,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 16
@@ -64850,10 +64691,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -64877,7 +64718,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 29
@@ -65123,10 +64964,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -65150,7 +64991,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 31
@@ -65383,10 +65224,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -65410,7 +65251,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 13
@@ -66061,10 +65902,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -66088,7 +65929,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 24
@@ -66198,10 +66039,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -66225,7 +66066,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 20
@@ -66414,10 +66255,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -66441,7 +66282,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {},
     "requirements_max": null,
@@ -66456,10 +66297,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -66483,7 +66324,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 33
@@ -66502,10 +66343,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -66529,7 +66370,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 18
@@ -66548,10 +66389,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -66575,7 +66416,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 59
@@ -66594,10 +66435,9 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
-      "Shield",
-      "Unique"
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -66621,7 +66461,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 23
@@ -66686,10 +66526,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -66713,7 +66553,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 38
@@ -66909,10 +66749,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -66936,7 +66776,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 36
@@ -67077,10 +66917,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -67104,7 +66944,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 52
@@ -67168,10 +67008,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -67195,7 +67035,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 51
@@ -67259,10 +67099,9 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
-      "Shield",
-      "Unique"
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -67286,7 +67125,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 24
@@ -67572,10 +67411,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -67599,7 +67438,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 27
@@ -67664,10 +67503,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -67691,7 +67530,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 38
@@ -67755,10 +67594,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -67782,7 +67621,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 20
@@ -67801,10 +67640,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -67828,7 +67667,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 25
@@ -67938,10 +67777,9 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
-      "Shield",
-      "Unique"
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -67965,7 +67803,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "intelligence": 39
@@ -68369,10 +68207,9 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
-      "Shield",
-      "Unique"
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -68396,8 +68233,8 @@
     "gold_value": 109270,
     "sell_value": 109270,
     "sell_value_max": 1345164,
-    "buy_value": "Drop Only",
-    "buy_value_max": null,
+    "buy_value": 327810,
+    "buy_value_max": 4035492,
     "requirements": {
       "intelligence": 64
     },
@@ -68743,10 +68580,9 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "LoA Expansion",
-    "rarity": "unique",
+    "rarity": "normal",
     "tags": [
-      "Shield",
-      "Unique"
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -68770,7 +68606,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "dexterity": 13
@@ -68789,10 +68625,10 @@
     "category": "shields",
     "sub_category": "Shield",
     "source": "Unlocked Loot",
-    "rarity": "unique",
+    "rarity": "rare",
     "tags": [
-      "Shield",
-      "Unique"
+      "Rare",
+      "Shield"
     ],
     "stat_bonus": null,
     "set_name": null,
@@ -68816,7 +68652,7 @@
     "gold_value": null,
     "sell_value": null,
     "sell_value_max": null,
-    "buy_value": "Drop Only",
+    "buy_value": null,
     "buy_value_max": null,
     "requirements": {
       "strength": 18

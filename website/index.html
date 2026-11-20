@@ -5674,6 +5674,17 @@
                             Adventurers: <span class="count-highlight" id="count-ladder">0</span>
                         </div>
                     </div>
+                    <div class="wiki-toolbar ladder-toolbar">
+                        <div class="wiki-search-row">
+                            <div class="wiki-search-box">
+                                <svg class="wiki-search-icon" viewBox="0 0 24 24">
+                                    <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                                </svg>
+                                <input type="text" id="ladder-search-input" placeholder="Search 0 characters..." autocomplete="off">
+                                <button class="wiki-search-clear" id="ladder-search-clear" title="Clear Search">&times;</button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="roster-table ladder-table">
                         <div class="roster-head ladder-head">
                             <div class="th-col th-rank"></div>
@@ -7206,19 +7217,54 @@
         );
     }
 
+    let ladderSearchQuery = '';
+    let ladderSearchRaw = '';
+
+    function setupLadderSearch() {
+        const input = document.getElementById('ladder-search-input');
+        const clearBtn = document.getElementById('ladder-search-clear');
+        if (!input || input.dataset.bound === '1') return;
+        input.dataset.bound = '1';
+        input.addEventListener('input', (e) => {
+            const raw = (e.target.value || '').trim();
+            ladderSearchRaw = raw;
+            ladderSearchQuery = raw.toLowerCase();
+            if (clearBtn) clearBtn.style.display = raw ? 'block' : 'none';
+            if (lastStatusData) renderLadder(lastStatusData.ladder);
+        });
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                input.value = '';
+                ladderSearchRaw = '';
+                ladderSearchQuery = '';
+                clearBtn.style.display = 'none';
+                if (lastStatusData) renderLadder(lastStatusData.ladder);
+                input.focus();
+            });
+        }
+    }
+
     function renderLadder(characters) {
+        setupLadderSearch();
         const container = document.getElementById('list-ladder');
         const countElem = document.getElementById('count-ladder');
-        if (countElem) countElem.innerText = characters ? characters.length : 0;
+        const searchInput = document.getElementById('ladder-search-input');
+        const totalCount = characters ? characters.length : 0;
+        if (countElem) countElem.innerText = totalCount;
+        if (searchInput) searchInput.placeholder = `Search ${totalCount.toLocaleString()} characters...`;
 
         if (!container) return;
         if (!characters || characters.length === 0) {
-            container.innerHTML = `
+            const emptyHtml = `
                 <div class="empty-state">
                     <div class="empty-title">No Characters Found</div>
                     <div class="empty-desc">No adventurers have been recorded in the realm archives yet.</div>
                 </div>
             `;
+            if (container.dataset.lastHtml !== emptyHtml) {
+                container.innerHTML = emptyHtml;
+                container.dataset.lastHtml = emptyHtml;
+            }
             return;
         }
 
@@ -7233,11 +7279,45 @@
             return (a.character_name || '').localeCompare(b.character_name || '');
         });
 
+        const ranked = sorted.map((p, index) => ({ p, rank: index + 1 }));
+        let filtered = ranked;
+        const q = ladderSearchQuery;
+        if (q) {
+            const hasExactAcct = ranked.some(r => (r.p.account_name || '').trim().toLowerCase() === q);
+            const hasExactChar = ranked.some(r => (r.p.character_name || '').trim().toLowerCase() === q);
+            if (hasExactAcct) {
+                filtered = ranked.filter(r =>
+                    (r.p.account_name || '').trim().toLowerCase() === q ||
+                    (r.p.character_name || '').trim().toLowerCase() === q
+                );
+            } else if (hasExactChar) {
+                filtered = ranked.filter(r => (r.p.character_name || '').trim().toLowerCase() === q);
+            } else {
+                filtered = ranked.filter(r =>
+                    (r.p.character_name || '').toLowerCase().includes(q) ||
+                    (r.p.account_name || '').toLowerCase().includes(q)
+                );
+            }
+        }
+
+        if (filtered.length === 0) {
+            const noMatchHtml = `
+                <div class="empty-state">
+                    <div class="empty-title">No Matching Characters</div>
+                    <div class="empty-desc">No character or account matches "${escapeHTML(ladderSearchRaw)}".</div>
+                </div>
+            `;
+            if (container.dataset.lastHtml !== noMatchHtml) {
+                container.innerHTML = noMatchHtml;
+                container.dataset.lastHtml = noMatchHtml;
+            }
+            return;
+        }
+
         const browseArmory = canBrowseArmory();
         let html = '';
-        sorted.forEach((p, index) => {
+        filtered.forEach(({ p, rank }) => {
             const lvl = p.level !== undefined ? p.level : 0;
-            const rank = index + 1;
             const isOnline = !!p.is_online;
             const lastSeenText = p.last_seen || (isOnline ? 'Online Now' : 'Unknown');
 
@@ -8425,10 +8505,11 @@
             }
             if (item.requirements) {
                 const parsedReqs = parseArmoryReqString(item.requirements);
-                if (Object.keys(parsedReqs).length > 0) {
-                    modalItem.requirements = parsedReqs;
-                    modalItem.requirements_max = null;
-                }
+                modalItem.requirements = parsedReqs;
+                modalItem.requirements_max = null;
+            } else {
+                modalItem.requirements = {};
+                modalItem.requirements_max = null;
             }
             if (item.set_name) {
                 modalItem.set_name = item.set_name;
@@ -8456,12 +8537,17 @@
                 modalItem._armory_innate = innateBonuses;
                 modalItem._armory_modifiers = modBonuses;
             }
-            if (!modalItem.tags || modalItem.tags.length === 0) {
-                const tgs = [];
-                if (modalItem.sub_category) tgs.push(modalItem.sub_category);
-                if (item.is_two_handed) tgs.push('Two-Handed');
-                modalItem.tags = tgs;
+            const rawTags = Array.isArray(modalItem.tags) ? modalItem.tags.slice() : [];
+            const cleanedTags = rawTags.filter(t => t !== 'Unique' && t !== 'Rare' && t !== 'Set Item' && t !== 'Magic');
+            if (modalItem.rarity === 'set') cleanedTags.push('Set Item');
+            else if (modalItem.rarity === 'unique') cleanedTags.push('Unique');
+            else if (modalItem.rarity === 'rare') cleanedTags.push('Rare');
+            else if (modalItem.rarity === 'magic') cleanedTags.push('Magic');
+            if (cleanedTags.length === 0) {
+                if (modalItem.sub_category) cleanedTags.push(modalItem.sub_category);
+                if (item.is_two_handed) cleanedTags.push('Two-Handed');
             }
+            modalItem.tags = cleanedTags;
 
             openWikiItemModal(modalItem);
         });
@@ -9409,22 +9495,31 @@ function initWikiView() {
         }
     }
 
+    function formatWikiReqLabel(k) {
+        const kl = k.toLowerCase().replace(/_/g, ' ').trim();
+        if (kl === 'strength' || kl === 'str') return 'Strength';
+        if (kl === 'dexterity' || kl === 'dex') return 'Dexterity';
+        if (kl === 'intelligence' || kl === 'int') return 'Intelligence';
+        if (kl === 'nature magic' || kl === 'nature') return 'Nature Magic';
+        if (kl === 'combat magic' || kl === 'combat') return 'Combat Magic';
+        if (kl === 'melee') return 'Melee';
+        if (kl === 'ranged') return 'Ranged';
+        if (kl === 'magic level' || kl === 'magic') return 'Magic';
+        if (kl === 'level' || kl === 'character level') return 'Level';
+        return k.charAt(0).toUpperCase() + k.slice(1);
+    }
+
     function formatWikiRequirements(reqs, reqsMax) {
-        if (!reqs || Object.keys(reqs).length === 0) return 'None';
+        const baseKeys = reqs ? Object.keys(reqs) : [];
+        const maxKeys = reqsMax ? Object.keys(reqsMax) : [];
+        if (baseKeys.length === 0) {
+            if (maxKeys.length === 0) return 'None';
+            const maxParts = maxKeys.map(k => `${escapeHTML(formatWikiReqLabel(k))} ${escapeHTML(String(reqsMax[k]))}`);
+            return `None &rarr; ${maxParts.join(', ')}`;
+        }
         const parts = [];
         for (const [k, v] of Object.entries(reqs)) {
-            const kl = k.toLowerCase().replace(/_/g, ' ').trim();
-            let label = k.charAt(0).toUpperCase() + k.slice(1);
-            if (kl === 'strength' || kl === 'str') label = 'Strength';
-            else if (kl === 'dexterity' || kl === 'dex') label = 'Dexterity';
-            else if (kl === 'intelligence' || kl === 'int') label = 'Intelligence';
-            else if (kl === 'nature magic' || kl === 'nature') label = 'Nature Magic';
-            else if (kl === 'combat magic' || kl === 'combat') label = 'Combat Magic';
-            else if (kl === 'melee') label = 'Melee';
-            else if (kl === 'ranged') label = 'Ranged';
-            else if (kl === 'magic level' || kl === 'magic') label = 'Magic';
-            else if (kl === 'level' || kl === 'character level') label = 'Level';
-
+            const label = formatWikiReqLabel(k);
             const maxVal = (reqsMax && reqsMax[k] != null && reqsMax[k] > v) ? reqsMax[k] : null;
             if (maxVal != null) {
                 parts.push(`${escapeHTML(label)} ${escapeHTML(String(v))} &rarr; ${escapeHTML(String(maxVal))}`);
@@ -9432,14 +9527,23 @@ function initWikiView() {
                 parts.push(`${escapeHTML(label)} ${escapeHTML(String(v))}`);
             }
         }
+        if (reqsMax) {
+            for (const [k, mv] of Object.entries(reqsMax)) {
+                if (reqs[k] == null && mv != null) {
+                    const label = formatWikiReqLabel(k);
+                    parts.push(`${escapeHTML(label)} 0 &rarr; ${escapeHTML(String(mv))}`);
+                }
+            }
+        }
         return parts.join(', ');
     }
 
     function buildRequirementsRow(reqs, reqsMax) {
-        if (!reqs) return '';
-        const count = Object.keys(reqs).length;
-        if (count === 0) return '';
-        const label = count === 1 ? 'Requirement' : 'Requirements';
+        const baseKeys = reqs ? Object.keys(reqs) : [];
+        const maxKeys = reqsMax ? Object.keys(reqsMax) : [];
+        const allKeys = new Set([...baseKeys, ...maxKeys]);
+        if (allKeys.size === 0) return '';
+        const label = allKeys.size === 1 ? 'Requirement' : 'Requirements';
         return `<div class="wiki-stat-row"><span class="stat-lbl">${label}</span><span class="stat-val req">${formatWikiRequirements(reqs, reqsMax)}</span></div>`;
     }
 
