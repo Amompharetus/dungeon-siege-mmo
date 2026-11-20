@@ -203,6 +203,7 @@ type discordButton struct {
 type localCharInfo struct {
 	Name     string
 	Level    int
+	HasLevel bool
 	Class    string
 	Location string
 }
@@ -499,16 +500,24 @@ func parseDspartyBytes(data []byte, fallbackName string) localCharInfo {
 	})
 	if partyBytes, ok := files["party.gas"]; ok {
 		s := string(partyBytes)
+		parsedParty := false
 		if m := rpcScreenNameRe.FindStringSubmatch(s); len(m) > 1 && strings.TrimSpace(m[1]) != "" {
 			info.Name = strings.TrimSpace(m[1])
+			parsedParty = true
 		}
 		if m := rpcClassRe.FindStringSubmatch(s); len(m) > 1 {
 			info.Class = titleWords(m[1])
+			parsedParty = true
 		}
 		if m := rpcUberLvlRe.FindStringSubmatch(s); len(m) > 1 {
 			if fl, err := strconv.ParseFloat(m[1], 64); err == nil && fl >= 0 {
 				info.Level = int(math.Floor(fl))
+				info.HasLevel = true
 			}
+		} else if parsedParty {
+			// Fresh level-0 characters may omit uber_level in party.gas.
+			info.Level = 0
+			info.HasLevel = true
 		}
 	}
 	if infoBytes, ok := files["info.gas"]; ok {
@@ -588,6 +597,14 @@ func (c *saveFileCache) read(saveDir, prefsPath string) localCharInfo {
 		return localCharInfo{Name: newestBase}
 	}
 	info := parseDspartyBytes(data, newestBase)
+	if !info.HasLevel {
+		// Guard against catching DSLOA mid-write on .dsparty: keep previous cached info
+		// and do not cache the failed read so the next 5s tick retries cleanly.
+		if c.path == newestPath && c.info.HasLevel {
+			return c.info
+		}
+		return info
+	}
 	if info.Location == "" && prefsPath != "" {
 		if pb, err := os.ReadFile(prefsPath); err == nil {
 			if m := rpcStartLocRe.FindStringSubmatch(string(pb)); len(m) > 1 {
@@ -669,9 +686,10 @@ func buildDiscordActivity(started time.Time, phase string, ch localCharInfo, ser
 	details := phase
 	if details == "" {
 		var parts []string
-		if ch.Level > 0 && ch.Class != "" {
+		hasLevel := ch.HasLevel || ch.Level > 0
+		if hasLevel && ch.Class != "" {
 			parts = append(parts, fmt.Sprintf("Level %d %s", ch.Level, ch.Class))
-		} else if ch.Level > 0 {
+		} else if hasLevel {
 			parts = append(parts, fmt.Sprintf("Level %d Adventurer", ch.Level))
 		} else if ch.Class != "" {
 			parts = append(parts, ch.Class)

@@ -118,6 +118,22 @@ func TestBuildDiscordActivityFormats(t *testing.T) {
 	if fresh.Assets.LargeText != "Dungeon Siege: Legends of Aranna MMO" {
 		t.Fatalf("unexpected fallback large text: %q", fresh.Assets.LargeText)
 	}
+
+	// Level 0 character with class and location
+	lvl0 := buildDiscordActivity(started, "", localCharInfo{
+		Name: "Newbie", Level: 0, HasLevel: true, Class: "Farmer", Location: "Elddim",
+	}, "eu", "Central Europe", 1, 30)
+	if lvl0.Details != "Level 0 Farmer · Elddim" {
+		t.Fatalf("expected Level 0 Farmer · Elddim, got %q", lvl0.Details)
+	}
+
+	// Level 0 character without class
+	lvl0NoClass := buildDiscordActivity(started, "", localCharInfo{
+		Name: "Newbie", Level: 0, HasLevel: true, Location: "Elddim",
+	}, "na", "North America", 1, 30)
+	if lvl0NoClass.Details != "Level 0 Adventurer · Elddim" {
+		t.Fatalf("expected Level 0 Adventurer · Elddim, got %q", lvl0NoClass.Details)
+	}
 }
 
 // buildFakeDsparty constructs a minimal valid DSigTank with chunked zlib entries for testing.
@@ -242,6 +258,54 @@ func TestParseDspartyBytes(t *testing.T) {
 	}
 	if ch.Location != "Neener's Emporium" {
 		t.Fatalf("location=%q (expected Neener's Emporium)", ch.Location)
+	}
+	if !ch.HasLevel {
+		t.Fatalf("expected HasLevel=true")
+	}
+}
+
+func TestParseDspartyLevelZeroAndPartialWriteGuard(t *testing.T) {
+	// Real DS1 fresh character has uber_level = 0.0001
+	tank0 := buildFakeDsparty(map[string][]byte{
+		"party.gas": []byte("screen_name = \"Rook\";\nactor_class = \"Farmer\";\nuber_level = 0.0001;\n"),
+		"info.gas":  []byte("region = town_center;\n"),
+	})
+	ch0 := parseDspartyBytes(tank0, "Rook")
+	if !ch0.HasLevel || ch0.Level != 0 || ch0.Class != "Farmer" || ch0.Location != "Elddim" {
+		t.Fatalf("unexpected lvl0 parse: %+v", ch0)
+	}
+	act := buildDiscordActivity(time.Unix(1795000000, 0), "", ch0, "eu", "Central Europe", 2, 30)
+	if act.Details != "Level 0 Farmer · Elddim" {
+		t.Fatalf("expected Level 0 Farmer · Elddim, got %q", act.Details)
+	}
+
+	// Omitted uber_level in a valid party.gas still counts as Level 0
+	tankOmit := buildFakeDsparty(map[string][]byte{
+		"party.gas": []byte("screen_name = \"Rook\";\nactor_class = \"Farmer\";\n"),
+	})
+	chOmit := parseDspartyBytes(tankOmit, "Rook")
+	if !chOmit.HasLevel || chOmit.Level != 0 {
+		t.Fatalf("expected HasLevel=true Level=0 when uber_level omitted, got %+v", chOmit)
+	}
+
+	// Partial mid-write read must preserve previous valid cache entry
+	dir := t.TempDir()
+	savePath := filepath.Join(dir, "Rook.dsparty")
+	if err := os.WriteFile(savePath, tank0, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var cache saveFileCache
+	first := cache.read(dir, "")
+	if !first.HasLevel || first.Level != 0 || first.Class != "Farmer" {
+		t.Fatalf("initial cache read failed: %+v", first)
+	}
+	// Simulate partial/truncated write with newer size
+	if err := os.WriteFile(savePath, []byte("DSigTank\x00truncated"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mid := cache.read(dir, "")
+	if !mid.HasLevel || mid.Class != "Farmer" {
+		t.Fatalf("partial write clobbered cache: %+v", mid)
 	}
 }
 

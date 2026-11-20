@@ -5687,16 +5687,20 @@
                 </div>
             `;
         } else {
-            // Always rank from higher level to lower; tie-breaker: character name alphabetical
+            // Always rank from higher level to lower; tie-breaker: higher XP, then character name alphabetical
             const sorted = [...players].sort((a, b) => {
-                const lvlA = a.level || 0;
-                const lvlB = b.level || 0;
+                const lvlA = a.level !== undefined && a.level !== null ? a.level : 0;
+                const lvlB = b.level !== undefined && b.level !== null ? b.level : 0;
                 if (lvlB !== lvlA) return lvlB - lvlA;
+                const xpA = a.xp || 0;
+                const xpB = b.xp || 0;
+                if (xpB !== xpA) return xpB - xpA;
                 return (a.character_name || '').localeCompare(b.character_name || '');
             });
 
             sorted.forEach(p => {
                 const loc = p.location || 'Staging Screen';
+                const lvl = p.level !== undefined && p.level !== null ? p.level : 0;
                 html += `
                     <div class="roster-row">
                         <div class="col-adventurer">
@@ -5705,7 +5709,7 @@
                         </div>
                         <div class="col-level">
                             <div class="level-shield">
-                                <span class="level-val">${p.level || 1}</span>
+                                <span class="level-val">${lvl}</span>
                             </div>
                         </div>
                         <div class="col-class">
@@ -6065,18 +6069,22 @@
 
         function generateTooltipPlayerList(list) {
             const sorted = [...list].sort((a, b) => {
-                const lvlA = a.level || 0;
-                const lvlB = b.level || 0;
+                const lvlA = a.level !== undefined && a.level !== null ? a.level : 0;
+                const lvlB = b.level !== undefined && b.level !== null ? b.level : 0;
                 if (lvlB !== lvlA) return lvlB - lvlA;
+                const xpA = a.xp || 0;
+                const xpB = b.xp || 0;
+                if (xpB !== xpA) return xpB - xpA;
                 return (a.character_name || '').localeCompare(b.character_name || '');
             });
 
             let pListHtml = '';
             sorted.forEach(p => {
+                const lvl = p.level !== undefined && p.level !== null ? p.level : 0;
                 pListHtml += `
                     <div class="tooltip-player-item">
                         <div class="tooltip-player-left">
-                            <div class="tooltip-shield">${p.level || 1}</div>
+                            <div class="tooltip-shield">${lvl}</div>
                             <div class="tooltip-char-info">
                                 <span class="tooltip-char-name">${escapeHTML(p.character_name || 'Hero')}</span>
                                 <span class="tooltip-char-acct">Account: ${escapeHTML(p.account_name || '')}</span>
@@ -6216,9 +6224,10 @@
         if (stagingPlayers.length > 0) {
             if (stagingBeaconElem) stagingBeaconElem.style.display = 'block';
             if (stagingNamesElem) {
-                const stagingHtml = stagingPlayers.map(p =>
-                    `${escapeHTML(p.character_name || 'Hero')} (Level ${p.level || 1} ${escapeHTML(p.class || 'Adventurer')})`
-                ).join(', ');
+                const stagingHtml = stagingPlayers.map(p => {
+                    const lvl = p.level !== undefined && p.level !== null ? p.level : 0;
+                    return `${escapeHTML(p.character_name || 'Hero')} (Level ${lvl} ${escapeHTML(p.class || 'Adventurer')})`;
+                }).join(', ');
                 if (stagingNamesElem.dataset.lastHtml !== stagingHtml) {
                     stagingNamesElem.innerHTML = stagingHtml;
                     stagingNamesElem.dataset.lastHtml = stagingHtml;

@@ -2,10 +2,13 @@ package main
 
 import (
 	"archive/zip"
+	"bytes"
+	"compress/zlib"
 	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
@@ -91,20 +94,24 @@ func isAuthorizedGM(username string) bool {
 }
 
 type CachedChar struct {
-	Name      string `json:"name"`
-	Class     string `json:"class"`
-	Race      string `json:"race"`
-	Level     int    `json:"level"`
-	SaveSHA   string `json:"save_sha"`
-	StartLoc  string `json:"start_loc"`
-	MapAreaId string `json:"map_area_id"`
-	SaveTime  int64  `json:"save_time"`
+	Name        string `json:"name"`
+	Class       string `json:"class"`
+	Race        string `json:"race"`
+	Level       int    `json:"level"`
+	RawLevel    int    `json:"raw_level"`
+	HasPartyGas bool   `json:"has_party_gas"`
+	SaveSHA     string `json:"save_sha"`
+	EntrySig    string `json:"entry_sig"`
+	StartLoc    string `json:"start_loc"`
+	MapAreaId   string `json:"map_area_id"`
+	SaveTime    int64  `json:"save_time"`
 }
 
 type PlayerInfo struct {
 	AccountName   string `json:"account_name"`
 	CharacterName string `json:"character_name"`
 	Level         int    `json:"level"`
+	XP            int64  `json:"xp"`
 	Race          string `json:"race"`
 	Class         string `json:"class"`
 	Location      string `json:"location"`
@@ -412,8 +419,9 @@ func (c *cachedBuild[T]) get() T {
 }
 
 var (
-	realmCache  = &cachedBuild[RealmStatus]{ttl: 5 * time.Second, build: buildRealmStatus}
-	ladderCache = &cachedBuild[[]LadderCharacter]{ttl: 30 * time.Second, build: buildLadderCharacters}
+	// Unified 3-second snapshot shared by Realms, World Map, and Ladder so levels, classes,
+	// ranks, XP, locations, and online badges stay 100% synchronized in real time.
+	realmCache = &cachedBuild[RealmStatus]{ttl: 3 * time.Second, build: buildRealmStatus}
 )
 
 func getRealmStatus() RealmStatus {
@@ -421,7 +429,7 @@ func getRealmStatus() RealmStatus {
 }
 
 func getLadderCharacters() []LadderCharacter {
-	return ladderCache.get()
+	return getRealmStatus().Ladder
 }
 
 var (
@@ -1073,6 +1081,7 @@ func buildRealmStatus() RealmStatus {
 	canonicalAcctNames := make(map[string]string) // lower(account) -> raw account name
 
 	serverTown := make(map[string]string)
+	serverJoinGuard := make(map[string]bool)
 
 	// 1. Fetch live portal status
 	resp, err := portalHTTP.Get(portalURL + "/api/status?internal=1")
@@ -1097,8 +1106,12 @@ func buildRealmStatus() RealmStatus {
 				res.ServerName = portalResp.ServerName
 			}
 			for _, s := range portalResp.Servers {
+				sID := strings.ToLower(s.ID)
 				town := formatTownName(s.Game["start_location"])
-				serverTown[s.ID] = town
+				serverTown[sID] = town
+				if strings.EqualFold(s.Game["joinguard"], "on") {
+					serverJoinGuard[sID] = true
+				}
 				for k, v := range s.Game {
 					if strings.HasPrefix(k, "pc") {
 						parts := strings.Split(v, "|")
@@ -1106,7 +1119,7 @@ func buildRealmStatus() RealmStatus {
 							rawAcct := strings.TrimSpace(parts[0])
 							acctLower := strings.ToLower(rawAcct)
 							verifiedPlayers[acctLower] = town
-							heartbeatServers[acctLower] = s.ID
+							heartbeatServers[acctLower] = sID
 							canonicalAcctNames[acctLower] = rawAcct
 
 							if len(parts) > 1 && parts[1] != "" {
@@ -1139,9 +1152,9 @@ func buildRealmStatus() RealmStatus {
 					d := time.Duration(uptimeS) * time.Second
 					st.Uptime = fmt.Sprintf("%dh %dm", int(d.Hours()), int(d.Minutes())%60)
 				}
-				if s.ID == "na" {
+				if sID == "na" {
 					res.NA = st
-				} else if s.ID == "eu" {
+				} else if sID == "eu" {
 					res.EU = st
 				}
 			}
@@ -1188,6 +1201,8 @@ func buildRealmStatus() RealmStatus {
 				l = strings.TrimSpace(l)
 				if strings.HasPrefix(l, "start_location=") {
 					town = formatTownName(strings.TrimPrefix(l, "start_location="))
+				} else if strings.EqualFold(l, "joinguard=on") {
+					serverJoinGuard[hb.id] = true
 				}
 			}
 			for _, l := range lines {
@@ -1231,13 +1246,33 @@ func buildRealmStatus() RealmStatus {
 		"eu": res.EU.PlayersCount,
 	}
 
-	finalOnlineSessions := make(map[string]string) // acctLower -> srvID
-	serverVerifiedCount := make(map[string]int)
-
-	// Anyone in game server heartbeat is 100% active and connected!
+	// SiegeHost keeps departed players in pcN for 60s so their final XP reaches SiegePortal.
+	// If pcN has more entries than the shard's live players count, filter out accounts whose
+	// launcher session has already ended so they do not linger as ghosts on Realms/Map/Ladder.
+	hbByServer := make(map[string][]string)
 	for acctLower, srvID := range heartbeatServers {
 		srvLower := strings.ToLower(srvID)
 		if serverActive[srvLower] {
+			hbByServer[srvLower] = append(hbByServer[srvLower], acctLower)
+		}
+	}
+
+	finalOnlineSessions := make(map[string]string) // acctLower -> srvID
+	serverVerifiedCount := make(map[string]int)
+
+	for srvLower, accts := range hbByServer {
+		if len(accts) > serverCap[srvLower] {
+			var activeOnly []string
+			for _, acctLower := range accts {
+				if _, stillInSession := activeSessions[acctLower]; stillInSession {
+					activeOnly = append(activeOnly, acctLower)
+				}
+			}
+			if len(activeOnly) > 0 {
+				accts = activeOnly
+			}
+		}
+		for _, acctLower := range accts {
 			finalOnlineSessions[acctLower] = srvLower
 			serverVerifiedCount[srvLower]++
 			if _, ok := sessionRawNames[acctLower]; !ok {
@@ -1246,8 +1281,8 @@ func buildRealmStatus() RealmStatus {
 		}
 	}
 
-	// For servers that have connected players (pCount > 0) but heartbeat didn't provide pc* lines (e.g. EU),
-	// match up to the remaining player count using active sessions on that server, ordered by newest session start
+	// Match players connected to the shard who are not yet in pcN (e.g. sitting in Staging Screen
+	// or during JoinGuard's 10s verification window) using active portal sessions ordered newest-first.
 	for srvID, isActive := range serverActive {
 		if !isActive {
 			continue
@@ -1274,11 +1309,16 @@ func buildRealmStatus() RealmStatus {
 		for i := 0; i < len(candidates) && i < needed; i++ {
 			c := candidates[i]
 			finalOnlineSessions[c.acctLower] = srvID
-			hasUploadedInSession[c.acctLower] = true
+			// Only force in-game status when JoinGuard is off (no pcN lines expected).
+			// When JoinGuard is on, players without pcN or an in-session save remain in Staging Screen.
+			if !serverJoinGuard[srvID] {
+				hasUploadedInSession[c.acctLower] = true
+			}
 		}
 	}
 
 	accounts := loadAccounts()
+	onlineActiveChar := make(map[string]string)
 
 	for acctLower, srvID := range finalOnlineSessions {
 		acct := accounts[acctLower]
@@ -1296,16 +1336,13 @@ func buildRealmStatus() RealmStatus {
 			saveSHA = acct.SaveSHA
 		}
 
-		_, _, charDetails := selectActiveCharacter(canonicalName, acct, saveSHA, heartbeatHeroes[acctLower])
+		liveXP := heartbeatXP[acctLower]
+		activeChar, activeRec, charDetails := selectActiveCharacter(canonicalName, acct, saveSHA, heartbeatHeroes[acctLower], liveXP)
+		onlineActiveChar[acctLower] = activeChar
 
-		// If save file level is not available (level <= 1) and shard heartbeat reported XP, fallback to formula
-		if charDetails.Level <= 1 {
-			if hbXP, ok := heartbeatXP[acctLower]; ok && hbXP > 0 {
-				calcLvl := int(math.Floor(math.Sqrt(float64(hbXP)/120.0))) + 1
-				if calcLvl > 1 {
-					charDetails.Level = calcLvl
-				}
-			}
+		effectiveXP := liveXP
+		if activeRec != nil && activeRec.XP > effectiveXP {
+			effectiveXP = activeRec.XP
 		}
 
 		location := "Staging Screen"
@@ -1364,6 +1401,7 @@ func buildRealmStatus() RealmStatus {
 			AccountName:   canonicalName,
 			CharacterName: charDetails.Name,
 			Level:         charDetails.Level,
+			XP:            effectiveXP,
 			Race:          race,
 			Class:         charDetails.Class,
 			Location:      location,
@@ -1394,11 +1432,14 @@ func buildRealmStatus() RealmStatus {
 	}
 	res.TotalOnline = res.NA.PlayersCount + res.EU.PlayersCount
 
-	// Always rank players from higher level to lower (tie-breaker: character name alphabetical)
+	// Always rank players from higher level to lower; tie-breaker: higher XP, then character name alphabetical
 	sortPlayers := func(players []PlayerInfo) {
 		sort.Slice(players, func(i, j int) bool {
 			if players[i].Level != players[j].Level {
 				return players[i].Level > players[j].Level
+			}
+			if players[i].XP != players[j].XP {
+				return players[i].XP > players[j].XP
 			}
 			return strings.ToLower(players[i].CharacterName) < strings.ToLower(players[j].CharacterName)
 		})
@@ -1406,28 +1447,59 @@ func buildRealmStatus() RealmStatus {
 	sortPlayers(res.NA.Players)
 	sortPlayers(res.EU.Players)
 
-	res.Ladder = getLadderCharacters()
+	// Build Ladder from the exact same live snapshot (same accounts, online map, heartbeat heroes & live XP)
+	res.Ladder = buildLadderFromSnapshot(accounts, finalOnlineSessions, heartbeatHeroes, heartbeatXP, onlineActiveChar)
 
 	return res
 }
+
+var (
+	portalLogMu      sync.Mutex
+	portalLogPath    string
+	portalLogSize    int64
+	portalLogModTime time.Time
+	portalLogSess    map[string]string
+	portalLogRaw     map[string]string
+	portalLogStarts  map[string]time.Time
+	portalLogUploads map[string]bool
+)
 
 func parseActiveSessions() (map[string]string, map[string]string, map[string]time.Time, map[string]bool) {
 	sessions := make(map[string]string) // lower(account) -> server (na/eu)
 	rawNames := make(map[string]string) // lower(account) -> original casing
 	sessionStartTimes := make(map[string]time.Time)
 	hasUploadedInSession := make(map[string]bool)
-	lastSeen := make(map[string]time.Time)
 
 	logPath := filepath.Join(portalDir, "logs", "portal.log")
+	stat, err := os.Stat(logPath)
+	if err != nil {
+		return sessions, rawNames, sessionStartTimes, hasUploadedInSession
+	}
+
+	portalLogMu.Lock()
+	if portalLogPath == logPath && portalLogSize == stat.Size() && portalLogModTime.Equal(stat.ModTime()) && portalLogSess != nil {
+		now := time.Now().UTC()
+		for k, v := range portalLogSess {
+			if t := portalLogStarts[k]; now.Sub(t) <= 12*time.Hour {
+				sessions[k] = v
+				rawNames[k] = portalLogRaw[k]
+				sessionStartTimes[k] = t
+				hasUploadedInSession[k] = portalLogUploads[k]
+			}
+		}
+		portalLogMu.Unlock()
+		return sessions, rawNames, sessionStartTimes, hasUploadedInSession
+	}
+	portalLogMu.Unlock()
+
 	f, err := os.Open(logPath)
 	if err != nil {
 		return sessions, rawNames, sessionStartTimes, hasUploadedInSession
 	}
 	defer f.Close()
 
-	stat, _ := f.Stat()
 	offset := int64(0)
-	if stat != nil && stat.Size() > 10*1024*1024 {
+	if stat.Size() > 10*1024*1024 {
 		offset = stat.Size() - 10*1024*1024
 	}
 	_, _ = f.Seek(offset, io.SeekStart)
@@ -1435,55 +1507,45 @@ func parseActiveSessions() (map[string]string, map[string]string, map[string]tim
 	b, _ := io.ReadAll(f)
 	lines := strings.Split(string(b), "\n")
 
-	for _, line := range lines {
+	parseLogTime := func(line string) time.Time {
 		var year, month, day, hour, min, sec int
 		if len(line) >= 19 && line[4] == '/' && line[7] == '/' && line[10] == ' ' {
 			fmt.Sscanf(line[:19], "%04d/%02d/%02d %02d:%02d:%02d", &year, &month, &day, &hour, &min, &sec)
 		}
-		lineTime := time.Date(year, time.Month(month), day, hour, min, sec, 0, time.UTC)
+		return time.Date(year, time.Month(month), day, hour, min, sec, 0, time.UTC)
+	}
 
-		if strings.Contains(line, "session start:") {
-			idx := strings.Index(line, "session start: ")
-			if idx >= 0 {
-				rem := line[idx+len("session start: "):]
-				parts := strings.SplitN(rem, " on ", 2)
-				if len(parts) == 2 {
-					acct := strings.TrimSpace(parts[0])
-					acctLower := strings.ToLower(acct)
-					srv := "na"
-					if strings.Contains(parts[1], `server "eu"`) {
-						srv = "eu"
-					}
-					sessions[acctLower] = srv
-					rawNames[acctLower] = acct
-					lastSeen[acctLower] = lineTime
-					sessionStartTimes[acctLower] = lineTime
-					hasUploadedInSession[acctLower] = false
-				}
-			}
-		} else if strings.Contains(line, "session end:") {
-			idx := strings.Index(line, "session end: ")
-			if idx >= 0 {
-				acct := strings.TrimSpace(line[idx+len("session end: "):])
+	for _, line := range lines {
+		if idx := strings.Index(line, "session start: "); idx >= 0 {
+			rem := line[idx+len("session start: "):]
+			parts := strings.SplitN(rem, " on ", 2)
+			if len(parts) == 2 {
+				acct := strings.TrimSpace(parts[0])
 				acctLower := strings.ToLower(acct)
-				delete(sessions, acctLower)
-				delete(rawNames, acctLower)
-				delete(lastSeen, acctLower)
-				delete(sessionStartTimes, acctLower)
-				delete(hasUploadedInSession, acctLower)
+				srv := "na"
+				if strings.Contains(parts[1], `server "eu"`) {
+					srv = "eu"
+				}
+				sessions[acctLower] = srv
+				rawNames[acctLower] = acct
+				sessionStartTimes[acctLower] = parseLogTime(line)
+				hasUploadedInSession[acctLower] = false
 			}
-		} else if strings.Contains(line, "save uploaded:") {
-			idx := strings.Index(line, "save uploaded: ")
-			if idx >= 0 {
-				rem := line[idx+len("save uploaded: "):]
-				parts := strings.SplitN(rem, " ", 2)
-				if len(parts) > 0 {
-					acct := strings.TrimSpace(parts[0])
-					acctLower := strings.ToLower(acct)
-					if _, ok := sessions[acctLower]; ok {
-						lastSeen[acctLower] = lineTime
-						hasUploadedInSession[acctLower] = true
-					}
+		} else if idx := strings.Index(line, "session end: "); idx >= 0 {
+			acct := strings.TrimSpace(line[idx+len("session end: "):])
+			acctLower := strings.ToLower(acct)
+			delete(sessions, acctLower)
+			delete(rawNames, acctLower)
+			delete(sessionStartTimes, acctLower)
+			delete(hasUploadedInSession, acctLower)
+		} else if idx := strings.Index(line, "save uploaded: "); idx >= 0 {
+			rem := line[idx+len("save uploaded: "):]
+			parts := strings.SplitN(rem, " ", 2)
+			if len(parts) > 0 {
+				acct := strings.TrimSpace(parts[0])
+				acctLower := strings.ToLower(acct)
+				if _, ok := sessions[acctLower]; ok {
+					hasUploadedInSession[acctLower] = true
 				}
 			}
 		}
@@ -1496,9 +1558,29 @@ func parseActiveSessions() (map[string]string, map[string]string, map[string]tim
 			delete(rawNames, acctLower)
 			delete(sessionStartTimes, acctLower)
 			delete(hasUploadedInSession, acctLower)
-			delete(lastSeen, acctLower)
 		}
 	}
+
+	// Cache snapshot for unchanged portal.log
+	cSess := make(map[string]string, len(sessions))
+	cRaw := make(map[string]string, len(rawNames))
+	cStarts := make(map[string]time.Time, len(sessionStartTimes))
+	cUps := make(map[string]bool, len(hasUploadedInSession))
+	for k, v := range sessions {
+		cSess[k] = v
+		cRaw[k] = rawNames[k]
+		cStarts[k] = sessionStartTimes[k]
+		cUps[k] = hasUploadedInSession[k]
+	}
+	portalLogMu.Lock()
+	portalLogPath = logPath
+	portalLogSize = stat.Size()
+	portalLogModTime = stat.ModTime()
+	portalLogSess = cSess
+	portalLogRaw = cRaw
+	portalLogStarts = cStarts
+	portalLogUploads = cUps
+	portalLogMu.Unlock()
 
 	return sessions, rawNames, sessionStartTimes, hasUploadedInSession
 }
@@ -1576,326 +1658,481 @@ func maxLevelForXP(xp int64) int {
 	return lo
 }
 
-func resolveCharacterDetails(account, charName, saveSHA string, rec *CharRec) CachedChar {
-	cacheKey := fmt.Sprintf("%s:%s", strings.ToLower(account), strings.ToLower(charName))
+func titleWords(s string) string {
+	fields := strings.Fields(strings.TrimSpace(s))
+	for i, w := range fields {
+		if len(w) > 0 {
+			fields[i] = strings.ToUpper(w[:1]) + strings.ToLower(w[1:])
+		}
+	}
+	return strings.Join(fields, " ")
+}
+
+func isDspartyZipEntry(name string) (string, bool) {
+	norm := strings.ReplaceAll(name, "\\", "/")
+	lower := strings.ToLower(norm)
+	if !strings.HasPrefix(lower, "save/") || !strings.HasSuffix(lower, ".dsparty") || strings.HasSuffix(lower, ".bak") {
+		return "", false
+	}
+	return norm[len("Save/") : len(norm)-len(".dsparty")], true
+}
+
+// extractTankFiles reads specific files (lowercase keys in want) out of a DSigTank (.dsparty) byte slice.
+// Pure Go reader (raw fmt=0 and stream/chunked zlib fmt=1): avoids spawning external tankdump subprocesses.
+func extractTankFiles(data []byte, want map[string]bool) map[string][]byte {
+	out := make(map[string][]byte)
+	if len(data) < 64 || string(data[:8]) != "DSigTank" {
+		return out
+	}
+	fs := binary.LittleEndian.Uint32(data[16:20])
+	dataOff := binary.LittleEndian.Uint32(data[24:28])
+	if int(fs)+4 > len(data) || int(dataOff) > len(data) {
+		return out
+	}
+	fc := binary.LittleEndian.Uint32(data[fs : fs+4])
+	if fc > 4096 || int(fs)+4+int(fc)*4 > len(data) {
+		return out
+	}
+	for i := uint32(0); i < fc; i++ {
+		relOff := binary.LittleEndian.Uint32(data[fs+4+i*4 : fs+8+i*4])
+		b := int(fs) + int(relOff)
+		if b < 0 || b+30 > len(data) {
+			continue
+		}
+		size := binary.LittleEndian.Uint32(data[b+4 : b+8])
+		doff := binary.LittleEndian.Uint32(data[b+8 : b+12])
+		fmtType := binary.LittleEndian.Uint16(data[b+24 : b+26])
+		nameLen := int(binary.LittleEndian.Uint16(data[b+28 : b+30]))
+		if b+30+nameLen > len(data) {
+			continue
+		}
+		name := strings.ToLower(string(data[b+30 : b+30+nameLen]))
+		if !want[name] {
+			continue
+		}
+		after := b + 28 + ((2 + nameLen + 1 + 3) &^ 3)
+		base := int(dataOff) + int(doff)
+		if base < 0 || base > len(data) || size > 4*1024*1024 {
+			continue
+		}
+		if fmtType == 0 {
+			if base+int(size) <= len(data) {
+				cp := make([]byte, size)
+				copy(cp, data[base:base+int(size)])
+				out[name] = cp
+			}
+			continue
+		}
+		if fmtType != 1 || after+8 > len(data) {
+			continue
+		}
+		csize := binary.LittleEndian.Uint32(data[after : after+4])
+		chunk := binary.LittleEndian.Uint32(data[after+4 : after+8])
+		if chunk == 0 {
+			if base+int(csize) <= len(data) {
+				if zr, err := zlib.NewReader(bytes.NewReader(data[base : base+int(csize)])); err == nil {
+					if dec, err := io.ReadAll(io.LimitReader(zr, 4*1024*1024)); err == nil {
+						out[name] = dec
+					}
+					_ = zr.Close()
+				}
+			}
+			continue
+		}
+		nch := (size + chunk - 1) / chunk
+		if nch > 1024 || after+8+int(nch)*16 > len(data) {
+			continue
+		}
+		var buf bytes.Buffer
+		buf.Grow(int(size))
+		ok := true
+		hp := after + 8
+		for c := uint32(0); c < nch; c++ {
+			ucs := binary.LittleEndian.Uint32(data[hp : hp+4])
+			cs := binary.LittleEndian.Uint32(data[hp+4 : hp+8])
+			extra := binary.LittleEndian.Uint32(data[hp+8 : hp+12])
+			coff := binary.LittleEndian.Uint32(data[hp+12 : hp+16])
+			hp += 16
+			segStart := base + int(coff)
+			segEnd := segStart + int(cs)
+			if segStart < 0 || segEnd > len(data) || segEnd+int(extra) > len(data) {
+				ok = false
+				break
+			}
+			if ucs == cs {
+				buf.Write(data[segStart:segEnd])
+			} else {
+				zr, err := zlib.NewReader(bytes.NewReader(data[segStart:segEnd]))
+				if err != nil {
+					ok = false
+					break
+				}
+				_, err = io.Copy(&buf, io.LimitReader(zr, 4*1024*1024))
+				_ = zr.Close()
+				if err != nil {
+					ok = false
+					break
+				}
+				if extra > 0 {
+					buf.Write(data[segEnd : segEnd+int(extra)])
+				}
+			}
+		}
+		if ok {
+			out[name] = buf.Bytes()
+		}
+	}
+	return out
+}
+
+func applyAntiCheatLevel(rawLevel int, hasPartyGas bool, effectiveXP int64) int {
+	if !hasPartyGas {
+		return maxLevelForXP(effectiveXP)
+	}
+	lvl := rawLevel
+	if lvl < 0 {
+		lvl = 0
+	}
+	if effectiveXP > 0 {
+		maxLvl := maxLevelForXP(effectiveXP) + 2
+		if lvl > maxLvl {
+			lvl = maxLevelForXP(effectiveXP)
+		}
+	} else {
+		if lvl > 1 {
+			lvl = 0
+		}
+	}
+	return lvl
+}
+
+func applyAntiCheatClass(cls string, level int) string {
+	cls = strings.TrimSpace(cls)
+	if cls == "" {
+		return "Adventurer"
+	}
+	if level < 140 && strings.Contains(strings.ToLower(cls), "siegemaster") {
+		return "Adventurer"
+	}
+	return cls
+}
+
+func effectiveXPForChar(rec *CharRec, liveXP int64) int64 {
+	var xp int64
+	if rec != nil && rec.XP > 0 {
+		xp = rec.XP
+	}
+	if liveXP > xp {
+		xp = liveXP
+	}
+	return xp
+}
+
+func readPrefsLocFromZip(r *zip.ReadCloser) (string, string) {
+	if r == nil {
+		return "", ""
+	}
+	for _, f := range r.File {
+		if strings.EqualFold(filepath.Base(f.Name), "prefs.gas") {
+			if rc, err := f.Open(); err == nil {
+				b, _ := io.ReadAll(io.LimitReader(rc, 256*1024))
+				rc.Close()
+				if m := startLocRe.FindStringSubmatch(string(b)); len(m) > 1 {
+					return regionToArea(m[1])
+				}
+			}
+		}
+	}
+	return "", ""
+}
+
+func parseGasIntoChar(partyBytes, infoBytes []byte, res *CachedChar) {
+	if len(partyBytes) > 0 {
+		gasStr := string(partyBytes)
+		res.HasPartyGas = true
+		if m := templateRe.FindStringSubmatch(gasStr); len(m) > 1 {
+			res.Race = templateToRace(m[1])
+		}
+		if m := classRe.FindStringSubmatch(gasStr); len(m) > 1 {
+			if cls := titleWords(m[1]); cls != "" {
+				res.Class = cls
+			}
+		}
+		if m := uberLvlRe.FindStringSubmatch(gasStr); len(m) > 1 {
+			if fl, err := strconv.ParseFloat(m[1], 64); err == nil {
+				rawLvl := int(math.Floor(fl))
+				if rawLvl < 0 {
+					rawLvl = 0
+				}
+				res.RawLevel = rawLvl
+			}
+		}
+		if m := screenNmRe.FindStringSubmatch(gasStr); len(m) > 1 && strings.TrimSpace(m[1]) != "" {
+			res.Name = strings.TrimSpace(m[1])
+		}
+	}
+	if len(infoBytes) > 0 {
+		infoStr := string(infoBytes)
+		if m := regionRe.FindStringSubmatch(infoStr); len(m) > 1 {
+			reg := strings.TrimSpace(m[1])
+			if reg != "" {
+				if strings.EqualFold(reg, "a8_r2_fortress") {
+					reg = resolveFortressRegion(infoStr)
+				} else if strings.EqualFold(reg, "oasis") {
+					reg = resolveOasisRegion(infoStr)
+				}
+				loc, mId := regionToArea(reg)
+				res.StartLoc = loc
+				res.MapAreaId = mId
+			}
+		}
+		if m := saveTimeRe.FindStringSubmatch(infoStr); len(m) > 1 {
+			if stVal, err := strconv.ParseInt(strings.TrimSpace(m[1]), 10, 64); err == nil && stVal > 0 {
+				res.SaveTime = stVal
+			}
+		}
+	}
+}
+
+func extractTankFilesFallback(raw []byte, cleanName string) ([]byte, []byte) {
+	if tankdumpBin == "" || len(raw) == 0 {
+		return nil, nil
+	}
+	safeName := normalizeCharName(cleanName)
+	if safeName == "" {
+		safeName = "char"
+	}
+	tmpDSP := fmt.Sprintf("/tmp/probe_%d_%s.dsparty", time.Now().UnixNano(), safeName)
+	if err := os.WriteFile(tmpDSP, raw, 0600); err != nil {
+		return nil, nil
+	}
+	tmpDir := fmt.Sprintf("/tmp/probe_out_%d_%s", time.Now().UnixNano(), safeName)
+	_ = os.MkdirAll(tmpDir, 0755)
+	defer func() {
+		_ = os.Remove(tmpDSP)
+		_ = os.RemoveAll(tmpDir)
+	}()
+
+	var partyBytes, infoBytes []byte
+	ctxParty, cancelParty := context.WithTimeout(context.Background(), 5*time.Second)
+	cmdParty := exec.CommandContext(ctxParty, tankdumpBin, tmpDSP, "party.gas", "-e")
+	cmdParty.Dir = tmpDir
+	_, _ = cmdParty.CombinedOutput()
+	cancelParty()
+	partyBytes, _ = os.ReadFile(filepath.Join(tmpDir, "party.gas"))
+
+	ctxInfo, cancelInfo := context.WithTimeout(context.Background(), 5*time.Second)
+	cmdInfo := exec.CommandContext(ctxInfo, tankdumpBin, tmpDSP, "info.gas", "-e")
+	cmdInfo.Dir = tmpDir
+	_, _ = cmdInfo.CombinedOutput()
+	cancelInfo()
+	infoBytes, _ = os.ReadFile(filepath.Join(tmpDir, "info.gas"))
+
+	return partyBytes, infoBytes
+}
+
+// resolveZipEntryRaw parses & caches the RAW (unclamped) save fields for a single .dsparty zip entry,
+// keyed by its CRC32 + UncompressedSize + prefs fallback so unchanged alts never re-parse and stale XP
+// can never poison charCache.
+func resolveZipEntryRaw(account, cleanName, saveSHA string, targetFile *zip.File, prefsLoc, prefsMapID string) CachedChar {
+	cacheKey := fmt.Sprintf("%s:%s", strings.ToLower(account), strings.ToLower(cleanName))
+	entrySig := fmt.Sprintf("%08x:%d|%s|%s", targetFile.CRC32, targetFile.UncompressedSize64, prefsLoc, prefsMapID)
 
 	cacheMu.RLock()
 	cached, found := charCache[cacheKey]
 	cacheMu.RUnlock()
-
-	if found && (saveSHA == "" || cached.SaveSHA == saveSHA) && cached.Level >= 0 && cached.StartLoc != "" && cached.MapAreaId != "" && cached.Race != "" {
+	if found && cached.EntrySig == entrySig && cached.StartLoc != "" && cached.MapAreaId != "" && cached.Race != "" {
 		return cached
 	}
 
-	lvl := 0
-	if rec != nil && rec.XP > 0 {
-		lvl = maxLevelForXP(rec.XP)
-	}
 	res := CachedChar{
-		Name:      charName,
+		Name:      cleanName,
 		Class:     "Adventurer",
 		Race:      "Human",
-		Level:     lvl,
+		RawLevel:  0,
 		SaveSHA:   saveSHA,
+		EntrySig:  entrySig,
 		StartLoc:  "",
 		MapAreaId: "",
 	}
 
-	zipPath := filepath.Join(portalDir, "portal-data", "saves", strings.ToLower(account), "current.zip")
-	r, err := zip.OpenReader(zipPath)
-	if err == nil {
-		defer r.Close()
-		var targetFile *zip.File
-		var fallbackFile *zip.File
-		prefsLoc := ""
-		prefsMapID := ""
-
-		for _, f := range r.File {
-			if strings.EqualFold(filepath.Base(f.Name), "prefs.gas") {
-				if rc, err := f.Open(); err == nil {
-					b, _ := io.ReadAll(rc)
-					rc.Close()
-					if m := startLocRe.FindStringSubmatch(string(b)); len(m) > 1 {
-						prefsLoc, prefsMapID = regionToArea(m[1])
-					}
+	if rc, err := targetFile.Open(); err == nil {
+		raw, readErr := io.ReadAll(io.LimitReader(rc, 8*1024*1024))
+		rc.Close()
+		if readErr == nil && len(raw) > 0 {
+			files := extractTankFiles(raw, map[string]bool{
+				"party.gas": true,
+				"info.gas":  true,
+			})
+			partyBytes := files["party.gas"]
+			infoBytes := files["info.gas"]
+			if len(partyBytes) == 0 {
+				fbParty, fbInfo := extractTankFilesFallback(raw, cleanName)
+				if len(fbParty) > 0 {
+					partyBytes = fbParty
+				}
+				if len(infoBytes) == 0 && len(fbInfo) > 0 {
+					infoBytes = fbInfo
 				}
 			}
-			if strings.HasPrefix(f.Name, "Save/") && strings.HasSuffix(f.Name, ".dsparty") && !strings.HasSuffix(f.Name, ".bak") {
-				if fallbackFile == nil {
-					fallbackFile = f
-				}
-				cleanName := strings.TrimSuffix(strings.TrimPrefix(f.Name, "Save/"), ".dsparty")
-				normClean := strings.ToLower(strings.ReplaceAll(cleanName, "_", " "))
-				normChar := strings.ToLower(strings.ReplaceAll(charName, "_", " "))
-				normAcct := strings.ToLower(strings.ReplaceAll(account, "_", " "))
-
-				if normClean == normChar || strings.EqualFold(cleanName, charName) || (charName == "" && (normClean == normAcct || strings.EqualFold(cleanName, account))) {
-					targetFile = f
-				}
-			}
+			parseGasIntoChar(partyBytes, infoBytes, &res)
 		}
+	}
 
-		if targetFile == nil && charName == "" {
-			targetFile = fallbackFile
+	if res.StartLoc == "" {
+		if prefsLoc != "" {
+			res.StartLoc = prefsLoc
+			res.MapAreaId = prefsMapID
+		} else {
+			res.StartLoc = "Elddim"
+			res.MapAreaId = "elddim"
 		}
-
-		if targetFile != nil {
-			cleanName := strings.TrimSuffix(strings.TrimPrefix(targetFile.Name, "Save/"), ".dsparty")
-			rc, err := targetFile.Open()
-			if err == nil {
-				tmpDSP := fmt.Sprintf("/tmp/probe_%d_%s.dsparty", time.Now().UnixNano(), cleanName)
-				outF, err := os.Create(tmpDSP)
-				if err == nil {
-					_, _ = io.Copy(outF, rc)
-					outF.Close()
-					rc.Close()
-
-					tmpDir := fmt.Sprintf("/tmp/probe_out_%d_%s", time.Now().UnixNano(), cleanName)
-					_ = os.MkdirAll(tmpDir, 0755)
-
-					// 1. Extract party.gas (skills, class, level, screen_name, race)
-					ctxParty, cancelParty := context.WithTimeout(context.Background(), 5*time.Second)
-					cmdParty := exec.CommandContext(ctxParty, tankdumpBin, tmpDSP, "party.gas", "-e")
-					cmdParty.Dir = tmpDir
-					outParty, errParty := cmdParty.CombinedOutput()
-					cancelParty()
-					if errParty == nil || len(outParty) == 0 {
-						gasPath := filepath.Join(tmpDir, "party.gas")
-						if gasBytes, err := os.ReadFile(gasPath); err == nil {
-							gasStr := string(gasBytes)
-							if m := templateRe.FindStringSubmatch(gasStr); len(m) > 1 {
-								res.Race = templateToRace(m[1])
-							}
-							if m := classRe.FindStringSubmatch(gasStr); len(m) > 1 {
-								cls := strings.TrimSpace(m[1])
-								if len(cls) > 0 {
-									cls = strings.ToUpper(cls[:1]) + strings.ToLower(cls[1:])
-								}
-								res.Class = cls
-							}
-							if m := uberLvlRe.FindStringSubmatch(gasStr); len(m) > 1 {
-								if fl, err := strconv.ParseFloat(m[1], 64); err == nil {
-									res.Level = int(math.Floor(fl))
-									if res.Level < 0 {
-										res.Level = 0
-									}
-									// Anti-cheat: clamp unverified level to what verified server XP allows
-									if rec != nil && rec.XP > 0 {
-										maxLvl := maxLevelForXP(rec.XP) + 2
-										if res.Level > maxLvl {
-											res.Level = maxLevelForXP(rec.XP)
-										}
-									} else if rec == nil || rec.XP == 0 {
-										if res.Level > 1 {
-											res.Level = 0
-										}
-									}
-								}
-							}
-							if res.Level < 140 && strings.Contains(strings.ToLower(res.Class), "siegemaster") {
-								res.Class = "Adventurer"
-							}
-							if m := screenNmRe.FindStringSubmatch(gasStr); len(m) > 1 {
-								res.Name = m[1]
-							}
-						}
-					}
-
-					// 2. Extract info.gas (actual current region player is in!)
-					ctxInfo, cancelInfo := context.WithTimeout(context.Background(), 5*time.Second)
-					cmdInfo := exec.CommandContext(ctxInfo, tankdumpBin, tmpDSP, "info.gas", "-e")
-					cmdInfo.Dir = tmpDir
-					outInfo, errInfo := cmdInfo.CombinedOutput()
-					cancelInfo()
-					if errInfo == nil || len(outInfo) == 0 {
-						infoPath := filepath.Join(tmpDir, "info.gas")
-						if infoBytes, err := os.ReadFile(infoPath); err == nil {
-							infoStr := string(infoBytes)
-							if m := regionRe.FindStringSubmatch(infoStr); len(m) > 1 {
-								reg := strings.TrimSpace(m[1])
-								if reg != "" {
-									if strings.EqualFold(reg, "a8_r2_fortress") {
-										reg = resolveFortressRegion(infoStr)
-									} else if strings.EqualFold(reg, "oasis") {
-										reg = resolveOasisRegion(infoStr)
-									}
-									loc, mId := regionToArea(reg)
-									res.StartLoc = loc
-									res.MapAreaId = mId
-								}
-							}
-							if m := saveTimeRe.FindStringSubmatch(infoStr); len(m) > 1 {
-								if stVal, err := strconv.ParseInt(strings.TrimSpace(m[1]), 10, 64); err == nil && stVal > 0 {
-									res.SaveTime = stVal
-								}
-							}
-						}
-					}
-
-					_ = os.Remove(tmpDSP)
-					_ = os.RemoveAll(tmpDir)
-				} else {
-					rc.Close()
-				}
-			}
-		}
-
-		// Fallback location if info.gas did not specify a valid region
-		if res.StartLoc == "" {
-			if prefsLoc != "" {
-				res.StartLoc = prefsLoc
-				res.MapAreaId = prefsMapID
-			} else {
-				res.StartLoc = "Elddim"
-				res.MapAreaId = "elddim"
-			}
-		}
-	} else {
-		res.StartLoc = "Elddim"
-		res.MapAreaId = "elddim"
 	}
 
 	cacheMu.Lock()
 	charCache[cacheKey] = res
 	cacheMu.Unlock()
-
 	return res
 }
 
-func getLiveOnlineSnapshot() (map[string]string, map[string]string, map[string]string) {
-	onlineAccts := make(map[string]string)
-	onlineHeroes := make(map[string]string)
-	onlineMap := make(map[string]string)
+func finalizeCharacterDetails(raw CachedChar, rec *CharRec, liveXP int64) CachedChar {
+	effXP := effectiveXPForChar(rec, liveXP)
+	out := raw
+	out.Level = applyAntiCheatLevel(raw.RawLevel, raw.HasPartyGas, effXP)
+	out.Class = applyAntiCheatClass(raw.Class, out.Level)
+	return out
+}
 
-	resp, err := portalHTTP.Get(portalURL + "/api/status?internal=1")
+type cachedZipEntry struct {
+	CleanName string
+	Raw       CachedChar
+	ModTime   time.Time
+}
+
+type cachedAccountZip struct {
+	ZipPath     string
+	Size        int64
+	ModTime     time.Time
+	SaveSHA     string
+	PrefsLoc    string
+	PrefsMapID  string
+	Entries     []cachedZipEntry
+}
+
+var (
+	accountZipMu    sync.RWMutex
+	accountZipCache = make(map[string]cachedAccountZip)
+)
+
+func loadAccountZip(canonicalAcctName, saveSHA string) (cachedAccountZip, bool) {
+	acctLower := strings.ToLower(strings.TrimSpace(canonicalAcctName))
+	zipPath := filepath.Join(portalDir, "portal-data", "saves", acctLower, "current.zip")
+	st, err := os.Stat(zipPath)
 	if err != nil {
-		return onlineAccts, onlineHeroes, onlineMap
-	}
-	defer resp.Body.Close()
-
-	var portalResp struct {
-		Servers []struct {
-			ID      string            `json:"id"`
-			Online  bool              `json:"online"`
-			Players string            `json:"players"`
-			Game    map[string]string `json:"game"`
-		} `json:"servers"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&portalResp); err != nil {
-		return onlineAccts, onlineHeroes, onlineMap
+		return cachedAccountZip{}, false
 	}
 
-	activeServers := make(map[string]int)
-	for _, s := range portalResp.Servers {
-		sID := strings.ToLower(s.ID)
-		pCount, _ := strconv.Atoi(s.Players)
-		if s.Online && pCount > 0 {
-			activeServers[sID] = pCount
-			for k, v := range s.Game {
-				if strings.HasPrefix(k, "pc") {
-					parts := strings.Split(v, "|")
-					if len(parts) > 0 && parts[0] != "" {
-						acctLower := strings.ToLower(strings.TrimSpace(parts[0]))
-						shardUpper := strings.ToUpper(s.ID)
-						onlineAccts[acctLower] = shardUpper
-						if len(parts) > 1 && parts[1] != "" {
-							if dec, err := hex.DecodeString(parts[1]); err == nil && len(dec) > 0 {
-								hero := string(dec)
-								onlineHeroes[acctLower] = hero
-								onlineMap[acctLower+":"+strings.ToLower(hero)] = shardUpper
-							}
-						}
-					}
-				}
-			}
-		}
+	accountZipMu.RLock()
+	cached, ok := accountZipCache[acctLower]
+	accountZipMu.RUnlock()
+	if ok && cached.ZipPath == zipPath && cached.Size == st.Size() && cached.ModTime.Equal(st.ModTime()) && (saveSHA == "" || cached.SaveSHA == saveSHA) {
+		return cached, true
 	}
 
-	// Also inspect local heartbeat file IF configured and server is online
-	hbDir := os.Getenv("SHARD_LOG_DIR")
-	var hbPaths []struct {
-		path string
-		id   string
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return cachedAccountZip{}, false
 	}
-	if hbDir != "" {
-		hbPaths = []struct {
-			path string
-			id   string
-		}{
-			{path: filepath.Join(hbDir, "ds1mmo_na_server", "game", "SiegeHostLogs", "heartbeat.txt"), id: "na"},
-			{path: filepath.Join(hbDir, "ds1mmo_eu_server", "game", "SiegeHostLogs", "heartbeat.txt"), id: "eu"},
-		}
-	}
-	for _, hb := range hbPaths {
-		if _, ok := activeServers[hb.id]; !ok {
+	defer r.Close()
+
+	prefsLoc, prefsMapID := readPrefsLocFromZip(r)
+	var entries []cachedZipEntry
+	for _, f := range r.File {
+		cleanName, ok := isDspartyZipEntry(f.Name)
+		if !ok {
 			continue
 		}
-		st, err := os.Stat(hb.path)
-		if err != nil || time.Since(st.ModTime()) > 30*time.Second {
-			continue
-		}
-		if b, err := os.ReadFile(hb.path); err == nil {
-			content := string(b)
-			if strings.Contains(content, "\nplayers=0\n") || strings.HasPrefix(content, "players=0\n") {
-				continue
+		raw := resolveZipEntryRaw(canonicalAcctName, cleanName, saveSHA, f, prefsLoc, prefsMapID)
+		entries = append(entries, cachedZipEntry{
+			CleanName: cleanName,
+			Raw:       raw,
+			ModTime:   f.ModTime(),
+		})
+	}
+
+	res := cachedAccountZip{
+		ZipPath:    zipPath,
+		Size:       st.Size(),
+		ModTime:    st.ModTime(),
+		SaveSHA:    saveSHA,
+		PrefsLoc:   prefsLoc,
+		PrefsMapID: prefsMapID,
+		Entries:    entries,
+	}
+	accountZipMu.Lock()
+	accountZipCache[acctLower] = res
+	accountZipMu.Unlock()
+	return res, true
+}
+
+func resolveCharacterDetails(account, charName, saveSHA string, rec *CharRec, liveXPs ...int64) CachedChar {
+	var liveXP int64
+	if len(liveXPs) > 0 && liveXPs[0] > 0 {
+		liveXP = liveXPs[0]
+	}
+
+	if az, ok := loadAccountZip(account, saveSHA); ok {
+		normChar := normalizeCharName(charName)
+		normAcct := normalizeCharName(account)
+
+		for _, e := range az.Entries {
+			normClean := normalizeCharName(e.CleanName)
+			if charName != "" {
+				if strings.EqualFold(e.CleanName, charName) || (normChar != "" && normClean == normChar) {
+					return finalizeCharacterDetails(e.Raw, rec, liveXP)
+				}
+			} else if strings.EqualFold(e.CleanName, account) || (normAcct != "" && normClean == normAcct) {
+				return finalizeCharacterDetails(e.Raw, rec, liveXP)
 			}
-			lines := strings.Split(content, "\n")
-			for _, l := range lines {
-				l = strings.TrimSpace(l)
-				if strings.HasPrefix(l, "pc") && strings.Contains(l, "=") {
-					val := strings.TrimSpace(strings.SplitN(l, "=", 2)[1])
-					parts := strings.Split(val, "|")
-					if len(parts) > 0 && parts[0] != "" {
-						acctLower := strings.ToLower(strings.TrimSpace(parts[0]))
-						shardUpper := strings.ToUpper(hb.id)
-						onlineAccts[acctLower] = shardUpper
-						if len(parts) > 1 && parts[1] != "" {
-							if dec, err := hex.DecodeString(parts[1]); err == nil && len(dec) > 0 {
-								hero := string(dec)
-								onlineHeroes[acctLower] = hero
-								onlineMap[acctLower+":"+strings.ToLower(hero)] = shardUpper
-							}
-						}
-					}
+		}
+
+		// Fallback: if hero screen_name differs from .dsparty filename (punctuation/renames), match Raw.Name
+		if charName != "" {
+			for _, e := range az.Entries {
+				if strings.EqualFold(e.Raw.Name, charName) || (normChar != "" && normalizeCharName(e.Raw.Name) == normChar) {
+					return finalizeCharacterDetails(e.Raw, rec, liveXP)
 				}
 			}
 		}
+
+		if charName == "" && len(az.Entries) > 0 {
+			return finalizeCharacterDetails(az.Entries[0].Raw, rec, liveXP)
+		}
+
+		loc, mId := az.PrefsLoc, az.PrefsMapID
+		if loc == "" {
+			loc, mId = "Elddim", "elddim"
+		}
+		return finalizeCharacterDetails(CachedChar{
+			Name:        charName,
+			Class:       "Adventurer",
+			Race:        "Human",
+			HasPartyGas: false,
+			SaveSHA:     saveSHA,
+			StartLoc:    loc,
+			MapAreaId:   mId,
+		}, rec, liveXP)
 	}
 
-	// For any active server needing players, consult active sessions
-	sessions, _, startTimes, _ := parseActiveSessions()
-	for sID, count := range activeServers {
-		shardUpper := strings.ToUpper(sID)
-		verifiedCount := 0
-		for _, shard := range onlineAccts {
-			if shard == shardUpper {
-				verifiedCount++
-			}
-		}
-		needed := count - verifiedCount
-		if needed > 0 {
-			type cand struct {
-				acct  string
-				start time.Time
-			}
-			var cands []cand
-			for acct, s := range sessions {
-				if strings.ToLower(s) == sID {
-					if _, ok := onlineAccts[acct]; !ok {
-						cands = append(cands, cand{acct: acct, start: startTimes[acct]})
-					}
-				}
-			}
-			sort.Slice(cands, func(i, j int) bool {
-				return cands[i].start.After(cands[j].start)
-			})
-			for i := 0; i < len(cands) && i < needed; i++ {
-				onlineAccts[cands[i].acct] = shardUpper
-			}
-		}
-	}
-
-	return onlineAccts, onlineHeroes, onlineMap
+	return finalizeCharacterDetails(CachedChar{
+		Name:        charName,
+		Class:       "Adventurer",
+		Race:        "Human",
+		HasPartyGas: false,
+		SaveSHA:     saveSHA,
+		StartLoc:    "Elddim",
+		MapAreaId:   "elddim",
+	}, rec, liveXP)
 }
 
 func formatRelativeTime(t time.Time) string {
@@ -1952,10 +2189,13 @@ func formatRelativeTime(t time.Time) string {
 }
 
 func normalizeCharName(s string) string {
-	s = strings.ToLower(s)
-	s = strings.ReplaceAll(s, "_", "")
-	s = strings.ReplaceAll(s, " ", "")
-	return s
+	var b strings.Builder
+	for _, r := range strings.ToLower(s) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 func matchCharRec(chars map[string]*CharRec, cleanName string) *CharRec {
@@ -1968,6 +2208,9 @@ func matchCharRec(chars map[string]*CharRec, cleanName string) *CharRec {
 		}
 	}
 	cleanNorm := normalizeCharName(cleanName)
+	if cleanNorm == "" {
+		return nil
+	}
 	for k, c := range chars {
 		if normalizeCharName(k) == cleanNorm || normalizeCharName(c.Name) == cleanNorm {
 			return c
@@ -1976,7 +2219,7 @@ func matchCharRec(chars map[string]*CharRec, cleanName string) *CharRec {
 	return nil
 }
 
-func selectActiveCharacter(canonicalAcctName string, acct *Account, saveSHA string, heroHint string) (string, *CharRec, CachedChar) {
+func selectActiveCharacter(canonicalAcctName string, acct *Account, saveSHA string, heroHint string, liveXP int64) (string, *CharRec, CachedChar) {
 	var newestChar *CharRec
 	if acct != nil {
 		for _, ch := range acct.Chars {
@@ -1991,49 +2234,45 @@ func selectActiveCharacter(canonicalAcctName string, acct *Account, saveSHA stri
 		if acct != nil {
 			rec = matchCharRec(acct.Chars, heroHint)
 		}
-		if rec == nil {
-			rec = newestChar
-		}
-		details := resolveCharacterDetails(canonicalAcctName, heroHint, saveSHA, rec)
+		// Never substitute a different character's CharRec when heroHint is known:
+		// a brand-new Level 0 alt must not inherit an older alt's XP before accounts.json flushes.
+		details := resolveCharacterDetails(canonicalAcctName, heroHint, saveSHA, rec, liveXP)
 		return heroHint, rec, details
 	}
 
 	// If a character was updated on the game server more recently than the last save upload, it is actively in-game now.
 	if acct != nil && !acct.SaveTime.IsZero() && newestChar != nil && newestChar.Name != "" && newestChar.Updated.After(acct.SaveTime) {
-		details := resolveCharacterDetails(canonicalAcctName, newestChar.Name, saveSHA, newestChar)
+		details := resolveCharacterDetails(canonicalAcctName, newestChar.Name, saveSHA, newestChar, liveXP)
 		return newestChar.Name, newestChar, details
 	}
 
 	// Otherwise, inspect the account's .dsparty saves in current.zip and pick the character most recently saved by the game (info.gas save_time).
-	acctLower := strings.ToLower(strings.TrimSpace(canonicalAcctName))
-	zipPath := filepath.Join(portalDir, "portal-data", "saves", acctLower, "current.zip")
-	if r, err := zip.OpenReader(zipPath); err == nil {
-		defer r.Close()
+	if az, ok := loadAccountZip(canonicalAcctName, saveSHA); ok {
 		var bestName string
 		var bestRec *CharRec
 		var bestDetails CachedChar
 		hasBest := false
 
-		for _, f := range r.File {
-			if strings.HasPrefix(f.Name, "Save/") && strings.HasSuffix(f.Name, ".dsparty") && !strings.HasSuffix(f.Name, ".bak") {
-				cleanName := strings.TrimSuffix(strings.TrimPrefix(f.Name, "Save/"), ".dsparty")
-				var rec *CharRec
-				if acct != nil && acct.Chars != nil {
-					rec = matchCharRec(acct.Chars, cleanName)
-					if len(acct.Chars) > 0 && rec == nil {
-						continue
-					}
+		for _, e := range az.Entries {
+			var rec *CharRec
+			if acct != nil && acct.Chars != nil {
+				rec = matchCharRec(acct.Chars, e.CleanName)
+				if rec == nil && e.Raw.Name != "" {
+					rec = matchCharRec(acct.Chars, e.Raw.Name)
 				}
-				details := resolveCharacterDetails(canonicalAcctName, cleanName, saveSHA, rec)
-				if !hasBest {
-					bestName, bestRec, bestDetails, hasBest = cleanName, rec, details, true
+				if len(acct.Chars) > 0 && rec == nil {
 					continue
 				}
-				if details.SaveTime > bestDetails.SaveTime {
-					bestName, bestRec, bestDetails = cleanName, rec, details
-				} else if details.SaveTime == bestDetails.SaveTime && rec != nil && (bestRec == nil || rec.Updated.After(bestRec.Updated)) {
-					bestName, bestRec, bestDetails = cleanName, rec, details
-				}
+			}
+			details := finalizeCharacterDetails(e.Raw, rec, liveXP)
+			if !hasBest {
+				bestName, bestRec, bestDetails, hasBest = e.CleanName, rec, details, true
+				continue
+			}
+			if details.SaveTime > bestDetails.SaveTime {
+				bestName, bestRec, bestDetails = e.CleanName, rec, details
+			} else if details.SaveTime == bestDetails.SaveTime && rec != nil && (bestRec == nil || rec.Updated.After(bestRec.Updated)) {
+				bestName, bestRec, bestDetails = e.CleanName, rec, details
 			}
 		}
 		if hasBest {
@@ -2045,15 +2284,19 @@ func selectActiveCharacter(canonicalAcctName string, acct *Account, saveSHA stri
 	if newestChar != nil && newestChar.Name != "" {
 		charName = newestChar.Name
 	}
-	details := resolveCharacterDetails(canonicalAcctName, charName, saveSHA, newestChar)
+	details := resolveCharacterDetails(canonicalAcctName, charName, saveSHA, newestChar, liveXP)
 	return charName, newestChar, details
 }
 
-func buildLadderCharacters() []LadderCharacter {
-	accounts := loadAccounts()
+func buildLadderFromSnapshot(
+	accounts map[string]*Account,
+	onlineSessions map[string]string,
+	heartbeatHeroes map[string]string,
+	heartbeatXP map[string]int64,
+	onlineActiveChar map[string]string,
+) []LadderCharacter {
 	var list []LadderCharacter
-
-	onlineAccts, onlineHeroes, onlineMap := getLiveOnlineSnapshot()
+	nowUnix := time.Now().Unix()
 
 	for acctLower, acct := range accounts {
 		canonicalAcctName := acct.Name
@@ -2061,127 +2304,162 @@ func buildLadderCharacters() []LadderCharacter {
 			canonicalAcctName = acctLower
 		}
 
-		activeCharName, _, _ := selectActiveCharacter(canonicalAcctName, acct, acct.SaveSHA, onlineHeroes[acctLower])
-		activeCharNorm := normalizeCharName(activeCharName)
+		srvID, acctOnline := onlineSessions[acctLower]
+		onlineShard := ""
+		if acctOnline {
+			onlineShard = strings.ToUpper(srvID)
+		}
+		hbHero := heartbeatHeroes[acctLower]
+		hbHeroNorm := normalizeCharName(hbHero)
+		activeName := onlineActiveChar[acctLower]
+		activeNorm := normalizeCharName(activeName)
+		liveXP := heartbeatXP[acctLower]
 
-		zipPath := filepath.Join(portalDir, "portal-data", "saves", acctLower, "current.zip")
-		r, err := zip.OpenReader(zipPath)
-		if err == nil {
+		isThisCharOnline := func(displayName, cleanName string) bool {
+			if !acctOnline {
+				return false
+			}
+			dNorm := normalizeCharName(displayName)
+			cNorm := normalizeCharName(cleanName)
+			if hbHero != "" {
+				return strings.EqualFold(hbHero, displayName) ||
+					strings.EqualFold(hbHero, cleanName) ||
+					(hbHeroNorm != "" && (hbHeroNorm == dNorm || hbHeroNorm == cNorm))
+			}
+			if activeName != "" {
+				return strings.EqualFold(activeName, displayName) ||
+					strings.EqualFold(activeName, cleanName) ||
+					(activeNorm != "" && (activeNorm == dNorm || activeNorm == cNorm))
+			}
+			return false
+		}
+
+		emittedRecs := make(map[*CharRec]bool)
+		emittedOnlineHero := false
+
+		if az, ok := loadAccountZip(canonicalAcctName, acct.SaveSHA); ok {
+			type zipCharEntry struct {
+				modTime   time.Time
+				cleanName string
+				charRec   *CharRec
+				raw       CachedChar
+			}
+			var entries []zipCharEntry
 			var maxSaveTime int64
-			dspartyCount := 0
-			for _, f := range r.File {
-				if strings.HasPrefix(f.Name, "Save/") && strings.HasSuffix(f.Name, ".dsparty") && !strings.HasSuffix(f.Name, ".bak") {
-					cleanName := strings.TrimSuffix(strings.TrimPrefix(f.Name, "Save/"), ".dsparty")
-					var charRec *CharRec
-					if acct.Chars != nil {
-						charRec = matchCharRec(acct.Chars, cleanName)
-					}
-					if charRec == nil {
-						continue
-					}
-					dspartyCount++
-					d := resolveCharacterDetails(canonicalAcctName, cleanName, acct.SaveSHA, charRec)
-					if d.SaveTime > maxSaveTime {
-						maxSaveTime = d.SaveTime
+
+			for _, ze := range az.Entries {
+				var charRec *CharRec
+				if acct.Chars != nil {
+					charRec = matchCharRec(acct.Chars, ze.CleanName)
+					if charRec == nil && ze.Raw.Name != "" {
+						charRec = matchCharRec(acct.Chars, ze.Raw.Name)
 					}
 				}
-			}
-
-			for _, f := range r.File {
-				if strings.HasPrefix(f.Name, "Save/") && strings.HasSuffix(f.Name, ".dsparty") && !strings.HasSuffix(f.Name, ".bak") {
-					cleanName := strings.TrimSuffix(strings.TrimPrefix(f.Name, "Save/"), ".dsparty")
-
-					var charRec *CharRec
-					if acct.Chars != nil {
-						charRec = matchCharRec(acct.Chars, cleanName)
-					}
-
-					// Only MMO characters that have an active server record can be on the ladder.
-					// Prevents local-only hacked singleplayer saves from polluting the ladder.
-					if charRec == nil {
-						continue
-					}
-
-					charDetails := resolveCharacterDetails(canonicalAcctName, cleanName, acct.SaveSHA, charRec)
-
-					var xp int64 = 0
-					if charRec != nil {
-						xp = charRec.XP
-					}
-
-					race := charDetails.Race
-					if race == "" {
-						race = "Human"
-					}
-
-					var lastTime time.Time
-					if charRec != nil && !charRec.Updated.IsZero() && charRec.Updated.Year() >= 2020 {
-						lastTime = charRec.Updated
-					}
-					// Only apply zip entry ModTime to the most recently saved .dsparty in current.zip,
-					// since unpacking current.zip on session start resets mtimes of inactive characters.
-					if f != nil && (dspartyCount <= 1 || (maxSaveTime > 0 && charDetails.SaveTime == maxSaveTime)) {
-						mod := f.ModTime()
-						if !mod.IsZero() && mod.Year() >= 2020 && mod.After(lastTime) {
-							lastTime = mod
-						}
-					}
-
-					isOnline := false
-					onlineShard := ""
-					lookupKey := acctLower + ":" + strings.ToLower(charDetails.Name)
-					cleanNorm := normalizeCharName(cleanName)
-					if s, ok := onlineMap[lookupKey]; ok {
-						isOnline = true
-						onlineShard = s
-					} else if s, ok := onlineMap[acctLower+":"+strings.ToLower(cleanName)]; ok {
-						isOnline = true
-						onlineShard = s
-					} else if s, ok := onlineAccts[acctLower]; ok {
-						if hero, ok2 := onlineHeroes[acctLower]; ok2 {
-							if strings.EqualFold(hero, charDetails.Name) || strings.EqualFold(hero, cleanName) || normalizeCharName(hero) == cleanNorm {
-								isOnline = true
-								onlineShard = s
-							}
-						} else {
-							// If joinguard didn't specify hero, only the account's active character is marked online
-							if activeCharName != "" && (strings.EqualFold(activeCharName, charDetails.Name) || strings.EqualFold(activeCharName, cleanName) || activeCharNorm == cleanNorm) {
-								isOnline = true
-								onlineShard = s
-							}
-						}
-					}
-
-					lastSeenStr := formatRelativeTime(lastTime)
-					var lastSeenUnix int64 = 0
-					if !lastTime.IsZero() && lastTime.Year() >= 2020 {
-						lastSeenUnix = lastTime.Unix()
-					}
-
-					if isOnline {
-						if onlineShard != "" {
-							lastSeenStr = "Online (" + onlineShard + ")"
-						} else {
-							lastSeenStr = "Online Now"
-						}
-						lastSeenUnix = time.Now().Unix()
-					}
-
-					list = append(list, LadderCharacter{
-						AccountName:   canonicalAcctName,
-						CharacterName: charDetails.Name,
-						Level:         charDetails.Level,
-						Race:          race,
-						Class:         charDetails.Class,
-						XP:            xp,
-						LastSeen:      lastSeenStr,
-						LastSeenTime:  lastSeenUnix,
-						IsOnline:      isOnline,
-						OnlineShard:   onlineShard,
-					})
+				// Only MMO characters with an active server record (or currently verified online via pcN)
+				// can appear on the ladder — prevents local-only singleplayer saves from polluting it.
+				if charRec == nil && !(acctOnline && hbHero != "" && isThisCharOnline(ze.Raw.Name, ze.CleanName)) {
+					continue
 				}
+				if ze.Raw.SaveTime > maxSaveTime {
+					maxSaveTime = ze.Raw.SaveTime
+				}
+				entries = append(entries, zipCharEntry{
+					modTime:   ze.ModTime,
+					cleanName: ze.CleanName,
+					charRec:   charRec,
+					raw:       ze.Raw,
+				})
 			}
-			r.Close()
+
+			dspartyCount := len(entries)
+			for _, e := range entries {
+				if e.charRec != nil {
+					emittedRecs[e.charRec] = true
+				}
+				isOnline := isThisCharOnline(e.raw.Name, e.cleanName)
+				var charLiveXP int64
+				if isOnline {
+					emittedOnlineHero = true
+					charLiveXP = liveXP
+				}
+
+				charDetails := finalizeCharacterDetails(e.raw, e.charRec, charLiveXP)
+				xp := effectiveXPForChar(e.charRec, charLiveXP)
+
+				race := charDetails.Race
+				if race == "" {
+					race = "Human"
+				}
+
+				var lastTime time.Time
+				if e.charRec != nil && !e.charRec.Updated.IsZero() && e.charRec.Updated.Year() >= 2020 {
+					lastTime = e.charRec.Updated
+				}
+				// Only apply zip entry ModTime to the most recently saved .dsparty in current.zip,
+				// since unpacking current.zip on session start resets mtimes of inactive characters.
+				if dspartyCount <= 1 || (maxSaveTime > 0 && charDetails.SaveTime == maxSaveTime) {
+					mod := e.modTime
+					if !mod.IsZero() && mod.Year() >= 2020 && mod.After(lastTime) {
+						lastTime = mod
+					}
+				}
+
+				lastSeenStr := formatRelativeTime(lastTime)
+				var lastSeenUnix int64
+				if !lastTime.IsZero() && lastTime.Year() >= 2020 {
+					lastSeenUnix = lastTime.Unix()
+				}
+
+				if isOnline {
+					if onlineShard != "" {
+						lastSeenStr = "Online (" + onlineShard + ")"
+					} else {
+						lastSeenStr = "Online Now"
+					}
+					lastSeenUnix = nowUnix
+				}
+
+				list = append(list, LadderCharacter{
+					AccountName:   canonicalAcctName,
+					CharacterName: charDetails.Name,
+					Level:         charDetails.Level,
+					Race:          race,
+					Class:         charDetails.Class,
+					XP:            xp,
+					LastSeen:      lastSeenStr,
+					LastSeenTime:  lastSeenUnix,
+					IsOnline:      isOnline,
+					OnlineShard:   onlineShard,
+				})
+			}
+		}
+
+		// If a brand-new verified character is currently online but hasn't uploaded to current.zip yet,
+		// include them on the ladder immediately with live XP & level so Ladder matches Realms in real time.
+		if acctOnline && !emittedOnlineHero && hbHero != "" {
+			var charRec *CharRec
+			if acct.Chars != nil {
+				charRec = matchCharRec(acct.Chars, hbHero)
+			}
+			if charRec == nil || !emittedRecs[charRec] {
+				xp := effectiveXPForChar(charRec, liveXP)
+				lastSeenStr := "Online Now"
+				if onlineShard != "" {
+					lastSeenStr = "Online (" + onlineShard + ")"
+				}
+				list = append(list, LadderCharacter{
+					AccountName:   canonicalAcctName,
+					CharacterName: hbHero,
+					Level:         maxLevelForXP(xp),
+					Race:          "Human",
+					Class:         "Adventurer",
+					XP:            xp,
+					LastSeen:      lastSeenStr,
+					LastSeenTime:  nowUnix,
+					IsOnline:      true,
+					OnlineShard:   onlineShard,
+				})
+			}
 		}
 	}
 
@@ -2331,50 +2609,45 @@ func getAccountCharacters(accountName string) []UserCharacter {
 		saveSHA = acct.SaveSHA
 	}
 
-	zipPath := filepath.Join(portalDir, "portal-data", "saves", acctLower, "current.zip")
-	r, err := zip.OpenReader(zipPath)
-	if err == nil {
-		for _, f := range r.File {
-			if strings.HasPrefix(f.Name, "Save/") && strings.HasSuffix(f.Name, ".dsparty") && !strings.HasSuffix(f.Name, ".bak") {
-				cleanName := strings.TrimSuffix(strings.TrimPrefix(f.Name, "Save/"), ".dsparty")
-				var charRec *CharRec
-				if acct != nil && acct.Chars != nil {
-					charRec = matchCharRec(acct.Chars, cleanName)
+	az, hasZip := loadAccountZip(accountName, saveSHA)
+	if hasZip {
+		for _, e := range az.Entries {
+			var charRec *CharRec
+			if acct != nil && acct.Chars != nil {
+				charRec = matchCharRec(acct.Chars, e.CleanName)
+				if charRec == nil && e.Raw.Name != "" {
+					charRec = matchCharRec(acct.Chars, e.Raw.Name)
 				}
-				details := resolveCharacterDetails(accountName, cleanName, saveSHA, charRec)
-				race := details.Race
-				if race == "" {
-					race = "Human"
-				}
-				cls := details.Class
-				if cls == "" {
-					cls = "Adventurer"
-				}
-				lvl := details.Level
-				if lvl < 1 {
-					lvl = 1
-				}
-				name := details.Name
-				if name == "" {
-					name = cleanName
-				}
-				chars = append(chars, UserCharacter{
-					Name:  name,
-					Race:  race,
-					Class: cls,
-					Level: lvl,
-				})
 			}
+			details := finalizeCharacterDetails(e.Raw, charRec, 0)
+			race := details.Race
+			if race == "" {
+				race = "Human"
+			}
+			cls := details.Class
+			if cls == "" {
+				cls = "Adventurer"
+			}
+			lvl := details.Level
+			if lvl < 0 {
+				lvl = 0
+			}
+			name := details.Name
+			if name == "" {
+				name = e.CleanName
+			}
+			chars = append(chars, UserCharacter{
+				Name:  name,
+				Race:  race,
+				Class: cls,
+				Level: lvl,
+			})
 		}
-		r.Close()
 	}
 
-	if len(chars) == 0 && acct != nil && acct.Chars != nil && err != nil {
+	if len(chars) == 0 && acct != nil && acct.Chars != nil && !hasZip {
 		for _, c := range acct.Chars {
-			lvl := 1
-			if c.XP > 0 {
-				lvl = int(math.Floor(math.Sqrt(float64(c.XP)/120.0))) + 1
-			}
+			lvl := maxLevelForXP(c.XP)
 			chars = append(chars, UserCharacter{
 				Name:  c.Name,
 				Race:  "Human",
