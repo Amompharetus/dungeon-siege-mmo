@@ -1013,6 +1013,8 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/status", handleAPIStatus)
 	mux.HandleFunc("GET /api/ladder", handleAPILadder)
+	mux.HandleFunc("GET /api/character", handleAPICharacter)
+	mux.HandleFunc("GET /api/character/portrait", handleAPICharacterPortrait)
 	mux.HandleFunc("GET /api/wiki/items", handleAPIWikiItems)
 	mux.HandleFunc("GET /api/auth/status", handleAuthStatus)
 	mux.HandleFunc("POST /api/auth/login", handleAuthLogin)
@@ -1034,6 +1036,7 @@ func main() {
 	mux.HandleFunc("GET /realms", handleIndex)
 	mux.HandleFunc("GET /world", handleIndex)
 	mux.HandleFunc("GET /ladder", handleIndex)
+	mux.HandleFunc("GET /character/", handleIndex)
 	mux.HandleFunc("GET /wiki", handleIndex)
 	mux.HandleFunc("GET /gm-panel", handleIndex)
 	mux.HandleFunc("GET /gm", func(w http.ResponseWriter, r *http.Request) {
@@ -2675,20 +2678,22 @@ func handleAuthStatus(w http.ResponseWriter, r *http.Request) {
 
 	if !authed {
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"authenticated": false,
-			"username":      "",
-			"is_gm":         false,
-			"characters":    []UserCharacter{},
+			"authenticated":     false,
+			"username":          "",
+			"is_gm":             false,
+			"can_browse_armory": false,
+			"characters":        []UserCharacter{},
 		})
 		return
 	}
 
 	chars := getAccountCharacters(sess.Username)
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"authenticated": true,
-		"username":      sess.Username,
-		"is_gm":         sess.IsGM,
-		"characters":    chars,
+		"authenticated":     true,
+		"username":          sess.Username,
+		"is_gm":             sess.IsGM,
+		"can_browse_armory": true,
+		"characters":        chars,
 	})
 }
 
@@ -2728,11 +2733,12 @@ func handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"status":     "ok",
-		"token":      token,
-		"username":   sess.Username,
-		"is_gm":      sess.IsGM,
-		"characters": chars,
+		"status":            "ok",
+		"token":             token,
+		"username":          sess.Username,
+		"is_gm":             sess.IsGM,
+		"can_browse_armory": true,
+		"characters":        chars,
 	})
 }
 
@@ -2827,7 +2833,8 @@ func handleGMServerAction(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" && r.URL.Path != "/home" && r.URL.Path != "/realms" && r.URL.Path != "/world" && r.URL.Path != "/map" && r.URL.Path != "/world-map" && r.URL.Path != "/ladder" && r.URL.Path != "/gm" && r.URL.Path != "/gm-panel" && r.URL.Path != "/wiki" {
+	isCharRoute := strings.HasPrefix(r.URL.Path, "/character/") && len(strings.Split(strings.Trim(r.URL.Path, "/"), "/")) == 3
+	if !isCharRoute && r.URL.Path != "/" && r.URL.Path != "/home" && r.URL.Path != "/realms" && r.URL.Path != "/world" && r.URL.Path != "/map" && r.URL.Path != "/world-map" && r.URL.Path != "/ladder" && r.URL.Path != "/gm" && r.URL.Path != "/gm-panel" && r.URL.Path != "/wiki" {
 		http.NotFound(w, r)
 		return
 	}

@@ -2176,6 +2176,13 @@
             font-weight: 700;
         }
 
+        .wiki-card-tag.tag-magic {
+            background: rgba(92, 184, 255, 0.15);
+            color: #5cb8ff;
+            border-color: rgba(92, 184, 255, 0.45);
+            font-weight: 700;
+        }
+
         .wiki-pagination-bar {
             display: flex;
             justify-content: center;
@@ -4521,6 +4528,926 @@
             transition: all 0.2s ease;
         }
 
+        /* =========================================================
+           CHARACTER ARMORY / WARDROBE MODULE
+           ========================================================= */
+        .map-tooltip::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 20px;
+            bottom: -20px;
+        }
+        .map-marker.pos-down-mid .map-tooltip::before,
+        .map-marker.pos-down-left .map-tooltip::before,
+        .map-marker.pos-down-right .map-tooltip::before {
+            bottom: auto;
+            top: -20px;
+        }
+
+        .armory-clickable {
+            cursor: pointer;
+            transition: background 0.18s ease, border-color 0.18s ease, transform 0.14s ease;
+        }
+        .roster-row.armory-clickable:hover {
+            background: rgba(229, 184, 92, 0.08);
+            border-color: rgba(229, 184, 92, 0.35);
+        }
+        .roster-row.armory-clickable:hover .hero-name {
+            color: #ffe299;
+            text-decoration: underline;
+            text-decoration-color: rgba(229, 184, 92, 0.55);
+            text-underline-offset: 3px;
+        }
+        .tooltip-player-item.armory-clickable {
+            border-radius: 5px;
+            padding: 5px 6px;
+            margin: 0 -6px;
+        }
+        .tooltip-player-item.armory-clickable:hover {
+            background: rgba(229, 184, 92, 0.14);
+        }
+        .tooltip-player-item.armory-clickable:hover .tooltip-char-name {
+            color: #ffe299;
+            text-decoration: underline;
+        }
+        .armory-staging-link {
+            cursor: pointer;
+            color: #f3d48c;
+            border-bottom: 1px dashed rgba(229, 184, 92, 0.45);
+            transition: color 0.16s ease, border-color 0.16s ease;
+        }
+        .armory-staging-link:hover {
+            color: #fff0c2;
+            border-bottom-color: var(--ds-gold);
+        }
+
+        /* Armory View Wrapper */
+        .armory-wrap {
+            width: 100%;
+            max-width: 1260px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        @media (min-width: 1101px) {
+            .armory-wrap {
+                max-width: min(1220px, calc(100vw - 340px));
+            }
+        }
+        .armory-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .armory-topbar-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            background: linear-gradient(180deg, rgba(30, 26, 20, 0.95) 0%, rgba(16, 18, 24, 0.95) 100%);
+            border: 1px solid var(--ds-border-gold);
+            border-radius: 6px;
+            color: #e2d4bc;
+            font-family: 'Cinzel', serif;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.9px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+        .armory-topbar-btn:hover {
+            border-color: var(--ds-gold);
+            color: #ffe8ad;
+            box-shadow: 0 0 14px rgba(229, 184, 92, 0.22);
+        }
+        .armory-topbar-btn.copied {
+            border-color: #2ecc71;
+            color: #6df0a4;
+        }
+
+        /* Hero Profile Banner */
+        .armory-hero-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 22px;
+            padding: 22px 26px;
+            background: linear-gradient(135deg, rgba(26, 23, 19, 0.95) 0%, rgba(14, 18, 25, 0.96) 62%, rgba(24, 21, 16, 0.95) 100%);
+            border: 1.5px solid var(--ds-border-gold);
+            border-radius: 10px;
+            box-shadow: 0 10px 34px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(229, 184, 92, 0.16);
+            position: relative;
+            overflow: hidden;
+        }
+        .armory-hero-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 12% 50%, rgba(229, 184, 92, 0.11) 0%, transparent 55%);
+            pointer-events: none;
+        }
+        .armory-hero-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            min-width: 0;
+            position: relative;
+            z-index: 1;
+        }
+        .armory-portrait-frame {
+            width: 88px;
+            height: 88px;
+            flex-shrink: 0;
+            border-radius: 9px;
+            padding: 3px;
+            background: linear-gradient(145deg, #f3d284 0%, #8c6a28 55%, #3d2f16 100%);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8), 0 0 18px rgba(229, 184, 92, 0.2);
+            position: relative;
+        }
+        .armory-portrait-inner {
+            width: 100%;
+            height: 100%;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #0c0f15;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .armory-portrait-inner img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            image-rendering: auto;
+        }
+        .armory-hero-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            min-width: 0;
+        }
+        .armory-char-title-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .armory-char-name {
+            font-family: 'Cinzel', serif;
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            background: linear-gradient(180deg, #fff5d6 0%, #e5b85c 75%, #b88732 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.15;
+            word-break: break-word;
+        }
+        .armory-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11.5px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #a9b4c2;
+        }
+        .armory-status-pill.is-online {
+            background: rgba(46, 204, 113, 0.14);
+            border-color: rgba(46, 204, 113, 0.48);
+            color: #6df0a4;
+        }
+        .armory-status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #6b7280;
+        }
+        .armory-status-pill.is-online .armory-status-dot {
+            background: #2ecc71;
+            box-shadow: 0 0 8px #2ecc71;
+        }
+        .armory-sub-pills {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            flex-wrap: wrap;
+            font-size: 13px;
+            color: #b4bcc8;
+        }
+        .armory-sub-sep {
+            color: rgba(229, 184, 92, 0.45);
+        }
+        .armory-zone-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 2px 10px;
+            border-radius: 4px;
+            background: rgba(229, 184, 92, 0.1);
+            border: 1px solid rgba(229, 184, 92, 0.3);
+            color: #f2d28b;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .armory-hero-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+        .armory-badge-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 96px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: rgba(10, 13, 18, 0.85);
+            border: 1px solid rgba(229, 184, 92, 0.38);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            white-space: nowrap;
+        }
+        .armory-badge-label {
+            font-family: 'Cinzel', serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: #9ba5b4;
+        }
+        .armory-badge-val {
+            font-family: 'Cinzel', serif;
+            font-size: 23px;
+            font-weight: 800;
+            color: var(--ds-gold);
+            line-height: 1.2;
+            margin-top: 2px;
+        }
+        .armory-badge-sub {
+            font-size: 10.5px;
+            color: #7c8797;
+            margin-top: 1px;
+        }
+
+        /* Armory Cards & Layout Grids */
+        .armory-main-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+            gap: 20px;
+            align-items: start;
+        }
+        .armory-side-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .armory-bottom-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 20px;
+            align-items: start;
+        }
+        .armory-card {
+            background: var(--ds-card-bg);
+            border: 1px solid var(--ds-card-border);
+            border-top: 1.5px solid rgba(229, 184, 92, 0.42);
+            border-radius: 10px;
+            padding: 18px 20px 20px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+        }
+        .armory-card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(229, 184, 92, 0.16);
+        }
+        .armory-card-title {
+            font-family: 'Cinzel', serif;
+            font-size: 15.5px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--ds-gold);
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .armory-card-meta {
+            font-size: 11.5px;
+            color: #8b949e;
+        }
+
+        /* Paperdoll Equipment Grid */
+        .armory-paperdoll {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .armory-pd-col {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .armory-pd-col-title {
+            font-family: 'Cinzel', serif;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: #8c96a6;
+            padding-left: 2px;
+            margin-bottom: 1px;
+        }
+        .armory-slot-card {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 9px 10px;
+            border-radius: 7px;
+            background: rgba(11, 14, 20, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            position: relative;
+            transition: border-color 0.16s ease, background 0.16s ease, transform 0.14s ease, box-shadow 0.16s ease;
+            min-height: 68px;
+        }
+        .armory-slot-card.has-item {
+            cursor: pointer;
+        }
+        .armory-slot-card.has-item:hover {
+            background: rgba(22, 27, 37, 0.96);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+        }
+        .armory-slot-card.is-empty {
+            opacity: 0.55;
+            border-style: dashed;
+        }
+        .armory-slot-card.rarity-set { border-color: rgba(0, 232, 232, 0.48); box-shadow: inset 0 0 14px rgba(0, 232, 232, 0.07); }
+        .armory-slot-card.rarity-unique { border-color: rgba(202, 203, 68, 0.48); box-shadow: inset 0 0 14px rgba(202, 203, 68, 0.07); }
+        .armory-slot-card.rarity-rare { border-color: rgba(155, 155, 251, 0.48); box-shadow: inset 0 0 14px rgba(155, 155, 251, 0.07); }
+        .armory-slot-card.rarity-magic { border-color: rgba(92, 184, 255, 0.44); box-shadow: inset 0 0 14px rgba(92, 184, 255, 0.07); }
+        .armory-slot-card.rarity-normal { border-color: rgba(205, 188, 156, 0.25); }
+
+        .armory-slot-icon-box {
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+            border-radius: 6px;
+            background: radial-gradient(circle at 50% 45%, rgba(36, 42, 54, 0.9) 0%, rgba(10, 12, 17, 0.98) 100%);
+            border: 1.5px solid rgba(255, 255, 255, 0.14);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .armory-slot-card.rarity-set .armory-slot-icon-box { border-color: #00e8e8; box-shadow: 0 0 10px rgba(0, 232, 232, 0.28); }
+        .armory-slot-card.rarity-unique .armory-slot-icon-box { border-color: #cacb44; box-shadow: 0 0 10px rgba(202, 203, 68, 0.26); }
+        .armory-slot-card.rarity-rare .armory-slot-icon-box { border-color: #9b9bfb; box-shadow: 0 0 10px rgba(155, 155, 251, 0.28); }
+        .armory-slot-card.rarity-magic .armory-slot-icon-box { border-color: #5cb8ff; box-shadow: 0 0 10px rgba(92, 184, 255, 0.24); }
+        .armory-slot-card.rarity-normal .armory-slot-icon-box { border-color: rgba(220, 210, 190, 0.45); }
+
+        .armory-slot-icon-box img {
+            max-width: 42px;
+            max-height: 42px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.85));
+        }
+        .armory-slot-empty-glyph {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.16);
+        }
+        .armory-slot-info {
+            min-width: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .armory-slot-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+        }
+        .armory-slot-label {
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 0.9px;
+            text-transform: uppercase;
+            color: #7d8796;
+        }
+        .armory-slot-item-name {
+            font-size: 12.5px;
+            font-weight: 600;
+            line-height: 1.25;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            word-break: break-word;
+        }
+        .armory-slot-item-sub {
+            font-size: 11px;
+            color: #8b949e;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .rar-txt-set { color: #00e8e8; }
+        .rar-txt-unique { color: #cacb44; }
+        .rar-txt-rare { color: #9b9bfb; }
+        .rar-txt-magic { color: #5cb8ff; }
+        .rar-txt-normal { color: #f2f4f8; }
+
+        /* Stats & Skills */
+        .armory-vitals-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .armory-vital-tile {
+            background: rgba(10, 13, 19, 0.88);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 7px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .armory-vital-tile.vital-health {
+            border-color: rgba(231, 76, 60, 0.42);
+            background: linear-gradient(135deg, rgba(192, 57, 43, 0.14) 0%, rgba(10, 13, 19, 0.9) 100%);
+        }
+        .armory-vital-tile.vital-mana {
+            border-color: rgba(52, 152, 219, 0.45);
+            background: linear-gradient(135deg, rgba(41, 128, 185, 0.15) 0%, rgba(10, 13, 19, 0.9) 100%);
+        }
+        .armory-vital-label {
+            font-family: 'Cinzel', serif;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #b4becd;
+        }
+        .armory-vital-val {
+            font-family: 'Cinzel', serif;
+            font-size: 19px;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.1;
+        }
+        .armory-vital-tile.vital-health .armory-vital-val { color: #ff7b6e; }
+        .armory-vital-tile.vital-mana .armory-vital-val { color: #67c1ff; }
+
+        .armory-attr-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .armory-attr-tile {
+            background: rgba(10, 13, 19, 0.85);
+            border: 1px solid rgba(229, 184, 92, 0.2);
+            border-radius: 7px;
+            padding: 10px 10px 9px;
+            text-align: center;
+        }
+        .armory-attr-name {
+            font-family: 'Cinzel', serif;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #9aa4b2;
+        }
+        .armory-attr-val {
+            font-family: 'Cinzel', serif;
+            font-size: 21px;
+            font-weight: 800;
+            color: #f6e2b3;
+            margin-top: 2px;
+            line-height: 1.15;
+        }
+        .armory-attr-dec {
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 500;
+            color: #7d8796;
+        }
+        .armory-skills-list {
+            display: flex;
+            flex-direction: column;
+            gap: 11px;
+            margin-bottom: 16px;
+        }
+        .armory-skill-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .armory-skill-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12.5px;
+        }
+        .armory-skill-label {
+            font-weight: 600;
+            color: #d6dce6;
+        }
+        .armory-skill-num {
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            color: #f0d79a;
+        }
+        .armory-skill-track {
+            width: 100%;
+            height: 7px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.07);
+            overflow: hidden;
+        }
+        .armory-skill-fill {
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.35s ease;
+        }
+        .armory-skill-fill.sk-melee { background: linear-gradient(90deg, #c0392b, #e74c3c); }
+        .armory-skill-fill.sk-ranged { background: linear-gradient(90deg, #1f9d55, #2ecc71); }
+        .armory-skill-fill.sk-nmagic { background: linear-gradient(90deg, #008b9e, #00bcd4); }
+        .armory-skill-fill.sk-cmagic { background: linear-gradient(90deg, #d84b20, #ff7043); }
+
+        .armory-combat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(229, 184, 92, 0.14);
+        }
+        .armory-combat-tile {
+            background: rgba(10, 13, 19, 0.85);
+            border: 1px solid rgba(229, 184, 92, 0.2);
+            border-radius: 7px;
+            padding: 9px 8px;
+            text-align: center;
+        }
+        .armory-combat-label {
+            font-family: 'Cinzel', serif;
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 0.7px;
+            text-transform: uppercase;
+            color: #9aa4b2;
+            line-height: 1.25;
+        }
+        .armory-combat-val {
+            font-family: 'Inter', sans-serif;
+            font-size: 14.5px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: #f6e2b3;
+            margin-top: 4px;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .armory-combat-val.is-none {
+            color: #657080;
+            font-weight: 500;
+        }
+
+        /* Active Set Bonuses */
+        .armory-set-block {
+            background: rgba(0, 232, 232, 0.045);
+            border: 1px solid rgba(0, 232, 232, 0.28);
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+        }
+        .armory-set-block:last-child { margin-bottom: 0; }
+        .armory-set-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .armory-set-title {
+            font-family: 'Cinzel', serif;
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #00e8e8;
+        }
+        .armory-set-count {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(0, 232, 232, 0.14);
+            border: 1px solid rgba(0, 232, 232, 0.4);
+            color: #6df9f9;
+            white-space: nowrap;
+        }
+        .armory-set-pieces {
+            font-size: 11.5px;
+            color: #9ab2bd;
+            margin-bottom: 8px;
+        }
+        .armory-set-bonus-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .armory-set-bonus-line {
+            font-size: 12px;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+        .armory-set-bonus-line.is-active { color: #7ef7f7; }
+        .armory-set-bonus-line.is-locked { color: #677280; }
+
+        /* Spellbook */
+        .armory-spell-active-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .armory-spell-featured {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 11px;
+            border-radius: 7px;
+            background: rgba(11, 15, 22, 0.88);
+            border: 1px solid rgba(229, 184, 92, 0.3);
+            cursor: pointer;
+            transition: border-color 0.16s ease, background 0.16s ease;
+        }
+        .armory-spell-featured:hover {
+            border-color: var(--ds-gold);
+            background: rgba(24, 29, 40, 0.96);
+        }
+        .armory-spell-featured.is-empty {
+            opacity: 0.45;
+            cursor: default;
+            border-style: dashed;
+        }
+        .armory-spell-icon {
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+            border-radius: 6px;
+            background: #0c0f16;
+            border: 1.5px solid rgba(229, 184, 92, 0.38);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .armory-spell-icon.cat-nature { border-color: rgba(0, 188, 212, 0.58); box-shadow: 0 0 8px rgba(0, 188, 212, 0.2); }
+        .armory-spell-icon.cat-combat { border-color: rgba(255, 112, 67, 0.58); box-shadow: 0 0 8px rgba(255, 112, 67, 0.2); }
+        .armory-spell-icon img {
+            max-width: 34px;
+            max-height: 34px;
+            object-fit: contain;
+        }
+        .armory-spell-quick-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 8px;
+        }
+        .armory-spell-mini {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 5px 7px;
+            border-radius: 7px;
+            background: rgba(11, 14, 20, 0.84);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+            position: relative;
+            transition: border-color 0.16s ease, transform 0.14s ease, background 0.16s ease;
+        }
+        .armory-spell-mini.has-spell {
+            cursor: pointer;
+            border-color: rgba(229, 184, 92, 0.24);
+        }
+        .armory-spell-mini.has-spell:hover {
+            border-color: var(--ds-gold);
+            background: rgba(23, 28, 38, 0.96);
+            transform: translateY(-1px);
+        }
+        .armory-spell-mini.is-empty {
+            opacity: 0.38;
+            border-style: dashed;
+        }
+        .armory-spell-slot-badge {
+            position: absolute;
+            top: 3px;
+            left: 5px;
+            font-size: 9px;
+            font-weight: 700;
+            color: #7c8797;
+        }
+        .armory-spell-mini-name {
+            font-size: 10.5px;
+            font-weight: 600;
+            color: #d7dee8;
+            line-height: 1.2;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Floating DS1 Item / Spell Tooltip */
+        .armory-tooltip {
+            position: fixed;
+            z-index: 20000;
+            width: 320px;
+            max-width: calc(100vw - 24px);
+            background: linear-gradient(180deg, rgba(19, 23, 31, 0.98) 0%, rgba(10, 12, 17, 0.99) 100%);
+            border: 1.5px solid var(--ds-gold);
+            border-radius: 8px;
+            padding: 13px 15px;
+            box-shadow: 0 18px 46px rgba(0, 0, 0, 0.92), 0 0 22px rgba(0, 0, 0, 0.75);
+            pointer-events: none;
+            display: none;
+        }
+        .armory-tooltip.rar-set { border-color: #00e8e8; }
+        .armory-tooltip.rar-unique { border-color: #cacb44; }
+        .armory-tooltip.rar-rare { border-color: #9b9bfb; }
+        .armory-tooltip.rar-magic { border-color: #5cb8ff; }
+
+        .armory-tt-head {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding-bottom: 9px;
+            margin-bottom: 9px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+        }
+        .armory-tt-icon {
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+            border-radius: 6px;
+            background: #0b0e14;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .armory-tt-icon img {
+            max-width: 38px;
+            max-height: 38px;
+            object-fit: contain;
+        }
+        .armory-tt-title {
+            font-family: 'Cinzel', serif;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+        .armory-tt-meta {
+            font-size: 11px;
+            color: #94a0b2;
+            margin-top: 2px;
+        }
+        .armory-tt-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            font-size: 12.5px;
+            color: #e4e9f2;
+            margin-bottom: 7px;
+        }
+        .armory-tt-req {
+            font-size: 11.5px;
+            color: #f3c875;
+            margin-bottom: 7px;
+        }
+        .armory-tt-bonuses {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            font-size: 12px;
+            margin-bottom: 7px;
+        }
+        .armory-tt-bonus-innate { color: #f6e2a8; }
+        .armory-tt-bonus-mod { color: #7cc7ff; }
+        .armory-tt-set-box {
+            margin-top: 7px;
+            padding-top: 7px;
+            border-top: 1px solid rgba(0, 232, 232, 0.22);
+            font-size: 11.5px;
+        }
+        .armory-tt-set-name {
+            color: #00e8e8;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .armory-tt-set-line {
+            color: #7ef7f7;
+            margin-bottom: 2px;
+        }
+        .armory-tt-desc {
+            font-size: 11.5px;
+            font-style: italic;
+            color: #9aa5b5;
+            line-height: 1.4;
+            margin-top: 6px;
+        }
+
+        /* Armory Loading / Error States */
+        .armory-state-card {
+            text-align: center;
+            padding: 56px 24px;
+            background: var(--ds-card-bg);
+            border: 1px solid var(--ds-border-gold);
+            border-radius: 10px;
+        }
+        .armory-state-title {
+            font-family: 'Cinzel', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--ds-gold);
+            margin-bottom: 8px;
+        }
+        .armory-state-desc {
+            font-size: 13.5px;
+            color: #8b949e;
+            max-width: 460px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 1080px) {
+            .armory-main-grid { grid-template-columns: 1fr; }
+            .armory-bottom-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 780px) {
+            .armory-wrap { gap: 14px; }
+            .armory-topbar { gap: 8px; }
+            .armory-topbar-btn { padding: 7px 12px; font-size: 11px; }
+            .armory-hero-card { flex-direction: column; align-items: stretch; padding: 16px; gap: 14px; }
+            .armory-hero-left { gap: 14px; }
+            .armory-portrait-frame { width: 72px; height: 72px; }
+            .armory-hero-right { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+            .armory-badge-box { min-width: 0; padding: 8px 10px; }
+            .armory-badge-val { font-size: 20px; }
+            .armory-card { padding: 14px 14px 16px; }
+            .armory-paperdoll { grid-template-columns: 1fr; gap: 14px; }
+            .armory-slot-card { min-height: 62px; }
+            .armory-slot-card.has-item:active { transform: scale(0.99); background: rgba(24, 30, 42, 0.96); }
+            .armory-spell-active-grid { grid-template-columns: 1fr; }
+            .armory-spell-quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .armory-char-name { font-size: 21px; }
+            .armory-sub-pills { font-size: 12px; gap: 7px; }
+            .armory-vital-val { font-size: 17px; }
+            .armory-attr-val { font-size: 18px; }
+            .armory-combat-val { font-size: 13px; }
+        }
+        @media (max-width: 440px) {
+            .armory-vitals-grid { grid-template-columns: 1fr; gap: 8px; }
+            .armory-attr-grid { gap: 7px; }
+            .armory-attr-tile { padding: 8px 5px; }
+            .armory-attr-name { font-size: 9px; letter-spacing: 0.6px; }
+            .armory-attr-val { font-size: 16.5px; }
+            .armory-combat-grid { grid-template-columns: 1fr; gap: 8px; }
+            .armory-combat-tile { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; text-align: left; }
+            .armory-combat-val { margin-top: 0; font-size: 14px; }
+            .armory-topbar-btn { flex: 1; justify-content: center; }
+        }
+
     </style>
 </head>
 <body>
@@ -4803,7 +5730,7 @@
                                 <svg class="wiki-search-icon" viewBox="0 0 24 24">
                                     <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
                                 </svg>
-                                <input type="text" id="wiki-search-input" placeholder="Search 1,209 items..." autocomplete="off">
+                                <input type="text" id="wiki-search-input" placeholder="Search 1,256 items..." autocomplete="off">
                                 <button class="wiki-search-clear" id="wiki-search-clear" title="Clear Search">&times;</button>
                             </div>
                             <div class="wiki-sort-select-wrapper">
@@ -5567,6 +6494,16 @@
                 </div>
             </div>
         </div>
+
+        <!-- VIEW: CHARACTER ARMORY / WARDROBE -->
+        <div class="view-container" id="view-character" style="display: none;">
+            <div class="armory-wrap" id="armory-root">
+                <div class="armory-state-card">
+                    <div class="armory-state-title">Loading Character Armory...</div>
+                    <div class="armory-state-desc">Retrieving equipment, spells, attributes, and stats from the realm archives.</div>
+                </div>
+            </div>
+        </div>
     </main>
 </div>
 
@@ -5698,11 +6635,16 @@
                 return (a.character_name || '').localeCompare(b.character_name || '');
             });
 
+            const browseArmory = canBrowseArmory();
             sorted.forEach(p => {
                 const loc = p.location || 'Staging Screen';
                 const lvl = p.level !== undefined && p.level !== null ? p.level : 0;
+                const canClick = browseArmory && p.account_name && p.character_name;
+                const rowAttrs = canClick
+                    ? ` class="roster-row armory-clickable" data-armory-account="${escapeHTML(p.account_name)}" data-armory-char="${escapeHTML(p.character_name)}" title="View ${escapeHTML(p.character_name)}'s Character Armory"`
+                    : ` class="roster-row"`;
                 html += `
-                    <div class="roster-row">
+                    <div${rowAttrs}>
                         <div class="col-adventurer">
                             <div class="hero-name" title="${escapeHTML(p.character_name || 'Hero')}">${escapeHTML(p.character_name || 'Hero')}</div>
                             <div class="account-tag">Account: <span>${escapeHTML(p.account_name || '')}</span></div>
@@ -6078,11 +7020,16 @@
                 return (a.character_name || '').localeCompare(b.character_name || '');
             });
 
+            const browseArmory = canBrowseArmory();
             let pListHtml = '';
             sorted.forEach(p => {
                 const lvl = p.level !== undefined && p.level !== null ? p.level : 0;
+                const canClick = browseArmory && p.account_name && p.character_name;
+                const itemAttrs = canClick
+                    ? ` class="tooltip-player-item armory-clickable" data-armory-account="${escapeHTML(p.account_name)}" data-armory-char="${escapeHTML(p.character_name)}" title="View ${escapeHTML(p.character_name)}'s Character Armory"`
+                    : ` class="tooltip-player-item"`;
                 pListHtml += `
-                    <div class="tooltip-player-item">
+                    <div${itemAttrs}>
                         <div class="tooltip-player-left">
                             <div class="tooltip-shield">${lvl}</div>
                             <div class="tooltip-char-info">
@@ -6224,9 +7171,14 @@
         if (stagingPlayers.length > 0) {
             if (stagingBeaconElem) stagingBeaconElem.style.display = 'block';
             if (stagingNamesElem) {
+                const browseArmory = canBrowseArmory();
                 const stagingHtml = stagingPlayers.map(p => {
                     const lvl = p.level !== undefined && p.level !== null ? p.level : 0;
-                    return `${escapeHTML(p.character_name || 'Hero')} (Level ${lvl} ${escapeHTML(p.class || 'Adventurer')})`;
+                    const txt = `${escapeHTML(p.character_name || 'Hero')} (Level ${lvl} ${escapeHTML(p.class || 'Adventurer')})`;
+                    if (browseArmory && p.account_name && p.character_name) {
+                        return `<span class="armory-staging-link" data-armory-account="${escapeHTML(p.account_name)}" data-armory-char="${escapeHTML(p.character_name)}" title="View ${escapeHTML(p.character_name)}'s Character Armory">${txt}</span>`;
+                    }
+                    return txt;
                 }).join(', ');
                 if (stagingNamesElem.dataset.lastHtml !== stagingHtml) {
                     stagingNamesElem.innerHTML = stagingHtml;
@@ -6281,6 +7233,7 @@
             return (a.character_name || '').localeCompare(b.character_name || '');
         });
 
+        const browseArmory = canBrowseArmory();
         let html = '';
         sorted.forEach((p, index) => {
             const lvl = p.level !== undefined ? p.level : 0;
@@ -6313,8 +7266,13 @@
                 ? `<span class="lastseen-badge is-online"><span class="lastseen-dot"></span><span>${escapeHTML(lastSeenText)}</span></span>`
                 : `<span class="lastseen-badge">${escapeHTML(lastSeenText)}</span>`;
 
+            const canClick = browseArmory && p.account_name && p.character_name;
+            const rowAttrs = canClick
+                ? ` class="roster-row ladder-row armory-clickable" data-armory-account="${escapeHTML(p.account_name)}" data-armory-char="${escapeHTML(p.character_name)}" title="View ${escapeHTML(p.character_name)}'s Character Armory"`
+                : ` class="roster-row ladder-row"`;
+
             html += `
-                <div class="roster-row ladder-row">
+                <div${rowAttrs}>
                     <div class="col-rank">#${rank}</div>
                     <div class="col-adventurer">
                         <div class="hero-name" title="${escapeHTML(p.character_name || 'Hero')}">${escapeHTML(p.character_name || 'Hero')}</div>
@@ -6352,12 +7310,33 @@
     let gmServersPollTimer = null;
     let initialAuthPending = false;
     let requestedView = 'home';
+    let lastStatusData = null;
+    let pendingCharacterRoute = null;
+    let currentArmoryTarget = null;
+    let armoryReturnView = 'home';
+    let currentActiveView = 'home';
+
+    function canBrowseArmory() {
+        return !!(currentAuthUser && currentAuthUser.authenticated);
+    }
+
+    function refreshArmoryClickableViews() {
+        if (!lastStatusData) return;
+        const na = lastStatusData.na || {};
+        const eu = lastStatusData.eu || {};
+        renderPlayers('list-na', na.players);
+        renderMap('na', na.players);
+        renderPlayers('list-eu', eu.players);
+        renderMap('eu', eu.players);
+        renderLadder(lastStatusData.ladder);
+    }
 
     async function fetchStatus() {
         try {
             const res = await fetch('/api/status', { cache: 'no-store' });
             if (!res.ok) return;
             const data = await res.json();
+            lastStatusData = data;
 
             // Meta summary
             const totalOnlineEl = document.getElementById('total-online');
@@ -6490,6 +7469,7 @@
                 metaPill.classList.remove('clickable');
                 metaPill.removeAttribute('title');
             }
+            refreshArmoryClickableViews();
         } else {
             isGMLoggedIn = false;
 
@@ -6536,10 +7516,15 @@
             if (authedPane) authedPane.classList.add('hidden');
 
             // If user is currently on a protected view and auth check has settled, redirect to home
+            refreshArmoryClickableViews();
             if (!initialAuthPending) {
+                const charRoute = getRequestedCharacterRoute();
+                if (charRoute && !pendingCharacterRoute) {
+                    pendingCharacterRoute = charRoute;
+                }
                 const currentPath = window.location.pathname;
                 if (currentPath !== '/' && currentPath !== '/home') {
-                    switchView('home', true);
+                    switchView('home', !charRoute);
                 }
             }
         }
@@ -6556,26 +7541,47 @@
                     try { localStorage.setItem('ds_auth_user', JSON.stringify(data)); } catch (_) {}
                     updateAuthUI(currentAuthUser);
                     if (wasPending && requestedView !== 'home') {
+                        if (requestedView === 'character') {
+                            currentArmoryTarget = getRequestedCharacterRoute() || pendingCharacterRoute;
+                        }
                         switchView(requestedView, false);
                     }
                     fetchStatus();
                 } else {
+                    const charRoute = getRequestedCharacterRoute();
+                    if (charRoute) pendingCharacterRoute = charRoute;
                     currentAuthUser = null;
                     try { localStorage.removeItem('ds_auth_user'); } catch (_) {}
                     updateAuthUI(null);
                     if (wasPending && requestedView !== 'home') {
-                        switchView('home', true);
+                        if (requestedView === 'character' && charRoute) {
+                            applyViewDOM('home');
+                            currentActiveView = 'home';
+                            showAdminToast('Please sign in with your MMO account to view this Character Armory.');
+                            openAdminModal();
+                        } else {
+                            switchView('home', true);
+                        }
                     }
                 }
             })
             .catch(() => {
                 const wasPending = initialAuthPending;
                 initialAuthPending = false;
+                const charRoute = getRequestedCharacterRoute();
+                if (charRoute) pendingCharacterRoute = charRoute;
                 currentAuthUser = null;
                 try { localStorage.removeItem('ds_auth_user'); } catch (_) {}
                 updateAuthUI(null);
                 if (wasPending && requestedView !== 'home') {
-                    switchView('home', true);
+                    if (requestedView === 'character' && charRoute) {
+                        applyViewDOM('home');
+                        currentActiveView = 'home';
+                        showAdminToast('Please sign in with your MMO account to view this Character Armory.');
+                        openAdminModal();
+                    } else {
+                        switchView('home', true);
+                    }
                 }
             });
     }
@@ -6660,6 +7666,7 @@
                     authenticated: true,
                     username: res.body.username,
                     is_gm: res.body.is_gm,
+                    can_browse_armory: !!res.body.can_browse_armory,
                     characters: res.body.characters || []
                 };
                 try { localStorage.setItem('ds_auth_user', JSON.stringify(currentAuthUser)); } catch (_) {}
@@ -6667,6 +7674,11 @@
                 showAdminToast('Welcome, ' + (res.body.username || 'Adventurer') + '!');
                 fetchStatus();
                 setTimeout(closeAdminModal, 400);
+                if (pendingCharacterRoute) {
+                    const targetRoute = pendingCharacterRoute;
+                    pendingCharacterRoute = null;
+                    openCharacterArmory(targetRoute.account, targetRoute.name, true);
+                }
             } else {
                 if (errBox) {
                     errBox.innerText = res.body.message || 'Invalid account name or password.';
@@ -6684,6 +7696,8 @@
     }
 
     function submitAdminLogout() {
+        pendingCharacterRoute = null;
+        currentArmoryTarget = null;
         fetch('/api/auth/logout', { method: 'POST' })
             .then(() => {
                 currentAuthUser = null;
@@ -6996,7 +8010,22 @@
         }, 1500);
     }
 
+    function getRequestedCharacterRoute() {
+        const m = (window.location.pathname || '').match(/^\/character\/([^\/]+)\/([^\/]+)\/?$/i);
+        if (!m) return null;
+        try {
+            return {
+                account: decodeURIComponent(m[1]),
+                name: decodeURIComponent(m[2])
+            };
+        } catch (_) {
+            return { account: m[1], name: m[2] };
+        }
+    }
+
     function getRequestedView() {
+        if (getRequestedCharacterRoute()) return 'character';
+
         const p = (window.location.pathname || '').toLowerCase();
         if (p === '/realms' || p.includes('realm')) return 'realms';
         if (p === '/world' || p.includes('world') || p === '/map' || p.includes('map') || p === '/world-map') return 'world';
@@ -7021,6 +8050,7 @@
         const viewLadder = document.getElementById('view-ladder');
         const viewWiki = document.getElementById('view-wiki');
         const viewGM = document.getElementById('view-gm');
+        const viewChar = document.getElementById('view-character');
 
         const btnHome = document.getElementById('nav-btn-home');
         const btnRealms = document.getElementById('nav-btn-realms');
@@ -7035,6 +8065,7 @@
         if (viewLadder) viewLadder.style.display = target === 'ladder' ? 'flex' : 'none';
         if (viewWiki) viewWiki.style.display = target === 'wiki' ? 'block' : 'none';
         if (viewGM) viewGM.style.display = target === 'gm' ? 'block' : 'none';
+        if (viewChar) viewChar.style.display = target === 'character' ? 'block' : 'none';
 
         if (btnHome) btnHome.classList.toggle('active', target === 'home');
         if (btnRealms) btnRealms.classList.toggle('active', target === 'realms');
@@ -7044,7 +8075,7 @@
         if (btnGM) btnGM.classList.toggle('active', target === 'gm');
     }
 
-    // SPA View Switching (Home vs Realms vs World vs Ladder vs Wiki vs GM)
+    // SPA View Switching (Home vs Realms vs World vs Ladder vs Wiki vs GM vs Character Armory)
     function switchView(viewName, pushHistory = true) {
         let target = 'home';
         if (viewName === 'realms') target = 'realms';
@@ -7052,14 +8083,22 @@
         else if (viewName === 'ladder') target = 'ladder';
         else if (viewName === 'wiki') target = 'wiki';
         else if (viewName === 'gm') target = 'gm';
+        else if (viewName === 'character') target = 'character';
 
-        // Authentication guard: realms, world, ladder, wiki, gm are restricted unless logged in
+        // Authentication guard: realms, world, ladder, wiki, gm, character are restricted unless logged in
         const isAuthenticated = currentAuthUser && currentAuthUser.authenticated;
 
         if (target !== 'home') {
             if (!isAuthenticated && !initialAuthPending) {
+                if (target === 'character') {
+                    const cr = currentArmoryTarget || getRequestedCharacterRoute();
+                    if (cr) pendingCharacterRoute = cr;
+                }
                 target = 'home';
-                showAdminToast('Please sign in with your MMO account to view ' + (viewName === 'gm' ? 'GM Panel' : (viewName === 'wiki' ? 'MMO Wiki' : viewName)) + '.');
+                const label = viewName === 'gm' ? 'GM Panel'
+                    : (viewName === 'wiki' ? 'MMO Wiki'
+                    : (viewName === 'character' ? 'this Character Armory' : viewName));
+                showAdminToast('Please sign in with your MMO account to view ' + label + '.');
                 openAdminModal();
             } else if (target === 'gm' && isAuthenticated && (!currentAuthUser.is_gm && !isGMLoggedIn)) {
                 target = 'home';
@@ -7067,7 +8106,10 @@
             }
         }
 
+        hideArmoryTooltip();
+        closeWikiModal();
         applyViewDOM(target);
+        currentActiveView = target;
         try { sessionStorage.setItem('ds_current_view', target); } catch (_) {}
 
         if (target === 'gm') {
@@ -7086,13 +8128,886 @@
             initWikiView();
         }
 
+        if (target === 'character') {
+            const route = currentArmoryTarget || getRequestedCharacterRoute() || pendingCharacterRoute;
+            if (route && route.account && route.name) {
+                currentArmoryTarget = route;
+                const charPath = `/character/${encodeURIComponent(route.account)}/${encodeURIComponent(route.name)}`;
+                if (pushHistory && window.location.pathname !== charPath) {
+                    window.history.pushState({ view: 'character', account: route.account, name: route.name }, '', charPath);
+                }
+                loadCharacterArmory(route.account, route.name);
+            } else {
+                switchView('home', pushHistory);
+            }
+            return;
+        }
+
         const targetPath = target === 'home' ? '/' : (target === 'gm' ? '/gm-panel' : `/${target}`);
         if (pushHistory && window.location.pathname !== targetPath) {
             window.history.pushState({ view: target }, '', targetPath);
         }
     }
 
-    // Intercept navigation button clicks (using event delegation for dynamically shown buttons)
+    // ==========================================
+    // CHARACTER ARMORY / WARDROBE MODULE
+    // ==========================================
+    let armoryFetchSeq = 0;
+    let armoryCurrentProfile = null;
+    let armoryItemIndex = {};
+    let armorySpellIndex = {};
+
+    function openCharacterArmory(account, name, pushHistory = true) {
+        if (!account || !name) return;
+        if (canBrowseArmory() && currentActiveView && currentActiveView !== 'character') {
+            armoryReturnView = currentActiveView;
+        } else if (!canBrowseArmory()) {
+            armoryReturnView = 'home';
+        }
+        currentArmoryTarget = { account: account, name: name };
+        switchView('character', pushHistory);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function armoryGoBack() {
+        const dest = (canBrowseArmory() && armoryReturnView && armoryReturnView !== 'character') ? armoryReturnView : 'home';
+        switchView(dest, true);
+    }
+
+    function armoryRarityLabel(r) {
+        const k = (r || 'normal').toLowerCase();
+        if (k === 'set') return 'Set Item';
+        if (k === 'unique') return 'Unique';
+        if (k === 'rare') return 'Rare';
+        if (k === 'magic') return 'Magic';
+        return 'Standard';
+    }
+
+    function armoryRarityClass(r) {
+        const k = (r || 'normal').toLowerCase();
+        if (k === 'set' || k === 'unique' || k === 'rare' || k === 'magic') return k;
+        return 'normal';
+    }
+
+    function fmtNumStat(v) {
+        if (v === null || v === undefined || isNaN(v)) return '';
+        const n = Number(v);
+        return Math.abs(n - Math.round(n)) < 0.01 ? String(Math.round(n)) : n.toFixed(1);
+    }
+
+    function buildArmoryItemTooltipHTML(item) {
+        if (!item) return '';
+        const rk = armoryRarityClass(item.rarity);
+        const rLabel = armoryRarityLabel(rk);
+        const iconHtml = item.icon
+            ? `<img src="${escapeHTML(item.icon)}" alt="${escapeHTML(item.full_name || item.base_name)}">`
+            : `<span style="color:#555;font-size:18px;">&#x2726;</span>`;
+
+        const metaParts = [rLabel];
+        if (item.sub_category) metaParts.push(item.sub_category);
+        if (item.is_two_handed) metaParts.push('Two-Handed');
+
+        let statsHtml = '';
+        if (item.damage_min != null || item.damage_max != null) {
+            const dMin = item.damage_min != null ? fmtNumStat(item.damage_min) : '0';
+            const dMax = item.damage_max != null ? fmtNumStat(item.damage_max) : dMin;
+            statsHtml += `<div>Damage: <strong>${dMin} - ${dMax}</strong></div>`;
+        }
+        if (item.attack_speed) {
+            statsHtml += `<div>Attack Speed: <strong>${escapeHTML(item.attack_speed)}</strong></div>`;
+        }
+        if (item.defense != null && Number(item.defense) > 0) {
+            statsHtml += `<div>Defense: <strong>${fmtNumStat(item.defense)}</strong></div>`;
+        }
+
+        let bonusesHtml = '';
+        (item.innate_bonuses || []).forEach(b => {
+            bonusesHtml += `<div class="armory-tt-bonus-innate">&bull; ${escapeHTML(b)}</div>`;
+        });
+        (item.prefix_bonuses || []).forEach(b => {
+            bonusesHtml += `<div class="armory-tt-bonus-mod">&bull; ${escapeHTML(b)}</div>`;
+        });
+        (item.suffix_bonuses || []).forEach(b => {
+            bonusesHtml += `<div class="armory-tt-bonus-mod">&bull; ${escapeHTML(b)}</div>`;
+        });
+
+        let setHtml = '';
+        if (item.set_name) {
+            const eq = item.set_equipped_count || 1;
+            const tot = item.set_num_items || eq;
+            let lines = '';
+            (item.set_item_bonuses || []).forEach(ln => {
+                lines += `<div class="armory-tt-set-line">&#x2713; ${escapeHTML(ln.text)}</div>`;
+            });
+            setHtml = `
+                <div class="armory-tt-set-box">
+                    <div class="armory-tt-set-name">${escapeHTML(item.set_name)} (${eq}/${tot} equipped)</div>
+                    ${lines}
+                </div>
+            `;
+        }
+
+        return `
+            <div class="armory-tt-head">
+                <div class="armory-tt-icon">${iconHtml}</div>
+                <div style="min-width:0;">
+                    <div class="armory-tt-title rar-txt-${rk}">${escapeHTML(item.full_name || item.base_name)}</div>
+                    <div class="armory-tt-meta">${escapeHTML(metaParts.join(' \u00b7 '))}</div>
+                </div>
+            </div>
+            ${statsHtml ? `<div class="armory-tt-stats">${statsHtml}</div>` : ''}
+            ${item.requirements ? `<div class="armory-tt-req">Requires: ${escapeHTML(item.requirements)}</div>` : ''}
+            ${bonusesHtml ? `<div class="armory-tt-bonuses">${bonusesHtml}</div>` : ''}
+            ${setHtml}
+            ${item.desc ? `<div class="armory-tt-desc">${escapeHTML(item.desc)}</div>` : ''}
+        `;
+    }
+
+    function buildArmorySpellTooltipHTML(sp) {
+        if (!sp) return '';
+        const catRaw = (sp.category || '').toLowerCase();
+        const schoolLabel = catRaw.includes('nature') ? 'Nature Magic'
+            : (catRaw.includes('combat') ? 'Combat Magic' : 'Magic Spell');
+        const schoolColor = catRaw.includes('nature') ? '#00bcd4'
+            : (catRaw.includes('combat') ? '#ff7043' : '#e5b85c');
+        const slotRole = sp.is_primary ? 'Primary Active Slot (1)'
+            : (sp.is_secondary ? 'Secondary Active Slot (2)' : `Spellbook Slot ${sp.slot}`);
+        const iconHtml = sp.icon
+            ? `<img src="${escapeHTML(sp.icon)}" alt="${escapeHTML(sp.name)}">`
+            : `<span style="color:#e5b85c;">&#x2728;</span>`;
+
+        let statsHtml = '';
+        if (sp.mana_cost) statsHtml += `<div>Mana Cost: <strong>${escapeHTML(String(sp.mana_cost))}</strong></div>`;
+        if (sp.required_level != null || sp.max_level != null) {
+            const req = sp.required_level != null ? sp.required_level : 0;
+            const max = sp.max_level != null ? ` (Max Level ${sp.max_level})` : '';
+            statsHtml += `<div>Required Level: <strong>${req}</strong>${escapeHTML(max)}</div>`;
+        }
+
+        return `
+            <div class="armory-tt-head">
+                <div class="armory-tt-icon">${iconHtml}</div>
+                <div style="min-width:0;">
+                    <div class="armory-tt-title" style="color:${schoolColor};">${escapeHTML(sp.name)}</div>
+                    <div class="armory-tt-meta">${escapeHTML(schoolLabel)} &middot; ${escapeHTML(slotRole)}</div>
+                </div>
+            </div>
+            ${statsHtml ? `<div class="armory-tt-stats">${statsHtml}</div>` : ''}
+            ${sp.desc ? `<div class="armory-tt-desc">${escapeHTML(sp.desc)}</div>` : ''}
+        `;
+    }
+
+    function positionArmoryTooltip(ev) {
+        const tt = document.getElementById('armory-floating-tooltip');
+        if (!tt || tt.style.display === 'none') return;
+        const pad = 14;
+        const rect = tt.getBoundingClientRect();
+        let x = ev.clientX + 16;
+        let y = ev.clientY + 16;
+        if (x + rect.width > window.innerWidth - pad) {
+            x = Math.max(pad, ev.clientX - rect.width - 16);
+        }
+        if (y + rect.height > window.innerHeight - pad) {
+            y = Math.max(pad, window.innerHeight - rect.height - pad);
+        }
+        tt.style.left = x + 'px';
+        tt.style.top = y + 'px';
+    }
+
+    function showArmoryTooltip(html, rarKey, ev) {
+        if (window.matchMedia && window.matchMedia('(hover: none)').matches) return;
+        const tt = document.getElementById('armory-floating-tooltip');
+        if (!tt || !html) return;
+        tt.className = 'armory-tooltip' + (rarKey ? ` rar-${rarKey}` : '');
+        tt.innerHTML = html;
+        tt.style.display = 'block';
+        if (ev) positionArmoryTooltip(ev);
+    }
+
+    function hideArmoryTooltip() {
+        const tt = document.getElementById('armory-floating-tooltip');
+        if (tt) tt.style.display = 'none';
+    }
+
+    let wikiDataPromise = null;
+    function ensureWikiItemsData() {
+        if (wikiLoaded && wikiItemsById && wikiItemsById.size > 0) {
+            return Promise.resolve();
+        }
+        if (wikiDataPromise) return wikiDataPromise;
+        wikiDataPromise = fetch('/api/wiki/items')
+            .then(res => (res.ok ? res.json() : []))
+            .then(data => {
+                if (Array.isArray(data) && data.length > 0) {
+                    wikiItems = data;
+                    wikiItemsById = new Map();
+                    for (let i = 0; i < wikiItems.length; i++) {
+                        wikiItemsById.set(wikiItems[i].id, wikiItems[i]);
+                    }
+                    wikiLoaded = true;
+                    updateWikiCategoryCounts();
+                }
+            })
+            .catch(() => {})
+            .finally(() => { wikiDataPromise = null; });
+        return wikiDataPromise;
+    }
+
+    function parseArmoryReqString(reqStr) {
+        const out = {};
+        if (!reqStr || typeof reqStr !== 'string') return out;
+        reqStr.split(',').forEach(part => {
+            const p = part.trim();
+            if (!p) return;
+            const m = p.match(/^(.+?)\s+(\d+(?:\.\d+)?)$/);
+            if (m) {
+                const key = m[1].trim().toLowerCase().replace(/\s+/g, '_');
+                out[key] = Number(m[2]);
+            }
+        });
+        return out;
+    }
+
+    function stripIconToWikiName(iconPath) {
+        if (!iconPath) return '';
+        let s = String(iconPath).trim();
+        s = s.replace(/^\/static\/wiki_icons\//i, '');
+        s = s.replace(/\.png(?:\?.*)?$/i, '');
+        return s;
+    }
+
+    function openArmoryItemInWikiModal(item) {
+        if (!item) return;
+        hideArmoryTooltip();
+        ensureWikiItemsData().then(() => {
+            const tpl = (item.template || '').toLowerCase();
+            const stripped = tpl.replace(/^[23]w_/, '');
+            const base = (wikiItemsById && (wikiItemsById.get(tpl) || wikiItemsById.get(stripped))) || null;
+
+            const slotFallbackSub = {
+                head: 'Helmet', chest: 'Body Armor', forearms: 'Gloves', feet: 'Boots',
+                melee: 'Melee Weapon', shield: 'Shield', ranged: 'Ranged Weapon',
+                spellbook: 'Spellbook', amulet: 'Amulet',
+                ring_0: 'Ring', ring_1: 'Ring', ring_2: 'Ring', ring_3: 'Ring'
+            };
+            const slotFallbackCat = {
+                head: 'armor', chest: 'armor', forearms: 'armor', feet: 'armor',
+                melee: 'melee', shield: 'shields', ranged: 'ranged',
+                spellbook: 'relics', amulet: 'jewelry',
+                ring_0: 'jewelry', ring_1: 'jewelry', ring_2: 'jewelry', ring_3: 'jewelry'
+            };
+
+            const modalItem = base ? Object.assign({}, base) : {
+                id: tpl || item.base_name || 'item',
+                name: item.full_name || item.base_name,
+                category: item.category || slotFallbackCat[item.slot] || 'armor',
+                sub_category: item.sub_category || slotFallbackSub[item.slot] || 'Equipment',
+                rarity: item.rarity || 'normal',
+                tags: [],
+                desc: item.desc || ''
+            };
+
+            modalItem.id = tpl || modalItem.id;
+            modalItem.name = item.full_name || item.base_name || modalItem.name;
+            modalItem.rarity = item.rarity || modalItem.rarity || 'normal';
+            const iconName = stripIconToWikiName(item.icon);
+            if (iconName) modalItem.icon = iconName;
+
+            if (item.damage_min != null && item.damage_max != null) {
+                modalItem.damage_min = item.damage_min;
+                modalItem.damage_max = item.damage_max;
+                modalItem.damage_min_max = null;
+                modalItem.damage_max_max = null;
+            }
+            if (item.defense != null) {
+                modalItem.defense = item.defense;
+                modalItem.defense_max = null;
+            }
+            if (item.requirements) {
+                const parsedReqs = parseArmoryReqString(item.requirements);
+                if (Object.keys(parsedReqs).length > 0) {
+                    modalItem.requirements = parsedReqs;
+                    modalItem.requirements_max = null;
+                }
+            }
+            if (item.set_name) {
+                modalItem.set_name = item.set_name;
+                modalItem.set_compare_name = item.set_compare_name || modalItem.set_compare_name;
+                modalItem.set_num_items = item.set_num_items || modalItem.set_num_items;
+            }
+            if (item.can_sell === false) {
+                modalItem.gold_value = null;
+                modalItem.sell_value = null;
+                modalItem.sell_value_max = null;
+                modalItem.buy_value = 'Drop Only';
+                modalItem.buy_value_max = null;
+            } else if (item.sell_value != null) {
+                modalItem.gold_value = item.sell_value;
+                modalItem.sell_value = item.sell_value;
+                modalItem.sell_value_max = null;
+                modalItem.buy_value = (item.buy_value != null) ? item.buy_value : (item.sell_value * 3);
+                modalItem.buy_value_max = null;
+            }
+            const modBonuses = []
+                .concat(item.prefix_bonuses || [])
+                .concat(item.suffix_bonuses || []);
+            const innateBonuses = (item.innate_bonuses || []);
+            if (modBonuses.length > 0 || innateBonuses.length > 0) {
+                modalItem._armory_innate = innateBonuses;
+                modalItem._armory_modifiers = modBonuses;
+            }
+            if (!modalItem.tags || modalItem.tags.length === 0) {
+                const tgs = [];
+                if (modalItem.sub_category) tgs.push(modalItem.sub_category);
+                if (item.is_two_handed) tgs.push('Two-Handed');
+                modalItem.tags = tgs;
+            }
+
+            openWikiItemModal(modalItem);
+        });
+    }
+
+    function openArmorySpellInWikiModal(sp) {
+        if (!sp) return;
+        hideArmoryTooltip();
+        ensureWikiItemsData().then(() => {
+            const tpl = (sp.template || '').toLowerCase();
+            const base = (wikiItemsById && wikiItemsById.get(tpl)) || null;
+            if (base) {
+                openWikiItemModal(base);
+                return;
+            }
+            const cat = (sp.category || '').toLowerCase();
+            const fallback = {
+                id: tpl || sp.name || 'spell',
+                name: sp.name || 'Spell',
+                category: cat.includes('combat') ? 'combat_magic' : 'nature_magic',
+                sub_category: cat.includes('combat') ? 'Combat Magic' : 'Nature Magic',
+                rarity: 'normal',
+                icon: stripIconToWikiName(sp.icon),
+                mana_cost: sp.mana_cost || null,
+                required_level: sp.required_level,
+                max_level: sp.max_level,
+                desc: sp.desc || '',
+                requirements: sp.required_level != null ? { [cat.includes('combat') ? 'combat_magic' : 'nature_magic']: sp.required_level } : {},
+                tags: [cat.includes('combat') ? 'Combat Magic' : 'Nature Magic']
+            };
+            openWikiItemModal(fallback);
+        });
+    }
+
+    function copyArmoryShareLink() {
+        if (!armoryCurrentProfile) return;
+        const url = `${window.location.origin}/character/${encodeURIComponent(armoryCurrentProfile.account_name)}/${encodeURIComponent(armoryCurrentProfile.character_name)}`;
+        const btn = document.getElementById('armory-copy-link-btn');
+        const done = () => {
+            showAdminToast('Armory link copied to clipboard!');
+            if (btn) {
+                btn.classList.add('copied');
+                const span = btn.querySelector('span');
+                if (span) span.innerText = 'Link Copied!';
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    if (span) span.innerText = 'Copy Link';
+                }, 2200);
+            }
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(done).catch(() => {
+                showAdminToast(url);
+            });
+        } else {
+            showAdminToast(url);
+        }
+    }
+
+    async function loadCharacterArmory(account, name) {
+        const root = document.getElementById('armory-root');
+        if (!root) return;
+        const seq = ++armoryFetchSeq;
+        armoryCurrentProfile = null;
+        armoryItemIndex = {};
+        armorySpellIndex = {};
+        ensureWikiItemsData();
+
+        root.innerHTML = `
+            <div class="armory-state-card">
+                <div class="armory-state-title">Inspecting ${escapeHTML(name)}...</div>
+                <div class="armory-state-desc">Loading character equipment, spells, attributes, and stats from the realm archives.</div>
+            </div>
+        `;
+
+        try {
+            const url = `/api/character?account=${encodeURIComponent(account)}&name=${encodeURIComponent(name)}`;
+            const res = await fetch(url, { cache: 'no-store' });
+            if (seq !== armoryFetchSeq) return;
+
+            if (res.status === 401) {
+                pendingCharacterRoute = { account, name };
+                switchView('home', false);
+                showAdminToast('Please sign in with your MMO account to view this Character Armory.');
+                openAdminModal();
+                return;
+            }
+            const backLabelMap = { ladder: 'Ladder', realms: 'Realms', world: 'World Map', home: 'Home', wiki: 'MMO Wiki' };
+            const errBackDest = (canBrowseArmory() && armoryReturnView && armoryReturnView !== 'character') ? armoryReturnView : 'home';
+            const errBackBtn = `<div class="armory-topbar"><button type="button" class="armory-topbar-btn" onclick="armoryGoBack()">&larr; Back to ${escapeHTML(backLabelMap[errBackDest] || 'Home')}</button></div>`;
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                root.innerHTML = `
+                    ${errBackBtn}
+                    <div class="armory-state-card">
+                        <div class="armory-state-title">Character Not Found</div>
+                        <div class="armory-state-desc">${escapeHTML(errData.message || 'No verified MMO character matched that account and name.')}</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const prof = await res.json();
+            if (seq !== armoryFetchSeq) return;
+            armoryCurrentProfile = prof;
+            renderArmoryProfile(prof);
+        } catch (err) {
+            if (seq !== armoryFetchSeq) return;
+            const backLabelMap = { ladder: 'Ladder', realms: 'Realms', world: 'World Map', home: 'Home', wiki: 'MMO Wiki' };
+            const errBackDest = (canBrowseArmory() && armoryReturnView && armoryReturnView !== 'character') ? armoryReturnView : 'home';
+            root.innerHTML = `
+                <div class="armory-topbar"><button type="button" class="armory-topbar-btn" onclick="armoryGoBack()">&larr; Back to ${escapeHTML(backLabelMap[errBackDest] || 'Home')}</button></div>
+                <div class="armory-state-card">
+                    <div class="armory-state-title">Unable to Load Armory</div>
+                    <div class="armory-state-desc">A network error occurred while retrieving this character profile. Please try again.</div>
+                </div>
+            `;
+        }
+    }
+
+    function armoryPortraitError(img) {
+        if (!img || !img.parentNode) return;
+        img.parentNode.innerHTML = '<svg viewBox="0 0 64 64" width="44" height="44" fill="none"><circle cx="32" cy="23" r="11" stroke="#b8944c" stroke-width="2.4"/><path d="M14 54c2-11 10-17 18-17s16 6 18 17" stroke="#b8944c" stroke-width="2.4" stroke-linecap="round"/></svg>';
+    }
+
+    function renderArmoryProfile(prof) {
+        const root = document.getElementById('armory-root');
+        if (!root || !prof) return;
+
+        armoryItemIndex = {};
+        armorySpellIndex = {};
+        const eq = prof.equipment || {};
+        const skills = prof.skills || {};
+        const cs = prof.combat_stats || {};
+
+        // 1. Top Action Bar (direct links return to Home; in-app navigation returns to originating view)
+        const backLabelMap = { ladder: 'Ladder', realms: 'Realms', world: 'World Map', home: 'Home', wiki: 'MMO Wiki' };
+        const backDest = (canBrowseArmory() && armoryReturnView && armoryReturnView !== 'character') ? armoryReturnView : 'home';
+        const backBtnHtml = `<button type="button" class="armory-topbar-btn" id="armory-back-btn" onclick="armoryGoBack()">&larr; Back to ${escapeHTML(backLabelMap[backDest] || 'Home')}</button>`;
+
+        const topBarHtml = `
+            <div class="armory-topbar">
+                ${backBtnHtml}
+                <button type="button" class="armory-topbar-btn" id="armory-copy-link-btn" onclick="copyArmoryShareLink()">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    <span>Copy Link</span>
+                </button>
+            </div>
+        `;
+
+        // 2. Hero Profile Banner (Portrait, Name, Online/Last Seen, Account + Class, Level & Rank badges)
+        const fallbackPortraitSvg = '<svg viewBox="0 0 64 64" width="44" height="44" fill="none"><circle cx="32" cy="23" r="11" stroke="#b8944c" stroke-width="2.4"/><path d="M14 54c2-11 10-17 18-17s16 6 18 17" stroke="#b8944c" stroke-width="2.4" stroke-linecap="round"/></svg>';
+        const portraitHtml = prof.has_portrait && prof.portrait_url
+            ? `<img src="${escapeHTML(prof.portrait_url)}" alt="${escapeHTML(prof.character_name)} Portrait" onerror="armoryPortraitError(this)">`
+            : fallbackPortraitSvg;
+
+        const statusText = prof.is_online
+            ? `Online${prof.online_shard ? ' \u00b7 ' + prof.online_shard : ''}`
+            : `Last seen ${prof.last_seen || 'Unknown'}`;
+
+        const rankValHtml = prof.rank > 0 ? `#${prof.rank}` : '&mdash;';
+        const rankSubHtml = prof.total_ladder > 0 ? `of ${prof.total_ladder}` : 'Ladder';
+
+        let displayExactLevel = '0.00';
+        if (prof.level != null && prof.uber_exact != null) {
+            if (prof.level === 0 && prof.uber_exact >= 1) {
+                displayExactLevel = '0.00';
+            } else if (prof.level > Math.floor(prof.uber_exact)) {
+                displayExactLevel = Number(prof.level).toFixed(2);
+            } else {
+                displayExactLevel = Number(prof.uber_exact).toFixed(2);
+            }
+        } else {
+            displayExactLevel = Number(prof.level || 0).toFixed(2);
+        }
+
+        const heroHtml = `
+            <section class="armory-hero-card">
+                <div class="armory-hero-left">
+                    <div class="armory-portrait-frame">
+                        <div class="armory-portrait-inner">${portraitHtml}</div>
+                    </div>
+                    <div class="armory-hero-meta">
+                        <div class="armory-char-title-row">
+                            <h1 class="armory-char-name">${escapeHTML(prof.character_name)}</h1>
+                            <span class="armory-status-pill ${prof.is_online ? 'is-online' : ''}">
+                                <span class="armory-status-dot"></span>
+                                <span>${escapeHTML(statusText)}</span>
+                            </span>
+                        </div>
+                        <div class="armory-sub-pills">
+                            <span>Account: <strong style="color:#e5e7eb;">${escapeHTML(prof.account_name)}</strong></span>
+                            <span class="class-pill">${escapeHTML(prof.class || 'Adventurer')}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="armory-hero-right">
+                    <div class="armory-badge-box">
+                        <div class="armory-badge-label">Level</div>
+                        <div class="armory-badge-val">${escapeHTML(displayExactLevel)}</div>
+                        <div class="armory-badge-sub">${prof.xp ? Number(prof.xp).toLocaleString() + ' XP' : 'Adventurer'}</div>
+                    </div>
+                    <div class="armory-badge-box">
+                        <div class="armory-badge-label">Rank</div>
+                        <div class="armory-badge-val">${rankValHtml}</div>
+                        <div class="armory-badge-sub">${escapeHTML(rankSubHtml)}</div>
+                    </div>
+                </div>
+            </section>
+        `;
+
+        // 3. Paperdoll Equipment Card (whole words: Damage & Defense, spaced hyphen e.g. 28 - 32)
+        const renderSlot = (slotKey, label) => {
+            const it = eq[slotKey];
+            if (!it) {
+                return `
+                    <div class="armory-slot-card is-empty">
+                        <div class="armory-slot-icon-box"><span class="armory-slot-empty-glyph">&#x25C7;</span></div>
+                        <div class="armory-slot-info">
+                            <div class="armory-slot-label-row"><span class="armory-slot-label">${escapeHTML(label)}</span></div>
+                            <div class="armory-slot-item-name" style="color:#657080;font-weight:500;">Empty</div>
+                        </div>
+                    </div>
+                `;
+            }
+            armoryItemIndex[slotKey] = it;
+            const rk = armoryRarityClass(it.rarity);
+            let subParts = [];
+            if (it.damage_min != null || it.damage_max != null) {
+                const dMin = it.damage_min != null ? fmtNumStat(it.damage_min) : '0';
+                const dMax = it.damage_max != null ? fmtNumStat(it.damage_max) : dMin;
+                subParts.push(`Damage ${dMin} - ${dMax}`);
+            }
+            if (it.defense != null && Number(it.defense) > 0) {
+                subParts.push(`Defense ${fmtNumStat(it.defense)}`);
+            }
+            if (it.set_name) {
+                subParts.push(`Set (${it.set_equipped_count || 1}/${it.set_num_items || 1})`);
+            } else if (subParts.length === 0) {
+                subParts.push(armoryRarityLabel(rk));
+            }
+            const iconTag = it.icon
+                ? `<img src="${escapeHTML(it.icon)}" alt="${escapeHTML(it.full_name || it.base_name)}">`
+                : `<span class="armory-slot-empty-glyph">&#x2726;</span>`;
+            return `
+                <div class="armory-slot-card has-item rarity-${rk}" data-armory-item-slot="${escapeHTML(slotKey)}">
+                    <div class="armory-slot-icon-box">${iconTag}</div>
+                    <div class="armory-slot-info">
+                        <div class="armory-slot-label-row">
+                            <span class="armory-slot-label">${escapeHTML(label)}</span>
+                        </div>
+                        <div class="armory-slot-item-name rar-txt-${rk}">${escapeHTML(it.full_name || it.base_name)}</div>
+                        <div class="armory-slot-item-sub">${escapeHTML(subParts.join(' \u00b7 '))}</div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const gearHtml = `
+            <section class="armory-card">
+                <div class="armory-card-head">
+                    <div class="armory-card-title">Equipped Gear</div>
+                    <div class="armory-card-meta">Click any item for full details</div>
+                </div>
+                <div class="armory-paperdoll">
+                    <div class="armory-pd-col">
+                        <div class="armory-pd-col-title">Armor</div>
+                        ${renderSlot('head', 'Helm')}
+                        ${renderSlot('chest', 'Chest')}
+                        ${renderSlot('forearms', 'Gloves')}
+                        ${renderSlot('feet', 'Boots')}
+                    </div>
+                    <div class="armory-pd-col">
+                        <div class="armory-pd-col-title">Weapons</div>
+                        ${renderSlot('melee', 'Melee')}
+                        ${renderSlot('shield', 'Shield')}
+                        ${renderSlot('ranged', 'Ranged')}
+                        ${renderSlot('spellbook', 'Spellbook')}
+                    </div>
+                    <div class="armory-pd-col">
+                        <div class="armory-pd-col-title">Jewelry</div>
+                        ${renderSlot('amulet', 'Amulet')}
+                        ${renderSlot('ring_0', 'Ring 1')}
+                        ${renderSlot('ring_1', 'Ring 2')}
+                        ${renderSlot('ring_2', 'Ring 3')}
+                        ${renderSlot('ring_3', 'Ring 4')}
+                    </div>
+                </div>
+            </section>
+        `;
+
+        // 4. Attributes & Skills Card (Order: Health, Mana, Strength, Dexterity, Intelligence, Melee, Ranged, Nature Magic, Combat Magic, Melee Damage, Ranged Damage, Armor Rating)
+        const splitStat = (v) => {
+            const n = Number(v || 0);
+            const whole = Math.floor(n);
+            const frac = (n - whole).toFixed(2).slice(1);
+            return { whole, frac };
+        };
+        const strS = splitStat(skills.strength);
+        const dexS = splitStat(skills.dexterity);
+        const intS = splitStat(skills.intelligence);
+
+        const skillDefs = [
+            { label: 'Melee', val: Number(skills.melee || 0), cls: 'sk-melee' },
+            { label: 'Ranged', val: Number(skills.ranged || 0), cls: 'sk-ranged' },
+            { label: 'Nature Magic', val: Number(skills.nature_magic || 0), cls: 'sk-nmagic' },
+            { label: 'Combat Magic', val: Number(skills.combat_magic || 0), cls: 'sk-cmagic' }
+        ];
+        const MAX_SKILL_LEVEL = 150;
+        const skillsBarsHtml = skillDefs.map(s => {
+            const pct = Math.min(100, Math.max(0, (s.val / MAX_SKILL_LEVEL) * 100));
+            return `
+                <div class="armory-skill-row">
+                    <div class="armory-skill-top">
+                        <span class="armory-skill-label">${escapeHTML(s.label)}</span>
+                        <span class="armory-skill-num">${s.val.toFixed(2)}</span>
+                    </div>
+                    <div class="armory-skill-track">
+                        <div class="armory-skill-fill ${s.cls}" style="width:${pct.toFixed(2)}%;"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const healthVal = cs.health != null ? Number(cs.health).toLocaleString() : '0';
+        const manaVal = cs.mana != null ? Number(cs.mana).toLocaleString() : '0';
+        const meleeDmgStr = (cs.melee_damage_min != null && cs.melee_damage_max != null)
+            ? `${cs.melee_damage_min} - ${cs.melee_damage_max}`
+            : '2 - 4';
+        const hasRanged = !!cs.has_ranged_weapon;
+        const rangedDmgStr = hasRanged ? `${cs.ranged_damage_min} - ${cs.ranged_damage_max}` : 'None';
+        const armorVal = cs.armor_rating != null ? Number(cs.armor_rating).toLocaleString() : '0';
+
+        const statsHtml = `
+            <section class="armory-card">
+                <div class="armory-card-head">
+                    <div class="armory-card-title">Character Stats</div>
+                </div>
+                <div class="armory-vitals-grid">
+                    <div class="armory-vital-tile vital-health">
+                        <span class="armory-vital-label">Health</span>
+                        <span class="armory-vital-val">${escapeHTML(healthVal)}</span>
+                    </div>
+                    <div class="armory-vital-tile vital-mana">
+                        <span class="armory-vital-label">Mana</span>
+                        <span class="armory-vital-val">${escapeHTML(manaVal)}</span>
+                    </div>
+                </div>
+                <div class="armory-attr-grid">
+                    <div class="armory-attr-tile">
+                        <div class="armory-attr-name">Strength</div>
+                        <div class="armory-attr-val">${strS.whole}<span class="armory-attr-dec">${strS.frac}</span></div>
+                    </div>
+                    <div class="armory-attr-tile">
+                        <div class="armory-attr-name">Dexterity</div>
+                        <div class="armory-attr-val">${dexS.whole}<span class="armory-attr-dec">${dexS.frac}</span></div>
+                    </div>
+                    <div class="armory-attr-tile">
+                        <div class="armory-attr-name">Intelligence</div>
+                        <div class="armory-attr-val">${intS.whole}<span class="armory-attr-dec">${intS.frac}</span></div>
+                    </div>
+                </div>
+                <div class="armory-skills-list">${skillsBarsHtml}</div>
+                <div class="armory-combat-grid">
+                    <div class="armory-combat-tile">
+                        <div class="armory-combat-label">Melee Damage</div>
+                        <div class="armory-combat-val">${escapeHTML(meleeDmgStr)}</div>
+                    </div>
+                    <div class="armory-combat-tile">
+                        <div class="armory-combat-label">Ranged Damage</div>
+                        <div class="armory-combat-val ${hasRanged ? '' : 'is-none'}">${escapeHTML(rangedDmgStr)}</div>
+                    </div>
+                    <div class="armory-combat-tile">
+                        <div class="armory-combat-label">Armor Rating</div>
+                        <div class="armory-combat-val">${escapeHTML(armorVal)}</div>
+                    </div>
+                </div>
+            </section>
+        `;
+
+        // 5. Equipped Spellbook Card (Slots 1-2 featured + Slots 3-12 quick grid)
+        const sb = prof.spellbook;
+        let spellbookHtml = '';
+        if (!sb) {
+            spellbookHtml = `
+                <section class="armory-card">
+                    <div class="armory-card-head">
+                        <div class="armory-card-title">Equipped Spellbook</div>
+                        <div class="armory-card-meta">None Equipped</div>
+                    </div>
+                    <div style="font-size:12.5px; color:#7d8796; padding:8px 2px;">This character does not currently have a spellbook equipped.</div>
+                </section>
+            `;
+        } else {
+            const bySlot = {};
+            (sb.spells || []).forEach(sp => {
+                bySlot[sp.slot] = sp;
+                armorySpellIndex[String(sp.slot)] = sp;
+            });
+            const spellCatCls = (sp) => {
+                const c = (sp && sp.category ? sp.category : '').toLowerCase();
+                if (c.includes('nature')) return 'cat-nature';
+                if (c.includes('combat')) return 'cat-combat';
+                return '';
+            };
+            const renderFeaturedSpell = (slotNum, roleLabel) => {
+                const sp = bySlot[slotNum];
+                if (!sp) {
+                    return `
+                        <div class="armory-spell-featured is-empty">
+                            <div class="armory-spell-icon"><span style="color:#4b5563;">${slotNum}</span></div>
+                            <div style="min-width:0;">
+                                <div class="armory-slot-label">${escapeHTML(roleLabel)}</div>
+                                <div style="font-size:12px;color:#657080;">Empty Slot</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                const iconTag = sp.icon ? `<img src="${escapeHTML(sp.icon)}" alt="${escapeHTML(sp.name)}">` : `<span>&#x2728;</span>`;
+                const sub = [sp.mana_cost ? `Mana ${sp.mana_cost}` : '', sp.required_level != null ? `Level ${sp.required_level}` : ''].filter(Boolean).join(' \u00b7 ');
+                return `
+                    <div class="armory-spell-featured" data-armory-spell-slot="${slotNum}">
+                        <div class="armory-spell-icon ${spellCatCls(sp)}">${iconTag}</div>
+                        <div style="min-width:0;flex:1;">
+                            <div class="armory-slot-label">${escapeHTML(roleLabel)}</div>
+                            <div style="font-size:13px;font-weight:600;color:#f3f4f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHTML(sp.name)}</div>
+                            ${sub ? `<div style="font-size:11px;color:#8b949e;">${escapeHTML(sub)}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            };
+            let quickHtml = '';
+            for (let s = 3; s <= 12; s++) {
+                const sp = bySlot[s];
+                if (!sp) {
+                    quickHtml += `
+                        <div class="armory-spell-mini is-empty">
+                            <span class="armory-spell-slot-badge">${s}</span>
+                            <div class="armory-spell-icon"><span style="color:#3f4856;font-size:13px;">&mdash;</span></div>
+                            <div class="armory-spell-mini-name" style="color:#5a6474;">Empty</div>
+                        </div>
+                    `;
+                } else {
+                    const iconTag = sp.icon ? `<img src="${escapeHTML(sp.icon)}" alt="${escapeHTML(sp.name)}">` : `<span>&#x2728;</span>`;
+                    quickHtml += `
+                        <div class="armory-spell-mini has-spell" data-armory-spell-slot="${s}">
+                            <span class="armory-spell-slot-badge">${s}</span>
+                            <div class="armory-spell-icon ${spellCatCls(sp)}">${iconTag}</div>
+                            <div class="armory-spell-mini-name">${escapeHTML(sp.name)}</div>
+                        </div>
+                    `;
+                }
+            }
+            const bookIconTag = sb.book_icon ? `<img src="${escapeHTML(sb.book_icon)}" alt="Book" style="width:20px;height:20px;object-fit:contain;">` : '';
+            spellbookHtml = `
+                <section class="armory-card">
+                    <div class="armory-card-head">
+                        <div class="armory-card-title">${bookIconTag}<span>${escapeHTML(sb.book_name || 'Spell Book')}</span></div>
+                        <div class="armory-card-meta">${(sb.spells || []).length} / 12 Spells</div>
+                    </div>
+                    <div class="armory-spell-active-grid">
+                        ${renderFeaturedSpell(1, 'Primary Spell [1]')}
+                        ${renderFeaturedSpell(2, 'Secondary Spell [2]')}
+                    </div>
+                    <div class="armory-spell-quick-grid">${quickHtml}</div>
+                </section>
+            `;
+        }
+
+        // 6. Active Set Bonuses Card (placed next to Equipped Spellbook in bottom row)
+        const sets = prof.active_sets || [];
+        let setsBodyHtml = '';
+        if (sets.length === 0) {
+            setsBodyHtml = `<div style="font-size:12.5px; color:#7d8796; padding:6px 2px;">No set items currently equipped.</div>`;
+        } else {
+            setsBodyHtml = sets.map(st => {
+                const linesHtml = (st.bonuses || []).map(b => {
+                    const mark = b.active ? '&#x2713;' : '&#x25CB;';
+                    const reqTag = b.req > 1 ? `(${b.req} pieces) ` : '';
+                    return `<div class="armory-set-bonus-line ${b.active ? 'is-active' : 'is-locked'}"><span>${mark}</span><span>${escapeHTML(reqTag + b.text)}</span></div>`;
+                }).join('');
+                return `
+                    <div class="armory-set-block">
+                        <div class="armory-set-head">
+                            <div class="armory-set-title">${escapeHTML(st.set_name)}</div>
+                            <div class="armory-set-count">${st.equipped_count} / ${st.total_pieces} Equipped</div>
+                        </div>
+                        <div class="armory-set-pieces">${escapeHTML((st.equipped_items || []).join(' \u00b7 '))}</div>
+                        <div class="armory-set-bonus-list">${linesHtml || '<div style="font-size:11.5px;color:#7d8796;">Equip additional pieces to unlock set bonuses.</div>'}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        const setsHtml = `
+            <section class="armory-card">
+                <div class="armory-card-head">
+                    <div class="armory-card-title">Active Set Bonuses</div>
+                    <div class="armory-card-meta">${sets.length > 0 ? sets.length + ' Set' + (sets.length === 1 ? '' : 's') : 'None Active'}</div>
+                </div>
+                ${setsBodyHtml}
+            </section>
+        `;
+
+        root.innerHTML = `
+            ${topBarHtml}
+            ${heroHtml}
+            <div class="armory-main-grid">
+                <div>${gearHtml}</div>
+                <div class="armory-side-col">
+                    ${statsHtml}
+                </div>
+            </div>
+            <div class="armory-bottom-grid">
+                ${spellbookHtml}
+                ${setsHtml}
+            </div>
+        `;
+    }
+
+    // Delegated Armory hover tooltips & tap-to-inspect modal
+    document.addEventListener('mouseover', (e) => {
+        const itemCard = e.target.closest('[data-armory-item-slot]');
+        if (itemCard) {
+            const it = armoryItemIndex[itemCard.getAttribute('data-armory-item-slot')];
+            if (it) showArmoryTooltip(buildArmoryItemTooltipHTML(it), armoryRarityClass(it.rarity), e);
+            return;
+        }
+        const spCard = e.target.closest('[data-armory-spell-slot]');
+        if (spCard) {
+            const sp = armorySpellIndex[spCard.getAttribute('data-armory-spell-slot')];
+            if (sp) showArmoryTooltip(buildArmorySpellTooltipHTML(sp), '', e);
+        }
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (e.target.closest('[data-armory-item-slot]') || e.target.closest('[data-armory-spell-slot]')) {
+            positionArmoryTooltip(e);
+        }
+    });
+    document.addEventListener('mouseout', (e) => {
+        const fromEl = e.target.closest('[data-armory-item-slot], [data-armory-spell-slot]');
+        if (fromEl && (!e.relatedTarget || !fromEl.contains(e.relatedTarget))) {
+            hideArmoryTooltip();
+        }
+    });
+
+    // Intercept navigation button clicks + Armory character & item clicks
     document.addEventListener('click', (e) => {
         const btn = e.target.closest('.nav-btn');
         if (btn) {
@@ -7104,12 +9019,39 @@
             }
             const target = btn.getAttribute('data-view');
             switchView(target, true);
+            return;
+        }
+
+        const itemCard = e.target.closest('[data-armory-item-slot]');
+        if (itemCard) {
+            const it = armoryItemIndex[itemCard.getAttribute('data-armory-item-slot')];
+            if (it) openArmoryItemInWikiModal(it);
+            return;
+        }
+
+        const spCard = e.target.closest('[data-armory-spell-slot]');
+        if (spCard) {
+            const sp = armorySpellIndex[spCard.getAttribute('data-armory-spell-slot')];
+            if (sp) openArmorySpellInWikiModal(sp);
+            return;
+        }
+
+        // Click-through from Realms / World Map / Ladder (available to all authenticated MMO accounts)
+        const armoryLink = e.target.closest('[data-armory-account][data-armory-char]');
+        if (armoryLink && canBrowseArmory()) {
+            e.preventDefault();
+            const acct = armoryLink.getAttribute('data-armory-account');
+            const ch = armoryLink.getAttribute('data-armory-char');
+            if (acct && ch) openCharacterArmory(acct, ch, true);
         }
     });
 
     // Browser back/forward navigation
     window.addEventListener('popstate', () => {
         const v = getRequestedView();
+        if (v === 'character') {
+            currentArmoryTarget = getRequestedCharacterRoute();
+        }
         switchView(v, false);
     });
 
@@ -7141,9 +9083,17 @@
     } catch (_) {}
 
     requestedView = getRequestedView();
+    if (requestedView === 'character') {
+        const initialCharRoute = getRequestedCharacterRoute();
+        if (initialCharRoute) {
+            currentArmoryTarget = initialCharRoute;
+            pendingCharacterRoute = initialCharRoute;
+        }
+    }
     initialAuthPending = !currentAuthUser;
 
     if (currentAuthUser && currentAuthUser.authenticated) {
+        pendingCharacterRoute = null;
         switchView(requestedView, false);
     } else if (requestedView === 'home') {
         switchView('home', false);
@@ -7521,6 +9471,9 @@ function initWikiView() {
         if (it.rarity === 'rare' || (it.tags || []).includes('Rare')) {
             return { key: 'rare', name: 'Rare', color: '#9b9bfb', tagClass: 'tag-rare', badgeIcon: 'Rare' };
         }
+        if (it.rarity === 'magic' || (it.tags || []).includes('Magic')) {
+            return { key: 'magic', name: 'Magic', color: '#5cb8ff', tagClass: 'tag-magic', badgeIcon: 'Magic' };
+        }
         return { key: 'normal', name: 'Standard', color: '#ffffff', tagClass: '', badgeIcon: '' };
     }
 
@@ -7580,9 +9533,14 @@ function initWikiView() {
                 }
             }
 
-            // Search query check
+            // Search query check (also matches base item names inside full rolled prefix+base+suffix queries like "Tactile Chief Gauntlets of Old")
             if (query) {
-                const matchName = (item.name || '').toLowerCase().includes(query);
+                const itemNameLower = (item.name || '').toLowerCase();
+                let matchName = itemNameLower.includes(query);
+                if (!matchName && itemNameLower.length >= 4 && query.includes(itemNameLower)) {
+                    const escName = itemNameLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    matchName = new RegExp('(?:^|\\s)' + escName + '(?:$|\\s)').test(query);
+                }
                 const matchId = (item.id || '').toLowerCase().includes(query);
                 const matchSub = (item.sub_category || '').toLowerCase().includes(query);
                 const matchSrc = (item.source || '').toLowerCase().includes(query);
@@ -7871,8 +9829,10 @@ function initWikiView() {
         if (nextBtn) nextBtn.disabled = (wikiCurrentPage >= totalPages);
     }
 
-    function openWikiItemModal(itemId) {
-        const item = (wikiItemsById && wikiItemsById.get(itemId)) || wikiItems.find(it => it.id === itemId);
+    function openWikiItemModal(itemOrId) {
+        const item = (itemOrId && typeof itemOrId === 'object')
+            ? itemOrId
+            : ((wikiItemsById && wikiItemsById.get(itemOrId)) || wikiItems.find(it => it.id === itemOrId));
         if (!item) return;
 
         const overlay = document.getElementById('wiki-modal-overlay');
@@ -7936,7 +9896,7 @@ function initWikiView() {
                 `;
                 for (let s = 0; s < setPieces.length; s++) {
                     const piece = setPieces[s];
-                    const isCurrent = (piece.id === item.id);
+                    const isCurrent = (piece.id === item.id || piece.id === (item.id || '').replace(/^[23]w_/, ''));
                     setHtml += `
                         <div class="wiki-set-piece-row ${isCurrent ? 'is-current' : 'is-other'}" 
                              ${!isCurrent ? `onclick="openWikiItemModal('${escapeHTML(piece.id)}');"` : ''}>
@@ -8009,6 +9969,12 @@ function initWikiView() {
             }
             if (item.stat_bonus) {
                 statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Stat Bonus</span><span class="stat-val mana">${escapeHTML(item.stat_bonus)}</span></div>`;
+            }
+            if (Array.isArray(item._armory_innate) && item._armory_innate.length > 0 && !item.stat_bonus) {
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Innate Bonus</span><span class="stat-val" style="color:#f6e2a8;text-align:right;">${item._armory_innate.map(escapeHTML).join('<br>')}</span></div>`;
+            }
+            if (Array.isArray(item._armory_modifiers) && item._armory_modifiers.length > 0) {
+                statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Modifiers</span><span class="stat-val mana" style="color:#7cc7ff;text-align:right;">${item._armory_modifiers.map(escapeHTML).join('<br>')}</span></div>`;
             }
             if (item.attack_speed) {
                 statsHTML += `<div class="wiki-stat-row"><span class="stat-lbl">Attack Speed</span><span class="stat-val">${escapeHTML(item.attack_speed)}</span></div>`;
@@ -8227,7 +10193,7 @@ function initWikiView() {
             if (tier.badgeIcon) {
                 pillsHTML += `<span class="wiki-card-tag ${tier.tagClass}" style="font-size:11px; padding:3px 8px;">${escapeHTML(tier.badgeIcon)}</span>`;
             }
-            const allTags = (item.tags || []).filter(t => t !== 'Set Item' && t !== 'Unique' && t !== 'Rare');
+            const allTags = (item.tags || []).filter(t => t !== 'Set Item' && t !== 'Unique' && t !== 'Rare' && t !== 'Magic');
             for (let i = 0; i < allTags.length; i++) {
                 pillsHTML += `<span class="wiki-card-tag" style="font-size:11px; padding:3px 8px;">${escapeHTML(allTags[i])}</span>`;
             }
@@ -8360,6 +10326,9 @@ function initWikiView() {
         </div>
     </div>
 </div>
+
+<!-- FLOATING ARMORY TOOLTIP -->
+<div id="armory-floating-tooltip" class="armory-tooltip" role="tooltip"></div>
 
 <!-- FLOATING TOAST NOTIFICATION -->
 <div id="admin-toast" class="admin-toast hidden"></div>
