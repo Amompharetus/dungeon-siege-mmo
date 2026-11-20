@@ -72,6 +72,12 @@ static void* GoByGoid(DWORD goid) {
     return fn(goid);
 }
 
+static DWORD FindGoidByScid(void* godb, DWORD scid) {
+    if (!godb || !scid || scid == 0xFFFFFFFF) return 0xFFFFFFFF;
+    auto fn = (DWORD (__thiscall*)(void*, DWORD, void*))0x0054FA42;
+    return fn(godb, scid, nullptr);
+}
+
 static const char* GoTemplateName(void* go) {
     if (!go) return "";
     auto fn = (const char* (__thiscall*)(void*))0x005390A3;
@@ -248,6 +254,141 @@ static DWORD __fastcall Hook_SCloneGo(void* godb, void* edx, DWORD targetMachine
         }
     }
     return g_origSCloneGo(godb, edx, targetMachine, a1, a2, a3, a4, a5, a6, a7);
+}
+
+// ---- Part 1b: Delta-compression desync elimination for GoCreateReq::Xfer & GoCloneReq::Xfer ----
+// GoDb::SCreateGo (0x00549A0E) and GoDb::SCloneGo (0x0054A9E6) delta-compress m_RegionId, m_PlayerId,
+// m_StartingPos, m_StartingRot (and m_CloneSourceGoid / m_TemplateName for clones) against mutable
+// per-player baselines at GoDb+0x3D8[bsr(plId)-1] and GoDb+0x3E0[bsr(plId)-1].
+// If server and client baselines ever diverge (dropped flush, race, out-of-order retry, etc.), every
+// subsequent static object in the same region (such as a9_r3_clockroom doors) sends bit=0 ("unchanged"),
+// causing the client to decode a stale region/player and fail ContentDb::CreateGo permanently — even on
+// DoorFix resyncs. Poisoning the server baseline before packing forces full wire transmission of all
+// delta-compressed fields (100% wire-compatible with stock clients) and immediately heals any stale client
+// baseline on the very next packet. A dedicated leaf lock serializes access to GoDb+0x3D8/+0x3E0.
+typedef void (__fastcall* GoReqXferFn)(void* req, void* edx, void* bitpacker, void* prev);
+typedef BYTE (__fastcall* NetFuBiPackQueueFn)(void* self, void* edx, void* queue, void* outBuf);
+typedef BYTE (__fastcall* CreateGoClientFn)(void* godb, void* edx, DWORD goid, DWORD seed, void* req,
+                                            DWORD bForce, void* xferBuf, DWORD xferSz, DWORD a7, DWORD a8);
+
+static GoReqXferFn        g_origCreateReqXfer = nullptr;
+static GoReqXferFn        g_origCloneReqXfer  = nullptr;
+static NetFuBiPackQueueFn g_origPackQueue     = nullptr;
+static CreateGoClientFn   g_origCreateGoCli   = nullptr;
+static CRITICAL_SECTION   g_xferLock;
+static bool               g_xferLockInit      = false;
+static DWORD              g_chunkLogCount     = 0;
+static DWORD              g_cliFailLogCount   = 0;
+
+static void __fastcall Hook_GoCreateReq_Xfer(void* req, void* edx, void* bitpacker, void* prev) {
+    if (bitpacker && prev && req && Readable(bitpacker, 1) && *(const BYTE*)bitpacker != 0 &&
+        Readable(req, 0x34) && Readable(prev, 0x34)) {
+        if (g_xferLockInit) EnterCriticalSection(&g_xferLock);
+        doorfix::PoisonGoCreateReqPrev(req, prev);
+        g_origCreateReqXfer(req, edx, bitpacker, prev);
+        if (g_xferLockInit) LeaveCriticalSection(&g_xferLock);
+        return;
+    }
+    g_origCreateReqXfer(req, edx, bitpacker, prev);
+}
+
+static void __fastcall Hook_GoCloneReq_Xfer(void* req, void* edx, void* bitpacker, void* prev) {
+    if (bitpacker && prev && req && Readable(bitpacker, 1) && *(const BYTE*)bitpacker != 0 &&
+        Readable(req, 0x44) && Readable(prev, 0x44)) {
+        if (g_xferLockInit) EnterCriticalSection(&g_xferLock);
+        doorfix::PoisonGoCloneReqPrev(req, prev);
+        g_origCloneReqXfer(req, edx, bitpacker, prev);
+        if (g_xferLockInit) LeaveCriticalSection(&g_xferLock);
+        return;
+    }
+    g_origCloneReqXfer(req, edx, bitpacker, prev);
+}
+
+// ---- Part 1c: Oversized NetFuBiSend flush chunking (prevents DirectPlay8 64 KB DPNERR_SENDTOOLARGE) ----
+// NetFuBiSend::PackQueue (0x00594D71) packs all queued RPCs for one player into a single NetPipe::Send
+// buffer and marks each packed RPC with [rpc+0x20]=1; EraseSent (0x00594E05) then removes ONLY marked
+// entries. During dense region stream-ins (e.g. a9_r3_clockroom's 716 nodes / 388 objects) on a busy
+// server tick, packing everything into one packet can approach or exceed DirectPlay8's 64 KB ceiling,
+// causing NetPipe::Send to silently discard the entire flush. Temporarily capping forward traversal at
+// kMaxFubiFlushBytes (24 KB, always sending at least 1 RPC) leaves tail RPCs unmarked in FIFO order for
+// the next 15.6 ms tick without touching head->prev or allocating memory.
+static BYTE __fastcall Hook_NetFuBiSend_PackQueue(void* self, void* edx, void* queue, void* outBuf) {
+    struct ListNode {
+        ListNode* next;
+        ListNode* prev;
+        BYTE*     rpc;
+    };
+    if (!queue || !Readable(queue, 0x0C)) {
+        return g_origPackQueue(self, edx, queue, outBuf);
+    }
+    ListNode* head = *(ListNode* const*)((const BYTE*)queue + 4);
+    if (!head || !Readable(head, sizeof(ListNode))) {
+        return g_origPackQueue(self, edx, queue, outBuf);
+    }
+
+    size_t    totalBytes = 5;  // outer FuBi frame header
+    int       packed     = 0;
+    int       deferred   = 0;
+    ListNode* splitAfter = nullptr;
+    ListNode* cur        = head->next;
+    int       safety     = 0;
+    while (cur && cur != head && ++safety <= 16384) {
+        if (!Readable(cur, sizeof(ListNode))) {
+            splitAfter = nullptr;
+            break;
+        }
+        size_t rpcBytes = 5;
+        BYTE* rpc = cur->rpc;
+        if (rpc && Readable(rpc, 0x10)) {
+            const BYTE* b = *(const BYTE* const*)(rpc + 0x08);
+            const BYTE* e = *(const BYTE* const*)(rpc + 0x0C);
+            if (b && e >= b) rpcBytes += (size_t)(e - b);
+        }
+        if (!splitAfter && packed > 0 && totalBytes + rpcBytes > doorfix::kMaxFubiFlushBytes) {
+            splitAfter = cur->prev;
+        }
+        if (!splitAfter) {
+            totalBytes += rpcBytes;
+            ++packed;
+        } else {
+            ++deferred;
+        }
+        cur = cur->next;
+    }
+
+    if (!splitAfter || splitAfter == head || !Readable(splitAfter, sizeof(ListNode))) {
+        return g_origPackQueue(self, edx, queue, outBuf);
+    }
+
+    ListNode* savedNext = splitAfter->next;
+    splitAfter->next = head;
+    BYTE ret = g_origPackQueue(self, edx, queue, outBuf);
+    splitAfter->next = savedNext;
+
+    if (++g_chunkLogCount <= 10) {
+        Log("DoorFix[SRV]: chunked oversized FuBi flush at %u bytes (%d RPCs sent, %d deferred to next tick)",
+            (unsigned)totalBytes, packed, deferred);
+    }
+    return ret;
+}
+
+// ---- Part 1d: Client-side CreateGo_Client failure diagnostics (zero overhead on success) ----
+static BYTE __fastcall Hook_CreateGoClient(void* godb, void* edx, DWORD goid, DWORD seed, void* req,
+                                           DWORD bForce, void* xferBuf, DWORD xferSz, DWORD a7, DWORD a8) {
+    BYTE ret = g_origCreateGoCli(godb, edx, goid, seed, req, bForce, xferBuf, xferSz, a7, a8);
+    if (!ret && ++g_cliFailLogCount <= 30) {
+        DWORD scid = 0, regId = 0, plId = 0;
+        if (req && Readable(req, 0x0C)) {
+            ReadVal(req, 0x00, &scid);
+            ReadVal(req, 0x04, &regId);
+            ReadVal(req, 0x08, &plId);
+        }
+        void* existGo = GoByGoid(goid);
+        DWORD scidGoid = FindGoidByScid(godb, scid);
+        Log("DoorFix[CLI]: CreateGo_Client FAILED goid=0x%08lX scid=0x%08lX reg=0x%lX pl=0x%lX xferSz=%lu existGo=%p scidGoid=0x%08lX",
+            goid, scid, regId, plId, xferSz, existGo, scidGoid);
+    }
+    return ret;
 }
 
 // ---- Part 2: Door GoDb snapshot (lock-safe) ----
@@ -531,7 +672,7 @@ static void ServerDoorTick() {
                 continue;
             }
 
-            if (g_tracker.RecordMissing(item.dpnid, goid, now)) {
+            if (g_tracker.RecordMissing(item.dpnid, goid, item.report.heroNode, now)) {
                 DWORD nodeGuid = 0;
                 ReadGoNode(go, &nodeGuid);
                 Log("DoorFix[SRV]: RESYNC missing door scid=0x%08lX goid=0x%08lX tpl=%s node=0x%08lX fm=0x%lX a3c=0x%04lX -> dpnid=0x%08lX plId=0x%lX heroNode=0x%08lX",
@@ -549,11 +690,24 @@ void DoorFixInstall() {
         InitializeCriticalSection(&g_lock);
         g_lockInit = true;
     }
+    if (!g_xferLockInit) {
+        InitializeCriticalSection(&g_xferLock);
+        g_xferLockInit = true;
+    }
     if (Cfg().role == Role::Server) {
-        static const BYTE kExpectSCreate[9] = {0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x90, 0x00, 0x00, 0x00};
-        static const BYTE kExpectSClone[9]  = {0x55, 0x8B, 0xEC, 0x81, 0xEC, 0xB4, 0x00, 0x00, 0x00};
-        InstallDetour(0x00549A0E, kExpectSCreate, 9, (void*)&Hook_SCreateGo, (void**)&g_origSCreateGo, "GoDb::SCreateGo");
-        InstallDetour(0x0054A9E6, kExpectSClone,  9, (void*)&Hook_SCloneGo,  (void**)&g_origSCloneGo,  "GoDb::SCloneGo");
+        static const BYTE kExpectSCreate[9]    = {0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x90, 0x00, 0x00, 0x00};
+        static const BYTE kExpectSClone[9]     = {0x55, 0x8B, 0xEC, 0x81, 0xEC, 0xB4, 0x00, 0x00, 0x00};
+        static const BYTE kExpectCreateXfer[8] = {0x56, 0x8B, 0xF1, 0x57, 0x8B, 0x7C, 0x24, 0x0C};
+        static const BYTE kExpectCloneXfer[9]  = {0x53, 0x56, 0x8B, 0xF1, 0x57, 0x8B, 0x7C, 0x24, 0x10};
+        static const BYTE kExpectPackQueue[6]  = {0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C};
+        InstallDetour(0x00549A0E, kExpectSCreate,    9, (void*)&Hook_SCreateGo,            (void**)&g_origSCreateGo,     "GoDb::SCreateGo");
+        InstallDetour(0x0054A9E6, kExpectSClone,     9, (void*)&Hook_SCloneGo,             (void**)&g_origSCloneGo,      "GoDb::SCloneGo");
+        InstallDetour(0x005451B1, kExpectCreateXfer, 8, (void*)&Hook_GoCreateReq_Xfer,     (void**)&g_origCreateReqXfer, "GoCreateReq::Xfer");
+        InstallDetour(0x005459C9, kExpectCloneXfer,  9, (void*)&Hook_GoCloneReq_Xfer,      (void**)&g_origCloneReqXfer,  "GoCloneReq::Xfer");
+        InstallDetour(0x00594D71, kExpectPackQueue,  6, (void*)&Hook_NetFuBiSend_PackQueue,(void**)&g_origPackQueue,     "NetFuBiSend::PackQueue");
+    } else if (Cfg().role == Role::Client) {
+        static const BYTE kExpectCGC[6] = {0x55, 0x8B, 0xEC, 0x51, 0x53, 0x56};
+        InstallDetour(0x00549E47, kExpectCGC, 6, (void*)&Hook_CreateGoClient, (void**)&g_origCreateGoCli, "GoDb::CreateGo_Client");
     }
     Log("DoorFix: installed (role=%s)", Cfg().role == Role::Server ? "server" : "client");
 }

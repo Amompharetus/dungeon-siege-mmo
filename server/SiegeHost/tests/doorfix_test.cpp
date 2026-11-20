@@ -113,10 +113,114 @@ static void TestMissingTrackerGraceCooldownAndCap() {
     assert(tr.Size() == 0);
 }
 
+static void TestHeroNodeChangeResetsRetryCap() {
+    using namespace doorfix;
+    DoorMissingTracker tr;
+    const uint32_t dpnid = 0xAABB0002u;
+    const uint32_t goid  = 0x090004F4u;
+    const uint32_t nodeA = 0x21F0C6FBu;  // a9_r2a_clockdungeon
+    const uint32_t nodeB = 0x12246AD7u;  // a9_r3_clockroom right before door 0x0B8001E7
+
+    // Exhaust all 5 attempts while player is far away on nodeA
+    assert(!tr.RecordMissing(dpnid, goid, nodeA, 1000));
+    assert(tr.RecordMissing(dpnid, goid, nodeA, 2300));   // #1
+    assert(tr.RecordMissing(dpnid, goid, nodeA, 7400));   // #2
+    assert(tr.RecordMissing(dpnid, goid, nodeA, 12500));  // #3
+    assert(tr.RecordMissing(dpnid, goid, nodeA, 17600));  // #4
+    assert(tr.RecordMissing(dpnid, goid, nodeA, 22700));  // #5
+    assert(!tr.RecordMissing(dpnid, goid, nodeA, 30000)); // capped on same node
+
+    // Moving to nodeB within cooldown still respects cooldown
+    assert(!tr.RecordMissing(dpnid, goid, nodeB, 25000));
+    // Moving to nodeB after cooldown resets attempt cap and resyncs immediately
+    assert(tr.RecordMissing(dpnid, goid, nodeB, 28000));
+    // Subsequent cooldown still applies on nodeB
+    assert(!tr.RecordMissing(dpnid, goid, nodeB, 30000));
+    assert(tr.RecordMissing(dpnid, goid, nodeB, 33100));
+}
+
+static void TestPoisonGoCreateReqPrev() {
+    using namespace doorfix;
+    uint8_t req[0x50]  = {};
+    uint8_t prev[0x50] = {};
+
+    auto u32 = [](uint8_t* p, size_t off) -> uint32_t& {
+        return *reinterpret_cast<uint32_t*>(p + off);
+    };
+
+    // Case 1: Packet #1 of session (prev.m_PlayerId == 0) MUST preserve 0 for XferPlayerId framing
+    u32(req, 0x04)  = 0xB8u;
+    u32(req, 0x08)  = 0x01u;
+    u32(req, 0x10)  = 0x3F800000u;
+    u32(req, 0x20)  = 0x00000000u;
+    u32(prev, 0x04) = 0xB8u;
+    u32(prev, 0x08) = 0x00u;
+    u32(prev, 0x10) = 0x3F800000u;
+    u32(prev, 0x20) = 0x00000000u;
+
+    PoisonGoCreateReqPrev(req, prev);
+    assert(u32(prev, 0x04) != u32(req, 0x04));
+    assert(u32(prev, 0x08) == 0u);  // preserved!
+    assert(u32(prev, 0x10) != u32(req, 0x10));
+    assert(u32(prev, 0x20) != u32(req, 0x20));
+
+    // Case 2: Packet #2+ (prev.m_PlayerId != 0) MUST poison to non-zero != req.m_PlayerId
+    u32(prev, 0x08) = 0x01u;
+    u32(req, 0x04)  = 0xFFFFFFFFu;  // edge value
+    u32(prev, 0x04) = 0xFFFFFFFFu;
+    PoisonGoCreateReqPrev(req, prev);
+    assert(u32(prev, 0x04) != u32(req, 0x04));
+    assert(u32(prev, 0x08) != 0u && u32(prev, 0x08) != u32(req, 0x08));
+
+    // Edge value: req.m_PlayerId == 0x80000000u
+    u32(req, 0x08)  = 0x80000000u;
+    u32(prev, 0x08) = 0x80000000u;
+    PoisonGoCreateReqPrev(req, prev);
+    assert(u32(prev, 0x08) != 0u && u32(prev, 0x08) != u32(req, 0x08));
+}
+
+static void TestPoisonGoCloneReqPrev() {
+    using namespace doorfix;
+    uint8_t req[0x5C]  = {};
+    uint8_t prev[0x5C] = {};
+
+    auto u32 = [](uint8_t* p, size_t off) -> uint32_t& {
+        return *reinterpret_cast<uint32_t*>(p + off);
+    };
+
+    const char* tpl = "golem_clockwork";
+    u32(req, 0x00)  = 0x12000034u;
+    u32(prev, 0x00) = 0x12000034u;
+    u32(req, 0x08)  = 0x10u;
+    u32(prev, 0x08) = 0x10u;
+    u32(req, 0x10)  = 0x41200000u;
+    u32(prev, 0x10) = 0x41200000u;
+    u32(req, 0x20)  = 0x3F800000u;
+    u32(prev, 0x20) = 0x3F800000u;
+    std::memcpy(prev + 0x3C, &tpl, sizeof(tpl));
+
+    PoisonGoCloneReqPrev(req, prev);
+    assert(u32(prev, 0x00) != u32(req, 0x00));
+    assert(u32(prev, 0x08) != 0u && u32(prev, 0x08) != u32(req, 0x08));
+    assert(u32(prev, 0x10) != u32(req, 0x10));
+    assert(u32(prev, 0x20) != u32(req, 0x20));
+    const char* afterTpl = tpl;
+    std::memcpy(&afterTpl, prev + 0x3C, sizeof(afterTpl));
+    assert(afterTpl == nullptr);
+
+    // Packet #1 invariant for clone req too
+    u32(prev, 0x08) = 0u;
+    PoisonGoCloneReqPrev(req, prev);
+    assert(u32(prev, 0x08) == 0u);
+}
+
 int main() {
     TestTemplateMatching();
     TestPacketValidation();
     TestMissingTrackerGraceCooldownAndCap();
+    TestHeroNodeChangeResetsRetryCap();
+    TestPoisonGoCreateReqPrev();
+    TestPoisonGoCloneReqPrev();
     std::printf("doorfix_test: ALL PASSED\n");
     return 0;
 }

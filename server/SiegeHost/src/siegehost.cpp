@@ -510,6 +510,30 @@ static HRESULT WINAPI HookSetAppDesc(void* self, const DpnAppDesc* desc, DWORD f
     return g_origSetAppDesc(self, desc, flags);
 }
 
+// IDirectPlay8Server::SendTo (vtable slot 14): log unexpected transport errors that NetPipe::Send
+// (0x0071E4A9) would otherwise discard silently (e.g. DPNERR_SENDTOOLARGE 0x80158550).
+typedef HRESULT(WINAPI* ServerSendToFn)(void* self, DWORD dpnid, const void* bufs, DWORD cBufs,
+                                        DWORD timeout, void* ctx, DWORD* hAsync, DWORD flags);
+static ServerSendToFn g_origServerSendTo = nullptr;
+static volatile LONG  g_sendToErrLogs    = 0;
+static HRESULT WINAPI HookServerSendTo(void* self, DWORD dpnid, const void* bufs, DWORD cBufs,
+                                       DWORD timeout, void* ctx, DWORD* hAsync, DWORD flags) {
+    HRESULT hr = g_origServerSendTo(self, dpnid, bufs, cBufs, timeout, ctx, hAsync, flags);
+    if (FAILED(hr) && hr != (HRESULT)0x80158160 && hr != (HRESULT)0x80158420 && hr != (HRESULT)0x80158480) {
+        LONG n = InterlockedIncrement(&g_sendToErrLogs);
+        if (n <= 20) {
+            DWORD totalSz = 0;
+            if (bufs && cBufs > 0 && cBufs <= 16) {
+                const DWORD* d = (const DWORD*)bufs;
+                for (DWORD i = 0; i < cBufs; ++i) totalSz += d[i * 2];
+            }
+            Log("DP8[server] SendTo ERROR dpnid=0x%08lX bytes=%lu flags=0x%lX -> hr=0x%08lX (#%ld)",
+                dpnid, totalSz, flags, (DWORD)hr, n);
+        }
+    }
+    return hr;
+}
+
 // ---- Join diagnostics ------------------------------------------------------------------------------------
 // IDirectPlay8Client::Connect (vtable slot 7).
 typedef HRESULT(WINAPI* ConnectFn)(void* self, const DpnAppDesc* desc, void* host, void* dev, void* sec, void* cred,
@@ -603,6 +627,7 @@ static HRESULT WINAPI HookCoCreateInstance(REFCLSID clsid, LPUNKNOWN outer, DWOR
         if (void* o = SwapVtbl(*ppv, 3, (void*)HookServerInit)) g_origServerInit = (InitializeFn)o;
         if (void* o = SwapVtbl(*ppv, 12, (void*)HookSetAppDesc)) g_origSetAppDesc = (SetAppDescFn)o;
         if (void* o = SwapVtbl(*ppv, 13, (void*)HookHost)) g_origHost = (HostFn)o;
+        if (void* o = SwapVtbl(*ppv, 14, (void*)HookServerSendTo)) g_origServerSendTo = (ServerSendToFn)o;
     } else if (IsEqualGUID(clsid, CLSID_DP8Client)) {
         Log("CoCreateInstance(DirectPlay8Client) -> %p", *ppv);
         if (void* o = SwapVtbl(*ppv, 3, (void*)HookClientInit)) g_origClientInit = (InitializeFn)o;

@@ -17,6 +17,85 @@ static constexpr uint32_t kMissingGraceMs     = 1200u;  // must be absent across
 static constexpr uint32_t kResyncCooldownMs   = 5000u;  // minimum gap between resyncs for same (dpnid, goid)
 static constexpr uint32_t kStaleEntryMs       = 30000u; // prune untracked entries after 30s
 static constexpr uint8_t  kMaxResyncAttempts  = 5u;
+static constexpr size_t   kMaxFubiFlushBytes  = 24576u; // chunk oversized FuBi flushes well under DP8 64 KB cap
+
+// Poison delta-compression baselines before packing GoCreateReq (0x005451B1) or GoCloneReq (0x005459C9)
+// on the server so no field is ever delta-elided. This is 100% wire-compatible with stock/older clients:
+// every packed RPC carries full m_RegionId, m_PlayerId, m_StartingPos, m_StartingRot (and m_CloneSourceGoid /
+// m_TemplateName for clones), making GoDb+0x3D8/+0x3E0 delta desync impossible and immediately self-healing
+// any stale client entry on the very next packet.
+//
+// Critical XferPlayerId (0x00545FC1) bit-framing invariant:
+//   When prev->m_PlayerId == 0, XferPlayerId omits the 2nd "changed" bit on BOTH packer and unpacker.
+//   Therefore we preserve 0 as 0 (packet #1 of a session), and whenever prev->m_PlayerId != 0 we poison it
+//   to a non-zero sentinel guaranteed != req->m_PlayerId (0x80000000u or 0x40000000u).
+inline void PoisonGoCreateReqPrev(const void* req, void* prev) {
+    if (!req || !prev) return;
+    const auto* r = static_cast<const uint8_t*>(req);
+    auto*       p = static_cast<uint8_t*>(prev);
+
+    uint32_t reqReg = 0;
+    std::memcpy(&reqReg, r + 0x04, 4);
+    uint32_t poisonReg = reqReg ^ 1u;
+    std::memcpy(p + 0x04, &poisonReg, 4);
+
+    uint32_t prevPl = 0;
+    std::memcpy(&prevPl, p + 0x08, 4);
+    if (prevPl != 0u) {
+        uint32_t reqPl = 0;
+        std::memcpy(&reqPl, r + 0x08, 4);
+        uint32_t poisonPl = (reqPl == 0x80000000u) ? 0x40000000u : 0x80000000u;
+        std::memcpy(p + 0x08, &poisonPl, 4);
+    }
+
+    uint32_t reqPos0 = 0;
+    std::memcpy(&reqPos0, r + 0x10, 4);
+    uint32_t poisonPos0 = reqPos0 ^ 0xFFFFFFFFu;
+    std::memcpy(p + 0x10, &poisonPos0, 4);
+
+    uint32_t reqRot0 = 0;
+    std::memcpy(&reqRot0, r + 0x20, 4);
+    uint32_t poisonRot0 = reqRot0 ^ 0xFFFFFFFFu;
+    std::memcpy(p + 0x20, &poisonRot0, 4);
+}
+
+inline void PoisonGoCloneReqPrev(const void* req, void* prev) {
+    if (!req || !prev) return;
+    const auto* r = static_cast<const uint8_t*>(req);
+    auto*       p = static_cast<uint8_t*>(prev);
+
+    // +0x00 m_CloneSourceGoid (XferGoid3Way 0x005467FE compares against prev+0x00)
+    uint32_t reqSrc = 0;
+    std::memcpy(&reqSrc, r + 0x00, 4);
+    uint32_t poisonSrc = reqSrc ^ 1u;
+    std::memcpy(p + 0x00, &poisonSrc, 4);
+
+    // +0x08 m_PlayerId (preserve 0 for XferPlayerId framing; poison any non-zero prev)
+    uint32_t prevPl = 0;
+    std::memcpy(&prevPl, p + 0x08, 4);
+    if (prevPl != 0u) {
+        uint32_t reqPl = 0;
+        std::memcpy(&reqPl, r + 0x08, 4);
+        uint32_t poisonPl = (reqPl == 0x80000000u) ? 0x40000000u : 0x80000000u;
+        std::memcpy(p + 0x08, &poisonPl, 4);
+    }
+
+    // +0x10 m_StartingPos, +0x20 m_StartingRot
+    uint32_t reqPos0 = 0;
+    std::memcpy(&reqPos0, r + 0x10, 4);
+    uint32_t poisonPos0 = reqPos0 ^ 0xFFFFFFFFu;
+    std::memcpy(p + 0x10, &poisonPos0, 4);
+
+    uint32_t reqRot0 = 0;
+    std::memcpy(&reqRot0, r + 0x20, 4);
+    uint32_t poisonRot0 = reqRot0 ^ 0xFFFFFFFFu;
+    std::memcpy(p + 0x20, &poisonRot0, 4);
+
+    // +0x3C const char* m_TemplateName (XferStringDelta 0x00659268 sends bit1=1, bit2=1 + full
+    // string when *prevPtr == NULL; GoCloneReqFull::copy at 0x00545D81 safely manages prev+0x40 gpstring)
+    const char* nullPtr = nullptr;
+    std::memcpy(p + 0x3C, &nullPtr, sizeof(nullPtr));
+}
 
 #pragma pack(push, 1)
 struct DoorSyncReport {
@@ -124,6 +203,7 @@ public:
         uint32_t firstMissingMs;
         uint32_t lastSeenMissingMs;
         uint32_t lastResyncMs;
+        uint32_t lastHeroNode;
         uint16_t missingReports;
         uint8_t  resyncCount;
     };
@@ -159,7 +239,7 @@ public:
     }
 
     // Returns true iff the server should call SyncGoToClient for (dpnid, goid) now.
-    bool RecordMissing(uint32_t dpnid, uint32_t goid, uint32_t nowMs) {
+    bool RecordMissing(uint32_t dpnid, uint32_t goid, uint32_t heroNode, uint32_t nowMs) {
         Entry* e = nullptr;
         for (auto& cur : entries_) {
             if (cur.dpnid == dpnid && cur.goid == goid) {
@@ -175,6 +255,7 @@ public:
             ne.firstMissingMs    = nowMs;
             ne.lastSeenMissingMs = nowMs;
             ne.lastResyncMs      = 0;
+            ne.lastHeroNode      = heroNode;
             ne.missingReports    = 1;
             ne.resyncCount       = 0;
             entries_.push_back(ne);
@@ -184,14 +265,30 @@ public:
         e->lastSeenMissingMs = nowMs;
         if (e->missingReports < 0xFFFFu) ++e->missingReports;
 
-        if (e->resyncCount >= kMaxResyncAttempts) return false;
+        if (e->resyncCount >= kMaxResyncAttempts) {
+            // If the player moved to a different terrain node (e.g. approaching the door
+            // after earlier attempts ran while far away), grant fresh resync attempts
+            // once the normal cooldown has elapsed.
+            if (heroNode != 0u && heroNode != e->lastHeroNode &&
+                (nowMs - e->lastResyncMs) >= kResyncCooldownMs) {
+                e->resyncCount  = 0;
+                e->lastHeroNode = heroNode;
+            } else {
+                return false;
+            }
+        }
         if (e->missingReports < 2u) return false;
         if ((nowMs - e->firstMissingMs) < kMissingGraceMs) return false;
         if (e->resyncCount > 0 && (nowMs - e->lastResyncMs) < kResyncCooldownMs) return false;
 
         e->lastResyncMs = nowMs;
+        e->lastHeroNode = heroNode;
         ++e->resyncCount;
         return true;
+    }
+
+    bool RecordMissing(uint32_t dpnid, uint32_t goid, uint32_t nowMs) {
+        return RecordMissing(dpnid, goid, 0u, nowMs);
     }
 
     size_t Size() const { return entries_.size(); }
