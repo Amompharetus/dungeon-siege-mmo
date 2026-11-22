@@ -27,9 +27,9 @@ The following mods are currently delivered to players via the update manifest:
 | **Fairy Companion Fix** | `fairyfix.dsres` | `Resources/` | Server & Client | Fixes pathing and state issues for fairy companion summons. |
 | **SeeFar ResolutionFix** | `sf_ResolutionFix.dsres` | `Resources/` | Client-Only | Corrects paperdoll positions and interface scaling at high modern resolutions. |
 
-## Ground Tooltip 1.1.2
+## Ground Tooltip 1.2.0
 
-Shows the normal item tooltip when the mouse is over an item label on the ground.
+Shows the normal item tooltip when the mouse is over an item label on the ground, with fixes for stuck overmap tooltips and stale red hover labels after opening the map or inventory.
 
 | | |
 |---|---|
@@ -37,18 +37,15 @@ Shows the normal item tooltip when the mouse is over an item label on the ground
 | Installed to | the game folder, beside `DSLOA.exe` |
 | Requires | Legends of Aranna 1.50 (the standalone 1.11 executables are not supported) |
 | Toggle | numpad `*` cycles always on, inventory only, off |
-| Per-player settings | `%LOCALAPPDATA%\GroundTooltip` |
+| Per-player settings | `Documents\Dungeon Siege LOA\groundtooltip.ini` (state/log in `%LOCALAPPDATA%\GroundTooltip`) |
 
-`groundtooltip.ini` in the game folder is the shipped default and is read once; the mod does not
-write back to it, so the launcher will not re-download it on every run. Per-player changes are made
-in the copy under `%LOCALAPPDATA%\GroundTooltip`.
+`groundtooltip.ini` in the game folder is the shipped default and is copied to `Documents\Dungeon Siege LOA\groundtooltip.ini` on first run (existing 1.1.2 settings from `Documents\Dungeon Siege` are migrated automatically); the mod does not write back to the game-folder copy, so the launcher will not re-download it on every run.
 
-The distributed archive contains two builds of the DLL. The one at the archive root is the correct
-one for this deployment; the build under `DSLOA Mod\` is for installs driven by `DSLOAMod.exe`, which
-this stack does not use.
+Version 1.2.0 adds optional ground-modifier visibility settings (`ShowGroundModifiers=true` and `HideNeverPickedUpModifiers=false`, preserving full ground tooltips by default). `HideNeverPickedUpModifiers` uses the engine's native item identification flag without altering save formats.
 
-Verified alongside SiegeHost 1.3.0: the mod loads, a client joins and plays normally, and no
-SiegeHost feature is affected.
+The distributed archive contains two builds of the DLL. The one at the archive root is the correct one for this deployment; the build under `DSLOAMod\` is for installs driven by `DSLOAMod.exe`, which this stack does not use.
+
+Verified alongside SiegeHost 1.5.34: all 7/7 hooks install cleanly with zero hook conflicts, a client joins and plays normally, and no SiegeHost feature is affected.
 
 ## Buffed Spells (Spell Duration & Balance Overhaul)
 
