@@ -26,6 +26,8 @@ The following mods are currently delivered to players via the update manifest:
 | **BuffUI** | `BufUI_LoA_v3.00.dsres` (or integrated in `Z_CharacterAbilities_UI.dsres`) | `DSLOA/` | Client-Only | Real-time active buffs monitoring panel with dynamic 12-24 slot expansion, duration sorting, custom MMO buffs (Aegis of Renewal), and single-press hotkey toggle (`Shift+;`). |
 | **Fairy Companion Fix** | `fairyfix.dsres` | `Resources/` | Server & Client | Fixes pathing and state issues for fairy companion summons. |
 | **SeeFar ResolutionFix** | `sf_ResolutionFix.dsres` | `Resources/` | Client-Only | Corrects paperdoll positions and interface scaling at high modern resolutions. |
+| **Legends of Aranna World Expansion** | `Z_LoA_Expansion.dsres` | `DSLOA/` | Server & Client | Adds Legends of Aranna regions, shops, quests, lore, and bugfixes to Utraean Peninsula. |
+| **Halloween MMO Package** | `Halloween MMO package.dsres` | `DSLOA/` | Server & Client | Seasonal Halloween event items and textures (enabled during Halloween). |
 
 ## Ground Tooltip 1.2.0
 
@@ -211,4 +213,17 @@ Integrates the Legends of Aranna stronghold and Great Clock endgame regions, tem
 | Scope | Map regions (`a8_*`, `a9_*`, `oasis` foyer), remapped templates & NPC shops, quests, start positions, elevators, moods, siege nodes |
 
 Combines remapped templates, 10 LoA regions plus the oasis connection foyer, world locations, start positions, quests, stitch index entries, elevators, moods, and siege node definitions without modifying stock retail `.dsmap`/`.dsres` archives, with end-to-end VFS verification in `loa-expansion/validate_loa_expansion.py`.
+
+## Halloween MMO Package
+
+Seasonal Halloween package, enabled during Halloween.
+
+| | |
+|---|---|
+| Files | `Halloween MMO package.dsres` (distributed binary), template source in `halloween/` |
+| Installed to | `DSLOA/` |
+| Requires | Legends of Aranna 1.50 |
+| Scope | Server & Client (pumpkin helmet templates, meshes, icons, and Halloween monster textures) |
+
+Contains the pumpkin helmet templates, meshes, and inventory icons for playable races along with Halloween monster textures. The event itself is enabled during Halloween, and the item package stays distributed so Halloween cosmetics continue to display properly outside the event.
 
