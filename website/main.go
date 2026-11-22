@@ -99,6 +99,7 @@ type CachedChar struct {
 	Race        string `json:"race"`
 	Level       int    `json:"level"`
 	RawLevel    int    `json:"raw_level"`
+	SaveTotalXP int64  `json:"save_total_xp"`
 	HasPartyGas bool   `json:"has_party_gas"`
 	SaveSHA     string `json:"save_sha"`
 	EntrySig    string `json:"entry_sig"`
@@ -366,6 +367,7 @@ type RealmStatus struct {
 
 type Account struct {
 	Name      string              `json:"name"`
+	Banned    bool                `json:"banned"`
 	SaveSHA   string              `json:"save_sha"`
 	SaveTime  time.Time           `json:"save_time"`
 	LastLogin time.Time           `json:"last_login"`
@@ -443,6 +445,7 @@ var (
 
 	classRe      = regexp.MustCompile(`(?i)actor_class\s*=\s*"([^"]+)"`)
 	uberLvlRe    = regexp.MustCompile(`(?i)uber_level\s*=\s*([0-9.]+)`)
+	skillXPRe    = regexp.MustCompile(`(?i)\b(?:strength|dexterity|intelligence|melee|ranged|combat_magic|nature_magic)_xp\s*=\s*([0-9.eE+\-]+)`)
 	screenNmRe   = regexp.MustCompile(`(?i)screen_name\s*=\s*"([^"]+)"`)
 	templateRe   = regexp.MustCompile(`(?i)template_name\s*=\s*([^;\r\n]+);`)
 	startLocRe   = regexp.MustCompile(`(?i)multiplayer_world\s*=\s*"?([a-zA-Z0-9_' -]+)"?`)
@@ -1788,6 +1791,39 @@ func extractTankFiles(data []byte, want map[string]bool) map[string][]byte {
 	return out
 }
 
+func isTamperedCharacterSave(rawLevel int, saveTotalXP int64, hasPartyGas bool, effectiveXP int64) bool {
+	if !hasPartyGas {
+		return false
+	}
+	// 1. Level in .dsparty exceeds what server-recorded MMO XP allows (same rule as applyAntiCheatLevel).
+	if effectiveXP > 0 {
+		if rawLevel > maxLevelForXP(effectiveXP)+2 {
+			return true
+		}
+	} else {
+		if rawLevel > 1 {
+			return true
+		}
+	}
+	// 2. Total 7-skill XP in .dsparty exceeds server-recorded MMO XP beyond JoinGuard tolerance (1000 + 5%).
+	if saveTotalXP > 0 {
+		allowedXP := effectiveXP + 1000 + (effectiveXP * 5 / 100)
+		if saveTotalXP > allowedXP {
+			return true
+		}
+	}
+	return false
+}
+
+func displayXPForChar(raw CachedChar, effectiveXP int64) int64 {
+	// If a player deleted an older character and recreated a fresh Level 0 character with the same name,
+	// do not display the previous deleted character's stale server XP next to Level 0.
+	if raw.HasPartyGas && raw.RawLevel == 0 && raw.SaveTotalXP >= 0 && raw.SaveTotalXP < 100 && effectiveXP > 1000 {
+		return raw.SaveTotalXP
+	}
+	return effectiveXP
+}
+
 func applyAntiCheatLevel(rawLevel int, hasPartyGas bool, effectiveXP int64) int {
 	if !hasPartyGas {
 		return maxLevelForXP(effectiveXP)
@@ -1869,6 +1905,17 @@ func parseGasIntoChar(partyBytes, infoBytes []byte, res *CachedChar) {
 				}
 				res.RawLevel = rawLvl
 			}
+		}
+		var sumSkillXP float64
+		for _, sm := range skillXPRe.FindAllStringSubmatch(gasStr, -1) {
+			if len(sm) > 1 {
+				if v, err := strconv.ParseFloat(sm[1], 64); err == nil && !math.IsNaN(v) && !math.IsInf(v, 0) && v > 0 {
+					sumSkillXP += v
+				}
+			}
+		}
+		if sumSkillXP > 0 {
+			res.SaveTotalXP = int64(math.Round(sumSkillXP))
 		}
 		if m := screenNmRe.FindStringSubmatch(gasStr); len(m) > 1 && strings.TrimSpace(m[1]) != "" {
 			res.Name = strings.TrimSpace(m[1])
@@ -2302,6 +2349,9 @@ func buildLadderFromSnapshot(
 	nowUnix := time.Now().Unix()
 
 	for acctLower, acct := range accounts {
+		if acct == nil || acct.Banned {
+			continue
+		}
 		canonicalAcctName := acct.Name
 		if canonicalAcctName == "" {
 			canonicalAcctName = acctLower
@@ -2388,6 +2438,11 @@ func buildLadderFromSnapshot(
 
 				charDetails := finalizeCharacterDetails(e.raw, e.charRec, charLiveXP)
 				xp := effectiveXPForChar(e.charRec, charLiveXP)
+				// Exclude saves modified/played outside the MMO (fails JoinGuard XP/level integrity).
+				if isTamperedCharacterSave(e.raw.RawLevel, e.raw.SaveTotalXP, e.raw.HasPartyGas, xp) {
+					continue
+				}
+				shownXP := displayXPForChar(e.raw, xp)
 
 				race := charDetails.Race
 				if race == "" {
@@ -2428,7 +2483,7 @@ func buildLadderFromSnapshot(
 					Level:         charDetails.Level,
 					Race:          race,
 					Class:         charDetails.Class,
-					XP:            xp,
+					XP:            shownXP,
 					LastSeen:      lastSeenStr,
 					LastSeenTime:  lastSeenUnix,
 					IsOnline:      isOnline,
@@ -2609,6 +2664,9 @@ func getAccountCharacters(accountName string) []UserCharacter {
 
 	saveSHA := ""
 	if acct != nil {
+		if acct.Banned {
+			return chars
+		}
 		saveSHA = acct.SaveSHA
 	}
 
@@ -2621,6 +2679,13 @@ func getAccountCharacters(accountName string) []UserCharacter {
 				if charRec == nil && e.Raw.Name != "" {
 					charRec = matchCharRec(acct.Chars, e.Raw.Name)
 				}
+			}
+			if acct != nil && len(acct.Chars) > 0 && charRec == nil {
+				continue
+			}
+			effXP := effectiveXPForChar(charRec, 0)
+			if isTamperedCharacterSave(e.Raw.RawLevel, e.Raw.SaveTotalXP, e.Raw.HasPartyGas, effXP) {
+				continue
 			}
 			details := finalizeCharacterDetails(e.Raw, charRec, 0)
 			race := details.Race

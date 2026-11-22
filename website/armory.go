@@ -1068,7 +1068,7 @@ func parseFloatAttr(m map[string]string, k string) float64 {
 
 func buildArmoryProfile(account, charName string) (*ArmoryProfile, error) {
 	canonicalAcct, acct, rec, cleanName, entrySig, rawBytes, found := openCharDspartyBytes(account, charName)
-	if !found || acct == nil {
+	if !found || acct == nil || acct.Banned {
 		return nil, os.ErrNotExist
 	}
 
@@ -1148,8 +1148,9 @@ func buildArmoryProfile(account, charName string) (*ArmoryProfile, error) {
 		return nil, os.ErrNotExist
 	}
 
-	// Parse skills
+	// Parse skills & total 7-skill XP (JoinGuard integrity check)
 	skills := ArmorySkills{}
+	var saveTotalXP int64
 	if sb := member.child("skills"); sb != nil {
 		skills.Uber = parseFloatAttr(sb.Attrs, "uber_level")
 		skills.Strength = parseFloatAttr(sb.Attrs, "strength_level")
@@ -1159,6 +1160,17 @@ func buildArmoryProfile(account, charName string) (*ArmoryProfile, error) {
 		skills.Ranged = parseFloatAttr(sb.Attrs, "ranged_level")
 		skills.CombatMagic = parseFloatAttr(sb.Attrs, "combat_magic_level")
 		skills.NatureMagic = parseFloatAttr(sb.Attrs, "nature_magic_level")
+		var sumXP float64
+		for _, xk := range []string{"strength_xp", "dexterity_xp", "intelligence_xp", "melee_xp", "ranged_xp", "combat_magic_xp", "nature_magic_xp"} {
+			if raw, ok := sb.Attrs[xk]; ok {
+				if v, err := strconv.ParseFloat(strings.TrimSpace(raw), 64); err == nil && !math.IsNaN(v) && !math.IsInf(v, 0) && v > 0 {
+					sumXP += v
+				}
+			}
+		}
+		if sumXP > 0 {
+			saveTotalXP = int64(math.Round(sumXP))
+		}
 	}
 
 	effectiveXP := effectiveXPForChar(rec, ladderXP)
@@ -1166,6 +1178,14 @@ func buildArmoryProfile(account, charName string) (*ArmoryProfile, error) {
 	if rawLevel < 0 {
 		rawLevel = 0
 	}
+	if isTamperedCharacterSave(rawLevel, saveTotalXP, true, effectiveXP) {
+		return nil, os.ErrNotExist
+	}
+	displayXP := displayXPForChar(CachedChar{
+		RawLevel:    rawLevel,
+		SaveTotalXP: saveTotalXP,
+		HasPartyGas: true,
+	}, effectiveXP)
 	level := applyAntiCheatLevel(rawLevel, true, effectiveXP)
 	if hasLadderMatch && ladderLevel > level {
 		level = ladderLevel
@@ -1444,7 +1464,7 @@ func buildArmoryProfile(account, charName string) (*ArmoryProfile, error) {
 		CharacterName:  displayName,
 		Level:          level,
 		UberExact:      skills.Uber,
-		XP:             effectiveXP,
+		XP:             displayXP,
 		Race:           race,
 		Class:          cls,
 		Rank:           rank,
@@ -1740,10 +1760,42 @@ func handleAPICharacterPortrait(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	canonicalAcct, _, _, cleanName, entrySig, rawBytes, found := openCharDspartyBytes(account, name)
-	if !found {
+	canonicalAcct, acct, rec, cleanName, entrySig, rawBytes, found := openCharDspartyBytes(account, name)
+	if !found || acct == nil || acct.Banned {
 		http.NotFound(w, r)
 		return
+	}
+
+	// Enforce the same verified MMO & non-tampered save policy as Ladder / Armory
+	pFiles := extractTankFiles(rawBytes, map[string]bool{"party.gas": true})
+	var parsed CachedChar
+	parseGasIntoChar(pFiles["party.gas"], nil, &parsed)
+	if rec == nil && acct.Chars != nil && parsed.Name != "" {
+		rec = matchCharRec(acct.Chars, parsed.Name)
+	}
+	effXP := effectiveXPForChar(rec, 0)
+	if rec == nil || isTamperedCharacterSave(parsed.RawLevel, parsed.SaveTotalXP, parsed.HasPartyGas, effXP) {
+		// Check live Ladder XP in case the character is actively leveling online right now
+		dispNorm := normalizeCharName(parsed.Name)
+		cleanNorm := normalizeCharName(cleanName)
+		var ladderXP int64
+		matchedLadder := false
+		for _, lc := range getRealmStatus().Ladder {
+			if !strings.EqualFold(lc.AccountName, canonicalAcct) {
+				continue
+			}
+			lcNorm := normalizeCharName(lc.CharacterName)
+			if strings.EqualFold(lc.CharacterName, parsed.Name) || lcNorm == dispNorm || lcNorm == cleanNorm {
+				ladderXP = lc.XP
+				matchedLadder = true
+				break
+			}
+		}
+		effXP = effectiveXPForChar(rec, ladderXP)
+		if (rec == nil && !matchedLadder) || isTamperedCharacterSave(parsed.RawLevel, parsed.SaveTotalXP, parsed.HasPartyGas, effXP) {
+			http.NotFound(w, r)
+			return
+		}
 	}
 
 	cacheKey := strings.ToLower(canonicalAcct) + ":" + strings.ToLower(cleanName)

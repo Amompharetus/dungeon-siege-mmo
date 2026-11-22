@@ -335,3 +335,129 @@ func TestArmoryBuildProfileAndPrivacy(t *testing.T) {
 	checkBrowse("tok_other", true)
 	checkBrowse("tok_amom", true)
 }
+
+func TestTamperedAndBannedCharactersExcludedFromLadderAndArmory(t *testing.T) {
+	tmp := resetWebTestState(t)
+	oldWebDir := webDir
+	t.Cleanup(func() {
+		webDir = oldWebDir
+		catalogData = nil
+		catalogOnce = sync.Once{}
+	})
+	webDir = tmp
+	catalogData = nil
+	catalogOnce = sync.Once{}
+	_ = os.MkdirAll(filepath.Join(tmp, "data"), 0o755)
+	_ = os.WriteFile(filepath.Join(tmp, "data", "wiki_items.json"), []byte(`[]`), 0o644)
+	_ = os.WriteFile(filepath.Join(tmp, "data", "wardrobe_catalog.json"), []byte(`{}`), 0o644)
+
+	makeParty := func(name string, uber float64, meleeXP float64) []byte {
+		gas := `[party]{[members]{[0]{[member]{actor_class="Warrior";screen_name="` + name + `";template_name=halfgiant;[skills]{` +
+			`uber_level=` + formatTestFloat(uber) + `;melee_xp=` + formatTestFloat(meleeXP) + `;}}}}}`
+		return buildTestDsparty(map[string][]byte{
+			"party.gas":      []byte(gas),
+			"info.gas":       []byte("[info]\n{\nregion = town_center;\nsave_time = 1795000000;\n}\n"),
+			"portrait-0.bmp": buildTest24BitBMP(8, 8),
+		})
+	}
+
+	// 1. Tampered/offline-played character (Brutus case: raw lvl 43, 3.8M skill XP, only 27 server XP)
+	writeTestSaveZip(t, filepath.Join(tmp, "portal-data", "saves", "brutus", "current.zip"), map[string][]byte{
+		"Save/Brutus.dsparty": makeParty("Brutus", 43.1, 3835350),
+	})
+	// 2. Subtle XP tamper (lvl 1, 50000 skill XP, 0 server XP)
+	writeTestSaveZip(t, filepath.Join(tmp, "portal-data", "saves", "sneaky", "current.zip"), map[string][]byte{
+		"Save/Sneaky.dsparty": makeParty("Sneaky", 1.0, 50000),
+	})
+	// 3. Banned account with otherwise valid character
+	writeTestSaveZip(t, filepath.Join(tmp, "portal-data", "saves", "banneduser", "current.zip"), map[string][]byte{
+		"Save/BannedHero.dsparty": makeParty("BannedHero", 20.0, 120000),
+	})
+	// 4. Legit high-level character with tiny float rounding drift (+262 XP above 249,859,328)
+	writeTestSaveZip(t, filepath.Join(tmp, "portal-data", "saves", "legit", "current.zip"), map[string][]byte{
+		"Save/LegitHero.dsparty": makeParty("LegitHero", 70.0, 249859590),
+	})
+	// 5. Legit recreated Level 0 character whose name had older deleted server XP (35631)
+	writeTestSaveZip(t, filepath.Join(tmp, "portal-data", "saves", "recreated", "current.zip"), map[string][]byte{
+		"Save/FreshHero.dsparty": makeParty("FreshHero", 0.0, 0),
+	})
+
+	now := time.Now().UTC()
+	accts := []*Account{
+		{Name: "Brutus", SaveSHA: "sb", Chars: map[string]*CharRec{"brutus": {Name: "Brutus", XP: 27, Updated: now}}},
+		{Name: "Sneaky", SaveSHA: "ss", Chars: map[string]*CharRec{"sneaky": {Name: "Sneaky", XP: 0, Updated: now}}},
+		{Name: "BannedUser", Banned: true, SaveSHA: "sban", Chars: map[string]*CharRec{"bannedhero": {Name: "BannedHero", XP: 120000, Updated: now}}},
+		{Name: "Legit", SaveSHA: "sl", Chars: map[string]*CharRec{"legithero": {Name: "LegitHero", XP: 249859328, Updated: now}}},
+		{Name: "Recreated", SaveSHA: "sr", Chars: map[string]*CharRec{"freshhero": {Name: "FreshHero", XP: 35631, Updated: now}}},
+	}
+	ab, _ := json.Marshal(accts)
+	_ = os.WriteFile(filepath.Join(tmp, "portal-data", "accounts.json"), ab, 0o644)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"server_name": "Test", "servers": []any{}})
+	}))
+	defer ts.Close()
+	portalURL = ts.URL
+	realmCache = &cachedBuild[RealmStatus]{ttl: 3 * time.Second, build: buildRealmStatus}
+
+	st := buildRealmStatus()
+	if len(st.Ladder) != 2 {
+		t.Fatalf("expected exactly 2 valid ladder chars (LegitHero, FreshHero), got %d: %+v", len(st.Ladder), st.Ladder)
+	}
+	if st.Ladder[0].CharacterName != "LegitHero" || st.Ladder[0].Level != 70 {
+		t.Fatalf("expected LegitHero Lv70 at rank #1, got %+v", st.Ladder[0])
+	}
+	if st.Ladder[1].CharacterName != "FreshHero" || st.Ladder[1].Level != 0 || st.Ladder[1].XP != 0 {
+		t.Fatalf("expected recreated FreshHero Lv0 with 0 displayed XP, got %+v", st.Ladder[1])
+	}
+
+	// Tampered and banned characters must be excluded from getAccountCharacters too
+	if got := getAccountCharacters("Brutus"); len(got) != 0 {
+		t.Fatalf("expected Brutus excluded from getAccountCharacters, got %+v", got)
+	}
+	if got := getAccountCharacters("BannedUser"); len(got) != 0 {
+		t.Fatalf("expected BannedUser excluded from getAccountCharacters, got %+v", got)
+	}
+
+	// Armory profile & portrait endpoints must return 404 for Brutus, Sneaky, and BannedUser, and 200 for LegitHero
+	sessionsMu.Lock()
+	sessions["tok_viewer"] = WebSession{Token: "tok_viewer", Username: "Legit", ExpiresAt: time.Now().Add(time.Hour)}
+	sessionsMu.Unlock()
+	defer func() {
+		sessionsMu.Lock()
+		delete(sessions, "tok_viewer")
+		sessionsMu.Unlock()
+	}()
+
+	for _, tc := range []struct {
+		acct, name string
+		wantCode   int
+	}{
+		{"Brutus", "Brutus", http.StatusNotFound},
+		{"Sneaky", "Sneaky", http.StatusNotFound},
+		{"BannedUser", "BannedHero", http.StatusNotFound},
+		{"Legit", "LegitHero", http.StatusOK},
+		{"Recreated", "FreshHero", http.StatusOK},
+	} {
+		req := httptest.NewRequest("GET", "/api/character?account="+tc.acct+"&name="+tc.name, nil)
+		req.AddCookie(&http.Cookie{Name: "ds1mmo_session", Value: "tok_viewer"})
+		w := httptest.NewRecorder()
+		handleAPICharacter(w, req)
+		if w.Code != tc.wantCode {
+			t.Fatalf("armory %s/%s: got %d, want %d (body=%s)", tc.acct, tc.name, w.Code, tc.wantCode, w.Body.String())
+		}
+
+		reqP := httptest.NewRequest("GET", "/api/character/portrait?account="+tc.acct+"&name="+tc.name, nil)
+		reqP.AddCookie(&http.Cookie{Name: "ds1mmo_session", Value: "tok_viewer"})
+		wP := httptest.NewRecorder()
+		handleAPICharacterPortrait(wP, reqP)
+		if wP.Code != tc.wantCode {
+			t.Fatalf("portrait %s/%s: got %d, want %d", tc.acct, tc.name, wP.Code, tc.wantCode)
+		}
+	}
+}
+
+func formatTestFloat(v float64) string {
+	b, _ := json.Marshal(v)
+	return string(b)
+}
