@@ -1004,6 +1004,543 @@ def build_swamp2gi_lever_fix(mp_map: LazyTank) -> Dict[str, bytes]:
     return out
 
 
+def build_spell_glyph_skrit(exp_res: LazyTank) -> bytes:
+    """Build patched world/contentdb/components/spells/spell_glyph.skrit fixing stuck
+    dsx_glyphs counts when a player moves/teleports out of frustum, walks away during
+    detonation, or when the rune/caster/target becomes invalid."""
+    orig = exp_res.get("world/contentdb/components/spells/spell_glyph.skrit")
+    if orig is None:
+        raise RuntimeError("Missing world/contentdb/components/spells/spell_glyph.skrit in Expansion.dsres")
+
+    skrit = """//////////////////////////////////////////////////////////////////////////////
+//
+// File     :  spell_glyph.skrit
+// Author(s):  Tim Jones (patched for Dungeon Siege MMO)
+//
+// Creates a rune at ground level which will harm enemies when they are within
+// a given distance.
+//
+// MMO fixes:
+// - Lifetime timeout (Timer 2) is global (SetTimerGlobal) and created once on
+//   rune spawn, so moving/teleporting out of frustum never freezes the glyph or
+//   leaks the caster's dsx_glyphs counter, and re-entering never resets timeout.
+// - WE_LEFT_WORLD never interrupts Exploding$ (prevents Acid/detonating glyph
+//   counter leaks when walking away during detonation).
+// - Watches both rune and caster for WE_DESTRUCTED and routes every exit path
+//   through an idempotent CleanUp$ state guarded by state_added$, guaranteeing
+//   exact 1:1 SAddGenericState / SRemoveGenericState pairing and rune deletion
+//   via GoDb.SMarkForDeletion even while out of frustum.
+//
+//////////////////////////////////////////////////////////////////////////////
+
+property string cast_script$              = "glyph_cast"           doc = "Name of the SiegeFx script that will be providing the visual.";
+property string effect_script$            = ""                     doc = "Name of the SiegeFx script that will be played at the end of the spell.";
+property int radius$                      = 10                     doc = "Distance from the rune where enemies will be effected";
+property float damage_falloff$            = .1                     doc = "Amount the damage amount falls off with each unit of radius";
+property int wait_for_enemies$            = 1                      doc = "Number of enemies needed in the bounding sphere before detonation";
+property string rune_template$            = "rune_glb_glyph_01"    doc = "Template to use for summoned rune.";
+property string description$              = ""                     doc = "Description of enchantment being applied";
+property float explosion_length$          = 2                      doc = "Length of explosion animation.  Only for timing, doesn't effect duration.";
+property bool ex_duration$                = false                  doc = "Does this last for an extended duration?";
+
+property int max_glyph_count$             = 10                     doc = "Max number of glyphs a caster can have at a time.";
+property string caster_description$       = ""                     doc = "Description of the caster while glyphs exist.";
+
+property float timeout$                   = 30                     doc = "The maximum amount of time this glyph should last.";
+property string glyphStateName$           = "DSX_glyph_timer"      doc = "The name of the state to add to the glyph for displaying its timer.";
+property string state_description$        = "Time remaining"       doc = "Description of the time remaning on the glyph.";
+
+property string glyphDetonatingStateName$ = "DSX_glyph_detonating" doc = "The name of the state to add when the glyph is detonating.";
+property string other_description$        = "Detonating"           doc = "The description when the glyph is detonating.";
+
+owner = GoSkritComponent;
+
+// key goids
+Goid caster_goid$;
+Goid target_goid$;
+Goid rune_goid$;
+
+// starting pos for the rune (SiegeFx persistent variable handle)
+int starting_pos$;
+
+// damage amount & cached rune position
+float damage_amount$;
+SiegePos rune_pos$;
+bool has_rune_pos$ = false;
+
+// lifecycle flags for guaranteed 1:1 dsx_glyphs cleanup
+bool state_added$       = false;
+bool watching_rune$     = false;
+bool watching_caster$   = false;
+bool is_exploding$      = false;
+bool is_out_of_frustum$ = false;
+bool is_cleaning_up$    = false;
+
+////////////////////////////////////////
+// Support Functions
+
+// does damage to enemies in the collection.  damage based on distance from source using damage_falloff$
+DamageEnemies$( SiegePos source$ )
+{
+\tif ( !caster_goid$.IsValid() || caster_goid$.Go == NULL || !caster_goid$.Go.HasMind() )
+\t{
+\t\treturn;
+\t}
+
+\tint i$, iend$;
+\tGo enemy_go$;
+\tfloat damage$, distance$;
+\tGopColl enemies$;
+
+\tGoid attacker_goid$ = rune_goid$;
+\tif ( !attacker_goid$.IsValid() )
+\t{
+\t\tattacker_goid$ = caster_goid$;
+\t}
+
+\t// get the caster's gopcoll and clear it
+\tenemies$ = caster_goid$.Go.Mind.TempGopColl1;
+\tenemies$.Clear();
+
+\t#only(game) [[
+\tAIQuery.GetEnemiesOfGoInSphere( source$, radius$, caster_goid$.Go, enemies$ );
+\t]];
+
+\t// loop through the enemies
+\ti$ = 0;
+\tiend$ = enemies$.Size();
+\twhile ( i$ < iend$ )
+\t{
+\t\tenemy_go$ = enemies$.Get( i$ );
+\t\tif ( enemy_go$ != NULL )
+\t\t{
+\t\t\tdamage$ = damage_amount$;
+\t\t\tif ( damage_falloff$ != 0 )
+\t\t\t{
+\t\t\t\tdistance$ = AIQuery.GetDistance( source$, enemy_go$.Placement.GetPosition() );
+\t\t\t\tdamage$ = damage$ - ( distance$ * damage_falloff$ );
+\t\t\t\tif ( damage$ < 0 )
+\t\t\t\t{
+\t\t\t\t\tdamage$ = 0;
+\t\t\t\t}
+\t\t\t}
+\t\t\tRules.DamageGo( enemy_go$.Goid, attacker_goid$, owner.goid, damage$, true, false );
+\t\t}
+\t\ti$ = i$ + 1;
+\t}
+}
+
+////////////////////////////////////////
+// Global Lifetime & CC Message Handlers
+
+// Global glyph lifetime timer (Timer 2): fires even while OutOfFrustum$
+trigger OnTimer$( 2 )
+{
+\tif ( is_exploding$ || is_cleaning_up$ )
+\t{
+\t\treturn;
+\t}
+
+\tif ( !is_out_of_frustum$ && rune_goid$.IsValid() && rune_goid$.Go != NULL && rune_goid$.Go.IsInActiveWorldFrustum() )
+\t{
+\t\tSetState Exploding$;
+\t}
+\telse
+\t{
+\t\tSetState CleanUp$;
+\t}
+}
+
+// Watched CC messages from rune_goid$ and caster_goid$
+event OnGoHandleCCMessage$( eWorldEvent e$, WorldMessage msg$ )
+{
+\tif ( is_cleaning_up$ )
+\t{
+\t\treturn;
+\t}
+
+\tGoid subject$ = msg$.GetSendTo();
+
+\tif ( e$ == WE_DESTRUCTED )
+\t{
+\t\tif ( subject$ == caster_goid$ )
+\t\t{
+\t\t\tSetState CleanUp$;
+\t\t\treturn;
+\t\t}
+\t\tif ( subject$ == rune_goid$ && !is_exploding$ )
+\t\t{
+\t\t\tSetState CleanUp$;
+\t\t\treturn;
+\t\t}
+\t}
+\telse if ( e$ == WE_LEFT_WORLD )
+\t{
+\t\tif ( subject$ == rune_goid$ && !is_exploding$ && !is_out_of_frustum$ )
+\t\t{
+\t\t\tSetState OutOfFrustum$;
+\t\t\treturn;
+\t\t}
+\t}
+\telse if ( e$ == WE_ENTERED_WORLD )
+\t{
+\t\tif ( subject$ == rune_goid$ && is_out_of_frustum$ && !is_exploding$ )
+\t\t{
+\t\t\tSetState OnGround$;
+\t\t\treturn;
+\t\t}
+\t}
+}
+
+////////////////////////////////////////
+// State Machine
+
+startup state CastBegin$
+{
+\t// Failsafe if glyph_cast SiegeFx never delivers WE_SPELL_SYNC_MID
+\ttrigger OnTimer$( 4 )
+\t{
+\t\tSetState CleanUp$;
+\t}
+
+\tevent OnGoHandleMessage$( eWorldEvent e$, WorldMessage msg$ )
+\t{
+\t\tif ( e$ == WE_REQ_CAST )
+\t\t{
+\t\t\tcaster_goid$ = msg$.GetSendFrom();
+\t\t\ttarget_goid$ = MakeGoid( msg$.GetData1() );
+
+\t\t\tif ( !target_goid$.IsValidMp || !caster_goid$.IsValidMp )
+\t\t\t{
+\t\t\t\tSetState Abort$;
+\t\t\t\treturn;
+\t\t\t}
+
+\t\t\t// Make the omni version of the spell to run things.
+\t\t\tGoCloneReq cloneReq$ = MakeGoCloneReq( Owner.go.Parent.Goid, owner.goid );
+\t\t\tcloneReq$.Omni = true;
+\t\t\tGoid new_spell$ = GoDb.SCloneGo( cloneReq$ );
+
+\t\t\t// Send Omni version an Activate to get it started.
+\t\t\tPostWorldMessage( WE_REQ_ACTIVATE, caster_goid$, new_spell$, MakeInt( target_goid$ ), 0 );
+
+\t\t\tSetState Finished$;
+\t\t}
+\t\telse if ( e$ == WE_REQ_ACTIVATE )
+\t\t{
+\t\t\tcaster_goid$ = msg$.GetSendFrom();
+\t\t\ttarget_goid$ = MakeGoid( msg$.GetData1() );
+
+\t\t\tif ( !target_goid$.IsValidMp || !caster_goid$.IsValidMp )
+\t\t\t{
+\t\t\t\tSetState Abort$;
+\t\t\t\treturn;
+\t\t\t}
+
+\t\t\tstarting_pos$ = SiegeFx.AddVariable( target_goid$.go.placement.position, owner.Goid );
+\t\t\tthis.CreateTimer( 4, 15.0 );
+\t\t\tSiegeFx.SRunScript( cast_script$, target_goid$, caster_goid$, "", owner.Goid, e$ );
+\t\t}
+\t\telse if ( e$ == WE_SPELL_SYNC_MID )
+\t\t{
+\t\t\tthis.DestroyTimer( 4 );
+
+\t\t\tif ( !caster_goid$.IsValid() || caster_goid$.Go == NULL || !caster_goid$.Go.HasActor() )
+\t\t\t{
+\t\t\t\tSetState CleanUp$;
+\t\t\t\treturn;
+\t\t\t}
+
+\t\t\tGoCloneReq req$ = MakeGoCloneReq( rune_template$ );
+\t\t\treq$.StartingPos = SiegeFx.GetVariable( starting_pos$, owner.goid );
+\t\t\treq$.SnapToTerrain = true;
+\t\t\treq$.Fadein = true;
+\t\t\treq$.SetForceClientAllowed( true );
+
+\t\t\trune_goid$ = GoDb.SCloneGo( req$ );
+
+\t\t\tif ( !rune_goid$.IsValid() || rune_goid$.Go == NULL )
+\t\t\t{
+\t\t\t\treport.genericf( "Rune clone could not be created! Go see Tim" );
+\t\t\t\tSetState Abort$;
+\t\t\t\treturn;
+\t\t\t}
+
+\t\t\t// no expire and not lodfi
+\t\t\trune_goid$.Go.DisableAutoExpiration();
+\t\t\t#only(game) [[
+\t\t\trune_goid$.Go.SetLodfi( false );
+\t\t\t]];
+
+\t\t\trune_pos$ = rune_goid$.Go.Placement.GetPosition();
+\t\t\thas_rune_pos$ = true;
+
+\t\t\t// Compute spell damage once on spawn (guard against deleted enemy target)
+\t\t\tGo dmg_target$ = rune_goid$.Go;
+\t\t\tif ( target_goid$.IsValid() && target_goid$.Go != NULL )
+\t\t\t{
+\t\t\t\tdmg_target$ = target_goid$.Go;
+\t\t\t}
+\t\t\tdamage_amount$ = Math.RandomFloat(
+\t\t\t\towner.Go.Magic.EvaluateAttackDamageModifierMin( caster_goid$.Go, dmg_target$ ),
+\t\t\t\towner.Go.Magic.EvaluateAttackDamageModifierMax( caster_goid$.Go, dmg_target$ )
+\t\t\t);
+\t\t\tif ( damage_amount$ < 1 )
+\t\t\t{
+\t\t\t\tdamage_amount$ = 1;
+\t\t\t}
+
+\t\t\t// Watch both rune and caster for frustum/destruction events
+\t\t\tGoDb.StartWatching( owner.goid, rune_goid$ );
+\t\t\twatching_rune$ = true;
+\t\t\tGoDb.StartWatching( owner.goid, caster_goid$ );
+\t\t\twatching_caster$ = true;
+
+\t\t\t// Add the dsx_glyphs counter state to the caster
+\t\t\t#only(game) [[
+\t\t\tcaster_goid$.Go.Actor.SAddGenericState( owner.Go.Magic.CasterStateName, caster_description$, max_glyph_count$, caster_goid$ );
+\t\t\tstate_added$ = true;
+\t\t\t]];
+
+\t\t\t// Add the timer state to the rune once on spawn
+\t\t\tif ( rune_goid$.Go.HasActor() )
+\t\t\t{
+\t\t\t\trune_goid$.Go.Actor.SAddGenericState( glyphStateName$, state_description$, timeout$, caster_goid$, owner.goid, owner.Go.Magic.GetMagicLevel( caster_goid$.Go ) );
+\t\t\t}
+
+\t\t\t// Start global lifetime timer so OutOfFrustum$ never stops expiration
+\t\t\tfloat life$ = timeout$;
+\t\t\tif ( life$ < 0.1 )
+\t\t\t{
+\t\t\t\tlife$ = 0.1;
+\t\t\t}
+\t\t\tthis.CreateTimer( 2, life$ );
+\t\t\tthis.SetTimerGlobal( 2, true );
+
+\t\t\tif ( rune_goid$.Go.IsInActiveWorldFrustum() )
+\t\t\t{
+\t\t\t\tSetState OnGround$;
+\t\t\t}
+\t\t\telse
+\t\t\t{
+\t\t\t\tSetState OutOfFrustum$;
+\t\t\t}
+\t\t}
+\t}
+}
+
+// state the spell remains in when the rune is on the ground and in frustum
+state OnGround$
+{
+\ttrigger OnTimer$( 1 )
+\t{
+\t\tif ( !caster_goid$.IsValid() || caster_goid$.Go == NULL || !caster_goid$.Go.HasMind() )
+\t\t{
+\t\t\tSetState CleanUp$;
+\t\t\treturn;
+\t\t}
+\t\tif ( !rune_goid$.IsValid() || rune_goid$.Go == NULL )
+\t\t{
+\t\t\tSetState CleanUp$;
+\t\t\treturn;
+\t\t}
+\t\tif ( !rune_goid$.Go.IsInActiveWorldFrustum() )
+\t\t{
+\t\t\tSetState OutOfFrustum$;
+\t\t\treturn;
+\t\t}
+
+\t\tGopColl enemies_in_sphere$;
+\t\tenemies_in_sphere$ = caster_goid$.Go.Mind.TempGopColl1;
+\t\tenemies_in_sphere$.Clear();
+
+\t\trune_pos$ = rune_goid$.Go.Placement.GetPosition();
+\t\thas_rune_pos$ = true;
+
+\t\t#only(game) [[
+\t\tAIQuery.GetEnemiesOfGoInSphere( rune_pos$, radius$, caster_goid$.Go, enemies_in_sphere$ );
+
+\t\tif ( enemies_in_sphere$.Size() >= wait_for_enemies$ )
+\t\t{
+\t\t\tSetState Exploding$;
+\t\t}
+\t\telse
+\t\t{
+\t\t\tthis.CreateTimer( 1, .1 );
+\t\t}
+\t\t]];
+\t}
+
+\tevent OnEnterState$
+\t{
+\t\tis_out_of_frustum$ = false;
+\t\tthis.CreateTimer( 1, .1 );
+\t}
+}
+
+state Exploding$
+{
+\tevent OnEnterState$
+\t{
+\t\tis_exploding$ = true;
+\t\tis_out_of_frustum$ = false;
+\t\tthis.DestroyTimer( 2 );
+
+\t\tif ( !rune_goid$.IsValid() || rune_goid$.Go == NULL )
+\t\t{
+\t\t\tSetState CleanUp$;
+\t\t\treturn;
+\t\t}
+
+\t\trune_pos$ = rune_goid$.Go.Placement.GetPosition();
+\t\thas_rune_pos$ = true;
+
+\t\tstring params$ = "";
+\t\tfloat duration$ = explosion_length$;
+\t\tif ( ex_duration$ )
+\t\t{
+\t\t\tGo dur_target$ = rune_goid$.Go;
+\t\t\tif ( target_goid$.IsValid() && target_goid$.Go != NULL )
+\t\t\t{
+\t\t\t\tdur_target$ = target_goid$.Go;
+\t\t\t}
+\t\t\tduration$ = owner.Go.Magic.EvaluateEffectDuration( rune_goid$.Go, dur_target$ );
+\t\t\tif ( duration$ < 1.5 )
+\t\t\t{
+\t\t\t\tduration$ = 1.5;
+\t\t\t}
+\t\t\tStringTool.AppendF( params$, "[%g][%g][%g]", damage_amount$, duration$ - 1, duration$ - 1.5 );
+\t\t}
+\t\tif ( duration$ < 0.1 )
+\t\t{
+\t\t\tduration$ = 0.1;
+\t\t}
+
+\t\t// run the explosion effect
+\t\tSiegeFx.SRunMpScript( effect_script$, rune_goid$, rune_goid$, params$, owner.Goid, WE_REQ_ACTIVATE );
+
+\t\tif ( rune_goid$.Go.HasActor() )
+\t\t{
+\t\t\trune_goid$.Go.Actor.SRemoveGenericState( glyphStateName$ );
+\t\t\tif ( caster_goid$.IsValid() && caster_goid$.Go != NULL )
+\t\t\t{
+\t\t\t\trune_goid$.Go.Actor.SAddGenericState( glyphDetonatingStateName$, other_description$, duration$, caster_goid$, owner.goid, owner.Go.Magic.GetMagicLevel( caster_goid$.Go ) );
+\t\t\t}
+\t\t}
+
+\t\t// create timer to finish explosion and enter CleanUp$
+\t\tthis.CreateTimer( 3, duration$ );
+\t}
+
+\ttrigger OnTimer$( 3 )
+\t{
+\t\tif ( !ex_duration$ && has_rune_pos$ )
+\t\t{
+\t\t\tDamageEnemies$( rune_pos$ );
+\t\t}
+
+\t\tSetState CleanUp$;
+\t}
+}
+
+state OutOfFrustum$
+{
+\tevent OnEnterState$
+\t{
+\t\tis_out_of_frustum$ = true;
+\t}
+
+\tevent OnExitState$
+\t{
+\t\tis_out_of_frustum$ = false;
+\t}
+}
+
+// Single idempotent cleanup path: guarantees dsx_glyphs is decremented once and rune is deleted
+state CleanUp$
+{
+\tevent OnEnterState$
+\t{
+\t\tis_cleaning_up$ = true;
+\t\tthis.DestroyTimer( 2 );
+
+\t\tif ( effect_script$ != "" )
+\t\t{
+\t\t\tSiegeFx.SStopScript( owner.goid, effect_script$ );
+\t\t}
+
+\t\tif ( watching_rune$ )
+\t\t{
+\t\t\twatching_rune$ = false;
+\t\t\tif ( rune_goid$.IsValid() )
+\t\t\t{
+\t\t\t\tGoDb.StopWatching( owner.goid, rune_goid$ );
+\t\t\t}
+\t\t}
+
+\t\tif ( watching_caster$ )
+\t\t{
+\t\t\twatching_caster$ = false;
+\t\t\tif ( caster_goid$.IsValid() )
+\t\t\t{
+\t\t\t\tGoDb.StopWatching( owner.goid, caster_goid$ );
+\t\t\t}
+\t\t}
+
+\t\tif ( state_added$ )
+\t\t{
+\t\t\tstate_added$ = false;
+\t\t\tif ( caster_goid$.IsValid() && caster_goid$.Go != NULL && caster_goid$.Go.HasActor() )
+\t\t\t{
+\t\t\t\tcaster_goid$.Go.Actor.SRemoveGenericState( owner.Go.Magic.GetCasterStateName() );
+\t\t\t}
+\t\t}
+
+\t\tif ( rune_goid$.IsValid() && rune_goid$.Go != NULL )
+\t\t{
+\t\t\tif ( rune_goid$.Go.HasAspect() )
+\t\t\t{
+\t\t\t\trune_goid$.Go.Aspect.SSetIsVisible( false );
+\t\t\t}
+\t\t\tGoDb.SMarkForDeletion( rune_goid$ );
+\t\t}
+
+\t\tSetState Finished$;
+\t}
+}
+
+state Finished$
+{
+\tevent OnEnterState$
+\t{
+\t\tSiegeFx.ClearVariables( owner.goid );
+\t\tPostWorldMessage( WE_REQ_DELETE, owner.Goid, owner.Goid, 1 );
+\t}
+}
+
+state Abort$
+{
+\tevent OnEnterState$
+\t{
+\t\tif ( caster_goid$.IsValid() && caster_goid$.Go != NULL )
+\t\t{
+\t\t\tRules.ChangeMana( caster_goid$, owner.go.getmagic.manacost );
+\t\t}
+
+\t\tif ( state_added$ || watching_rune$ || watching_caster$ )
+\t\t{
+\t\t\tSetState CleanUp$;
+\t\t\treturn;
+\t\t}
+
+\t\tSiegeFx.ClearVariables( owner.goid );
+\t\tPostWorldMessage( WE_REQ_DELETE, owner.Goid, owner.Goid, 1 );
+\t}
+}
+"""
+    return skrit.replace("\r\n", "\n").replace("\n", "\r\n").encode("latin1")
+
+
 def build_expansion_tank(game_dir: str, out_path: str) -> Tuple[int, int]:
     """Assemble and write Z_LoA_Expansion.dsres at priority 0x5500."""
     mp_map = LazyTank(os.path.join(game_dir, "Maps", "MpWorld.dsmap"))
@@ -1043,6 +1580,7 @@ def build_expansion_tank(game_dir: str, out_path: str) -> Tuple[int, int]:
         files["world/global/moods/multiplayer_world/moods1.gas"] = build_moods(logic_res, exp_res)
         files["world/global/moods/dsx_mood_manager.skrit"] = build_mood_manager(exp_res)
         files["world/contentdb/pcontent.skrit"] = build_pcontent_skrit(exp_res)
+        files["world/contentdb/components/spells/spell_glyph.skrit"] = build_spell_glyph_skrit(exp_res)
         siege_bytes, siege_count = build_siege_nodes(reg_files, terrain_res, exp_res)
         files["world/global/siege_nodes/loa_expansion/loa_expansion_nodes.gas"] = siege_bytes
 

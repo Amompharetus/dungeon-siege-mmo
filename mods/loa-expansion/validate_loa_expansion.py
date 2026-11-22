@@ -758,7 +758,24 @@ def validate(game_dir: str, mod_path: str) -> None:
             ):
                 if needle not in pc_skrit:
                     errors.append(f"world/contentdb/pcontent.skrit missing expected snippet: {needle!r}")
-        print(f"[7/8] Metadata, Displacers & pcontent.skrit validated.")
+
+        # Verify world/contentdb/components/spells/spell_glyph.skrit fix is present and syntactically balanced
+        glyph_skrit_raw = mod.get("world/contentdb/components/spells/spell_glyph.skrit")
+        if not glyph_skrit_raw:
+            errors.append("Z_LoA_Expansion.dsres missing world/contentdb/components/spells/spell_glyph.skrit")
+        else:
+            glyph_skrit = glyph_skrit_raw.decode("latin1")
+            check_gas_syntax(glyph_skrit, "world/contentdb/components/spells/spell_glyph.skrit", errors)
+            for needle in (
+                "this.SetTimerGlobal( 2, true );",
+                "state CleanUp$",
+                "GoDb.SMarkForDeletion( rune_goid$ );",
+                "SRemoveGenericState( owner.Go.Magic.GetCasterStateName() );",
+                "e$ == WE_DESTRUCTED",
+            ):
+                if needle not in glyph_skrit:
+                    errors.append(f"world/contentdb/components/spells/spell_glyph.skrit missing expected snippet: {needle!r}")
+        print(f"[7/8] Metadata, Displacers, pcontent.skrit & spell_glyph.skrit validated.")
         print(f"[8/8] Summary: {len(errors)} errors, {len(warnings)} warnings")
         for w in warnings:
             print(f"  WARN: {w}")

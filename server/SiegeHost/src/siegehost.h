@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <string>
 
-#define SIEGEHOST_VERSION "1.5.31"
+#define SIEGEHOST_VERSION "1.5.34"
 
 enum class Role { None, Server, Client };
 
@@ -114,6 +114,8 @@ void NR_Tick();
 std::string NR_HeartbeatLines();
 void CompareSessionInfo(const BYTE* remoteAppReserved);  // join compatibility diagnostics
 void ChatKeyFilter(LPMSG msg);  // 1.5.10: in-game chat Ctrl+Backspace, Ctrl+A filter
+void PrefsFixInstall();         // 1.5.32: persist tutorial_tips in prefs.gas (src/prefsfix.cpp)
+void HasteFixInstall();         // 1.5.34: scale weapon ReloadDelay & spell CastReloadDelay under Haste (src/hastefix.cpp)
 void ChatFixGameMsgCooldownInstall();  // 1.5.23: 3-second per-message cooldown on gameplay chat messages
 bool ChatFix_AllowGameMessage(const char* text);
 bool ChatFix_AllowGameMessageWide(const wchar_t* text);
