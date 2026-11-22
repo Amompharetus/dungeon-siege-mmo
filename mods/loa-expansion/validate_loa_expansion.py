@@ -609,6 +609,51 @@ def validate(game_dir: str, mod_path: str) -> None:
             if not vfs.has_asset(img):
                 errors.append(f"Missing quest image asset {img}")
 
+
+        lore_raw = mod.get("world/maps/multiplayer_world/info/lore.gas")
+        if not lore_raw:
+            errors.append("Missing world/maps/multiplayer_world/info/lore.gas in Z_LoA_Expansion.dsres")
+        else:
+            lore_txt = strip_gas_comments(lore_raw.decode("latin1"))
+            lore_roots = extract_blocks(lore_txt, r"(?mi)^[ \t]*\[lore\]")
+            if len(lore_roots) != 1:
+                errors.append(f"Expected 1 active [lore] block in lore.gas, found {len(lore_roots)}")
+            else:
+                lore_entries: Dict[str, str] = {}
+                for lm, _, _, lblk in extract_blocks(lore_roots[0][3], r"(?m)^[ \t]*\[([a-zA-Z0-9_]+)\]"):
+                    lkey = lm.group(1).lower()
+                    if lkey == "lore":
+                        continue
+                    if lkey in lore_entries:
+                        errors.append(f"Duplicate lore key [{lkey}] in lore.gas")
+                    lore_entries[lkey] = lblk
+                if len(lore_entries) != 42:
+                    errors.append(f"Expected 42 merged lore entries (4 UP + 38 LoA), found {len(lore_entries)}")
+                for req_l in ("lore_hovart", "lore_riddle", "lore_nossirom", "lore_shadowjumper", "lore_clockwork", "lore_utraean"):
+                    if req_l not in lore_entries:
+                        errors.append(f"Missing required lore entry [{req_l}] in lore.gas")
+                if "lore_utraean" in lore_entries and "to be added" in lore_entries["lore_utraean"].lower():
+                    errors.append("lore.gas [lore_utraean] still contains 'To Be Added' stub")
+                # Verify every lore_key referenced by LoA/DSX templates or LOA10/oasis region objects resolves in lore.gas
+                ref_lore_keys: Set[str] = set()
+                for tk_name, (tblk, _) in merged_templates.items():
+                    if "dsx_" in tk_name or "mmo_loa_" in tk_name or "nossirom" in tk_name:
+                        for lkm in re.finditer(r'(?mi)^\s*lore_key\s*=\s*"?([a-zA-Z0-9_]+)"?\s*;', tblk):
+                            ref_lore_keys.add(lkm.group(1).lower())
+                for reg in check_regs:
+                    for diff in ("regular", "veteran", "elite"):
+                        for rk in vfs.keys_under(f"world/maps/multiplayer_world/regions/{reg}/objects/{diff}/"):
+                            if not rk.endswith(".gas"):
+                                continue
+                            rdata = vfs.get(rk)
+                            if not rdata:
+                                continue
+                            for lkm in re.finditer(r'(?mi)^\s*lore_key\s*=\s*"?([a-zA-Z0-9_]+)"?\s*;', strip_gas_comments(rdata.decode("latin1", errors="replace"))):
+                                ref_lore_keys.add(lkm.group(1).lower())
+                missing_lore = sorted(k for k in ref_lore_keys if k not in lore_entries)
+                if missing_lore:
+                    errors.append(f"Unresolved LoA/region lore_keys ({len(missing_lore)}): {missing_lore[:10]}")
+
         elev_txt = strip_gas_comments(vfs.get("world/global/elevators.gas").decode("latin1"))
         mp_elev = extract_blocks(elev_txt, r"\[multiplayer_world\]")
         if len(mp_elev) != 1:
@@ -690,6 +735,14 @@ def validate(game_dir: str, mod_path: str) -> None:
             missing_locs = sorted(expected_loa_locs - seen_locs)
             if missing_locs:
                 errors.append(f"Missing LoA world_location triggers in {diff}: {missing_locs}")
+
+            # Verify Goblin Dungeon (swamp2gi) floating lever 0x08300045 + use_point 0x08300055 fix
+            sw_int = vfs.get(f"world/maps/multiplayer_world/regions/swamp2gi/objects/{diff}/interactive.gas")
+            sw_sp  = vfs.get(f"world/maps/multiplayer_world/regions/swamp2gi/objects/{diff}/special.gas")
+            if not sw_int or "0.166115,0.356485,2.50956,0x9f7a1006" not in sw_int.decode("latin1").lower():
+                errors.append(f"swamp2gi/{diff}/interactive.gas missing grounded lever 0x08300045 position (y=0.356485)")
+            if not sw_sp or "0.278544,0.4,1.33057,0x9f7a1006" not in sw_sp.decode("latin1").lower():
+                errors.append(f"swamp2gi/{diff}/special.gas missing grounded use_point 0x08300055 position (y=0.4)")
         # Verify world/contentdb/pcontent.skrit pricing patch is present and syntactically balanced
         pc_skrit_raw = mod.get("world/contentdb/pcontent.skrit")
         if not pc_skrit_raw:

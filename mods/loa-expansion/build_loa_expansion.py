@@ -4,7 +4,7 @@ Combines:
 - 383 remapped/patched templates from loa_templates.py
 - 424 remapped/patched region files across 10 LoA regions + oasis from loa_remapper.py
 - Merged map metadata: start_positions.gas, world_locations.gas, quests.gas,
-  index/stitch_index.gas
+  lore.gas, index/stitch_index.gas
 - Global resources: world/global/elevators.gas,
   world/global/moods/multiplayer_world/moods1.gas,
   world/global/moods/dsx_mood_manager.skrit,
@@ -196,6 +196,64 @@ def build_quests(mp_map: LazyTank, exp_map: LazyTank) -> bytes:
         r"(?m)^[ \t]*\[quests\]",
         "\t" + a8_pad[0][3].lstrip(),
     )
+    return merged.encode("latin1")
+
+
+def build_lore(mp_map: LazyTank, exp_map: LazyTank) -> bytes:
+    """Merge all Expansion lore book entries into MpWorld lore.gas.
+
+    Replaces MpWorld's placeholder stub for [lore_utraean] ("To Be Added") with
+    Expansion's full [lore_utraean] text so there are no duplicate keys and every
+    vanilla UP + LoA lore book (including Nosirrom's Journals) renders properly.
+    """
+    mp_lore_txt = mp_map.get("world/maps/multiplayer_world/info/lore.gas").decode("latin1")
+    exp_lore_txt = exp_map.get("world/maps/map_expansion/info/lore.gas").decode("latin1")
+
+    mp_root = extract_blocks(mp_lore_txt, r"(?m)^[ \t]*\[lore\]")
+    exp_root = extract_blocks(exp_lore_txt, r"(?m)^[ \t]*\[lore\]")
+    if len(mp_root) != 1:
+        raise RuntimeError(f"Expected 1 active [lore] block in MpWorld, found {len(mp_root)}")
+    if len(exp_root) != 1:
+        raise RuntimeError(f"Expected 1 active [lore] block in Expansion, found {len(exp_root)}")
+
+    exp_blocks: List[Tuple[str, str]] = []
+    exp_keys: Set[str] = set()
+    for m, _, _, blk in extract_blocks(exp_root[0][3], r"(?m)^[ \t]*\[([a-zA-Z0-9_]+)\]"):
+        key = m.group(1).lower()
+        if key == "lore":
+            continue
+        if key in exp_keys:
+            raise RuntimeError(f"Duplicate lore key {key!r} in Expansion lore.gas")
+        exp_keys.add(key)
+        exp_blocks.append((key, "\t" + blk.lstrip()))
+    if not exp_blocks:
+        raise RuntimeError("No lore entries found in Expansion lore.gas")
+
+    # Remove any MpWorld lore entry overridden by Expansion (specifically the "To Be Added"
+    # [lore_utraean] stub) using exact spans inside the active [lore] block.
+    _, mp_start, mp_end, mp_blk = mp_root[0]
+    mp_open = mp_blk.find("{")
+    if mp_open < 0:
+        raise RuntimeError("Malformed [lore] block in MpWorld lore.gas")
+    body_base = mp_start + mp_open + 1
+    body_txt = mp_lore_txt[body_base : mp_end - 1]
+
+    removals: List[Tuple[int, int]] = []
+    for m, s, e, _ in extract_blocks(body_txt, r"(?m)^[ \t]*\[([a-zA-Z0-9_]+)\]"):
+        key = m.group(1).lower()
+        if key in exp_keys:
+            # Also trim trailing newline right after the removed block
+            e2 = e
+            while e2 < len(body_txt) and body_txt[e2] in ("\r", "\n"):
+                e2 += 1
+            removals.append((s, e2))
+
+    for s, e in reversed(removals):
+        body_txt = body_txt[:s] + body_txt[e:]
+
+    cleaned_mp = mp_lore_txt[:body_base] + body_txt + mp_lore_txt[mp_end - 1 :]
+    payload = "\n// Legends of Aranna expansion lore entries\n" + "\n".join(blk for _, blk in exp_blocks)
+    merged = _insert_before_block_close(cleaned_mp, r"(?m)^[ \t]*\[lore\]", payload)
     return merged.encode("latin1")
 
 
@@ -923,6 +981,29 @@ def build_siege_nodes(
     return ("\r\n".join(lines) + "\r\n").encode("latin1"), len(entries)
 
 
+def build_swamp2gi_lever_fix(mp_map: LazyTank) -> Dict[str, bytes]:
+    """Lower the floating Goblin Dungeon lever (0x08300045) and its use_point (0x08300055)
+    in swamp2gi onto the stone walkway surface (y=0.356485 / y=0.4 on node 0x9f7a1006)
+    across regular, veteran, and elite."""
+    out: Dict[str, bytes] = {}
+    patches = (
+        ("interactive.gas", "0x08300045", "0.166115,0.983203,2.50956,0x9f7a1006", "0.166115,0.356485,2.50956,0x9f7a1006"),
+        ("special.gas",     "0x08300055", "0.278544,0.983199,1.33057,0x9f7a1006", "0.278544,0.4,1.33057,0x9f7a1006"),
+    )
+    for diff in ("regular", "veteran", "elite"):
+        for fn, scid, old_pos, new_pos in patches:
+            key = f"world/maps/multiplayer_world/regions/swamp2gi/objects/{diff}/{fn}"
+            raw = mp_map.get(key)
+            if raw is None:
+                raise RuntimeError(f"Missing {key} in MpWorld.dsmap")
+            txt = raw.decode("latin1")
+            cnt = txt.count(old_pos)
+            if cnt != 1:
+                raise RuntimeError(f"{key} ({scid}): expected 1 occurrence of {old_pos}, found {cnt}")
+            out[key] = txt.replace(old_pos, new_pos, 1).encode("latin1")
+    return out
+
+
 def build_expansion_tank(game_dir: str, out_path: str) -> Tuple[int, int]:
     """Assemble and write Z_LoA_Expansion.dsres at priority 0x5500."""
     mp_map = LazyTank(os.path.join(game_dir, "Maps", "MpWorld.dsmap"))
@@ -945,9 +1026,17 @@ def build_expansion_tank(game_dir: str, out_path: str) -> Tuple[int, int]:
                 raise RuntimeError(f"Duplicate output path between templates and regions: {path}")
         files.update(reg_files)
 
+        # 2b. Vanilla UP bugfixes (swamp2gi floating lever 0x08300045 + use_point 0x08300055)
+        swamp_fix = build_swamp2gi_lever_fix(mp_map)
+        for path in swamp_fix:
+            if path in files:
+                raise RuntimeError(f"Duplicate output path for swamp2gi fix: {path}")
+        files.update(swamp_fix)
+
         # 3. Map & global metadata merges
         files["world/maps/multiplayer_world/info/start_positions.gas"] = build_start_positions(mp_map, exp_map)
         files["world/maps/multiplayer_world/info/world_locations.gas"] = build_world_locations(mp_map, exp_map)
+        files["world/maps/multiplayer_world/info/lore.gas"] = build_lore(mp_map, exp_map)
         files["world/maps/multiplayer_world/quests/quests.gas"] = build_quests(mp_map, exp_map)
         files["world/maps/multiplayer_world/index/stitch_index.gas"] = build_stitch_index(mp_map, exp_map)
         files["world/global/elevators.gas"] = build_elevators(exp_res)
@@ -968,7 +1057,7 @@ def build_expansion_tank(game_dir: str, out_path: str) -> Tuple[int, int]:
         )
         print(
             f"Built {out_path}: {nfiles} files ({len(tpl_files)} template, "
-            f"{len(reg_files)} region, 9 metadata; {siege_count} siege_nodes), "
+            f"{len(reg_files)} region, 10 metadata; {siege_count} siege_nodes), "
             f"{size_bytes:,} bytes, priority=0x5500"
         )
         return nfiles, size_bytes

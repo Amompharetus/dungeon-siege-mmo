@@ -78,20 +78,21 @@ static void TestMissingTrackerGraceCooldownAndCap() {
 
     // 1st missing report -> never immediately resync (in-flight packet grace)
     assert(!tr.RecordMissing(dpnid, goid, 1000));
-    // 2nd report too soon (< 1200ms) -> still wait
-    assert(!tr.RecordMissing(dpnid, goid, 1900));
-    // 3rd report after >= 1200ms -> RESYNC #1!
-    assert(tr.RecordMissing(dpnid, goid, 2250));
+    // 2nd report too soon (< 3500ms) -> still wait (covers normal region stream-in)
+    assert(!tr.RecordMissing(dpnid, goid, 2500));
+    assert(!tr.RecordMissing(dpnid, goid, 4499));
+    // Report after >= 3500ms -> RESYNC #1!
+    assert(tr.RecordMissing(dpnid, goid, 4550));
     // Within 5000ms cooldown -> suppress
-    assert(!tr.RecordMissing(dpnid, goid, 5000));
+    assert(!tr.RecordMissing(dpnid, goid, 8000));
     // After cooldown -> RESYNC #2!
-    assert(tr.RecordMissing(dpnid, goid, 7300));
+    assert(tr.RecordMissing(dpnid, goid, 9600));
     // Resyncs #3, #4, #5
-    assert(tr.RecordMissing(dpnid, goid, 12400));
-    assert(tr.RecordMissing(dpnid, goid, 17500));
-    assert(tr.RecordMissing(dpnid, goid, 22600));
+    assert(tr.RecordMissing(dpnid, goid, 14700));
+    assert(tr.RecordMissing(dpnid, goid, 19800));
+    assert(tr.RecordMissing(dpnid, goid, 24900));
     // Cap reached (5) -> stop retrying
-    assert(!tr.RecordMissing(dpnid, goid, 30000));
+    assert(!tr.RecordMissing(dpnid, goid, 35000));
 
     // When door appears on client, tracker clears entry cleanly
     tr.MarkPresent(dpnid, goid);
@@ -99,7 +100,8 @@ static void TestMissingTrackerGraceCooldownAndCap() {
 
     // After re-missing, fresh grace window applies
     assert(!tr.RecordMissing(dpnid, goid, 40000));
-    assert(tr.RecordMissing(dpnid, goid, 41300));
+    assert(!tr.RecordMissing(dpnid, goid, 42500));
+    assert(tr.RecordMissing(dpnid, goid, 43550));
 
     // Disconnect clears player's entries
     tr.ClearPlayer(dpnid);
@@ -123,20 +125,20 @@ static void TestHeroNodeChangeResetsRetryCap() {
 
     // Exhaust all 5 attempts while player is far away on nodeA
     assert(!tr.RecordMissing(dpnid, goid, nodeA, 1000));
-    assert(tr.RecordMissing(dpnid, goid, nodeA, 2300));   // #1
-    assert(tr.RecordMissing(dpnid, goid, nodeA, 7400));   // #2
-    assert(tr.RecordMissing(dpnid, goid, nodeA, 12500));  // #3
-    assert(tr.RecordMissing(dpnid, goid, nodeA, 17600));  // #4
-    assert(tr.RecordMissing(dpnid, goid, nodeA, 22700));  // #5
-    assert(!tr.RecordMissing(dpnid, goid, nodeA, 30000)); // capped on same node
+    assert(tr.RecordMissing(dpnid, goid, nodeA, 4600));   // #1
+    assert(tr.RecordMissing(dpnid, goid, nodeA, 9700));   // #2
+    assert(tr.RecordMissing(dpnid, goid, nodeA, 14800));  // #3
+    assert(tr.RecordMissing(dpnid, goid, nodeA, 19900));  // #4
+    assert(tr.RecordMissing(dpnid, goid, nodeA, 25000));  // #5
+    assert(!tr.RecordMissing(dpnid, goid, nodeA, 32000)); // capped on same node
 
     // Moving to nodeB within cooldown still respects cooldown
-    assert(!tr.RecordMissing(dpnid, goid, nodeB, 25000));
+    assert(!tr.RecordMissing(dpnid, goid, nodeB, 28000));
     // Moving to nodeB after cooldown resets attempt cap and resyncs immediately
-    assert(tr.RecordMissing(dpnid, goid, nodeB, 28000));
+    assert(tr.RecordMissing(dpnid, goid, nodeB, 30500));
     // Subsequent cooldown still applies on nodeB
-    assert(!tr.RecordMissing(dpnid, goid, nodeB, 30000));
-    assert(tr.RecordMissing(dpnid, goid, nodeB, 33100));
+    assert(!tr.RecordMissing(dpnid, goid, nodeB, 33000));
+    assert(tr.RecordMissing(dpnid, goid, nodeB, 35600));
 }
 
 static void TestPoisonGoCreateReqPrev() {
@@ -214,6 +216,23 @@ static void TestPoisonGoCloneReqPrev() {
     assert(u32(prev, 0x08) == 0u);
 }
 
+static void TestFullXferLeakRecoveryInvariants() {
+    using namespace doorfix;
+    // CloneGoImpl postcondition: if [GoDb+0x300] was 0 before entry and 1 on exit, it leaked and must be cleared.
+    assert(ShouldClearLeakedFullXferFlag(0u, 1u));
+    assert(!ShouldClearLeakedFullXferFlag(0u, 0u));
+    // If an outer scope already owned [GoDb+0x300]==1, a re-entrant call must NOT prematurely clear it.
+    assert(!ShouldClearLeakedFullXferFlag(1u, 1u));
+    assert(!ShouldClearLeakedFullXferFlag(1u, 0u));
+
+    // Top-level idle guard: at [GoDb+0x308]==0, [GoDb+0x300] MUST be 0.
+    assert(ShouldClearStuckFullXferAtIdle(0u, 1u));
+    assert(!ShouldClearStuckFullXferAtIdle(0u, 0u));
+    // While nested inside AutoForceGoid (depth > 0), [GoDb+0x300]==1 is legitimate and must not be cleared.
+    assert(!ShouldClearStuckFullXferAtIdle(1u, 1u));
+    assert(!ShouldClearStuckFullXferAtIdle(2u, 1u));
+}
+
 int main() {
     TestTemplateMatching();
     TestPacketValidation();
@@ -221,6 +240,7 @@ int main() {
     TestHeroNodeChangeResetsRetryCap();
     TestPoisonGoCreateReqPrev();
     TestPoisonGoCloneReqPrev();
+    TestFullXferLeakRecoveryInvariants();
     std::printf("doorfix_test: ALL PASSED\n");
     return 0;
 }

@@ -13,7 +13,7 @@ static constexpr uint8_t  kDoorSyncVersion    = 1u;
 static constexpr uint8_t  kMaxReportedDoors   = 64u;
 static constexpr uint16_t kFlagTruncated      = 0x0001u;
 
-static constexpr uint32_t kMissingGraceMs     = 1200u;  // must be absent across >=2 reports spanning >=1.2s
+static constexpr uint32_t kMissingGraceMs     = 3500u;  // must be absent across >=2 reports spanning >=3.5s (avoids streaming-in races)
 static constexpr uint32_t kResyncCooldownMs   = 5000u;  // minimum gap between resyncs for same (dpnid, goid)
 static constexpr uint32_t kStaleEntryMs       = 30000u; // prune untracked entries after 30s
 static constexpr uint8_t  kMaxResyncAttempts  = 5u;
@@ -191,6 +191,16 @@ inline bool IsDoorTemplateName(const char* tpl) {
 inline bool IsGearDoorTemplateName(const char* tpl) {
     if (!tpl || !*tpl) return false;
     return StartsWithNoCase(StripTemplatePrefixes(tpl), "dsx_gear_door");
+}
+
+// Pure invariants for GoDb+0x300 (m_bFullXfer) leak recovery around GoDb::CloneGoImpl (0x0054A7BA)
+// and top-level CreateGo_Client / CloneGo_Client entry points.
+inline bool ShouldClearLeakedFullXferFlag(uint8_t pre300, uint8_t post300) {
+    return pre300 == 0u && post300 != 0u;
+}
+
+inline bool ShouldClearStuckFullXferAtIdle(uint32_t depth308, uint8_t flag300) {
+    return depth308 == 0u && flag300 != 0u;
 }
 
 // Tracks missing (dpnid, goid) pairs with a grace window, cooldown, and retry cap so
