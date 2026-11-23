@@ -16,7 +16,7 @@
 //   [G] 0x005DEB17  DrinkPotionImpl (H/M hotkeys, HUD buttons, brain_hero auto-drink) (Server)
 //   [H] 0x005DEBE3  call AIQuery::GetMaxN inside DrinkPotionImpl (strip rejuv on Mana drink) (Server)
 //   [I] 0x00576E4E  GoInventory::SAutoUse (manual click / job_drink.skrit / job_use.skrit) (Server)
-//   [J] 0x005F4C88  AIAction::RSDrinkLifeHealingPotions (H key / HUD life potion feedback) (Client)
+//   [J] 0x005F4C5D  call AIAction::RSDrinkLifeHealingPotions (H key / HUD life potion feedback) (Client)
 //   [K1] 0x005124AC UIGame/Inventory drink dispatch #1 (manual potion click feedback) (Client)
 //   [K2] 0x0051267D UIGame/Inventory drink dispatch #2 (manual potion click feedback) (Client)
 
@@ -746,10 +746,11 @@ __asm__(
     "  ret $0xC\n");
 
 // ---------------------------------------------------------------------------------------------------
-// [J] Client Hook: AIAction::RSDrinkLifeHealingPotions at 0x005F4C88 (6-byte prologue: 55 8B EC 83 EC 50)
+// [J] Client Hook: call AIAction::RSDrinkLifeHealingPotions (0x005F4C88) at 0x005F4C5D (only caller)
+//     MUST NOT place 0xE9 at byte +0 of 0x005F4C88: it is a PE-exported FuBi RPC, and
+//     FuBi::SysExports::ImportBindings (0x004522F9) follows 0xE9 thunks into Mss32.dll,
+//     removing 0x005F4C88 from m_FunctionsByAddr and breaking FuBi::ResolveFunction at 0x005F4CE0.
 // ---------------------------------------------------------------------------------------------------
-extern "C" void* g_rsDrinkLifeTail = (void*)0x005F4C8E;
-extern "C" void SiegeHost_RSDrinkLifeOrig();
 extern "C" void SiegeHost_RSDrinkLifeStub();
 
 extern "C" DWORD __cdecl SiegeHost_RSDrinkLifeHook(void* aiAction, const void* goidBuf, DWORD bufBytes, int origin) {
@@ -762,17 +763,11 @@ extern "C" DWORD __cdecl SiegeHost_RSDrinkLifeHook(void* aiAction, const void* g
         }
     }
     typedef DWORD(__thiscall* RSDrinkLifeFn)(void* aiAction, const void* goidBuf, DWORD bufBytes, int origin);
-    return ((RSDrinkLifeFn)(void*)&SiegeHost_RSDrinkLifeOrig)(aiAction, goidBuf, bufBytes, origin);
+    return ((RSDrinkLifeFn)0x005F4C88)(aiAction, goidBuf, bufBytes, origin);
 }
 
 __asm__(
     ".text\n"
-    ".globl _SiegeHost_RSDrinkLifeOrig\n"
-    "_SiegeHost_RSDrinkLifeOrig:\n"
-    "  pushl %ebp\n"
-    "  movl %esp, %ebp\n"
-    "  subl $0x50, %esp\n"
-    "  jmp *_g_rsDrinkLifeTail\n"
     ".globl _SiegeHost_RSDrinkLifeStub\n"
     "_SiegeHost_RSDrinkLifeStub:\n"
     "  pushl 12(%esp)\n"
@@ -977,10 +972,9 @@ void PvpZoneInstall() {
 
     // [J], [K1], [K2] Client preventative potion hooks + chat feedback
     if (Cfg().role == Role::Client) {
-        static const BYTE kRSDrinkExpect[6] = {0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x50};
         static const BYTE kDrink1Expect[6]  = {0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x6C};
         static const BYTE kDrink2Expect[5]  = {0x55, 0x8B, 0xEC, 0x51, 0x51};
-        bool okJ  = PatchJmpChecked(0x005F4C88, kRSDrinkExpect, 6, (void*)&SiegeHost_RSDrinkLifeStub, "RSDrinkLife");
+        bool okJ  = PatchCallChecked(0x005F4C5D, 0x005F4C88, (void*)&SiegeHost_RSDrinkLifeStub, "RSDrinkLife");
         bool okK1 = PatchJmpChecked(0x005124AC, kDrink1Expect, 6, (void*)&SiegeHost_ClientDrink1Stub, "ClientDrink1");
         bool okK2 = PatchJmpChecked(0x0051267D, kDrink2Expect, 5, (void*)&SiegeHost_ClientDrink2Stub, "ClientDrink2");
         Log("PvpZone: client potion guards armed [J=%d K1=%d K2=%d].",
