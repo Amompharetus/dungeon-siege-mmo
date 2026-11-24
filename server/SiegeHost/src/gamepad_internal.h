@@ -144,6 +144,9 @@ void GamepadWorld_OnLeaveGameplay();
 bool GamepadWorld_GetCameraAnalog(float& outYaw, float& outPitch, float& outZoom);
 void* GamepadWorld_GetLocalHero();
 bool GamepadWorld_IsHeroInTown(void* hero);
+void GamepadWorld_TriggerEscape();
+void GamepadWorld_GetLabStats(int& outMoveOrders, int& outMoveFails, int& outWalkFlags,
+                              int& outTgtScanned, int& outTgtCand, int& outTgtOnScr);
 
 // UI subsystem (gamepad_ui.cpp)
 void GamepadUI_Tick(const PadFrame& pad);

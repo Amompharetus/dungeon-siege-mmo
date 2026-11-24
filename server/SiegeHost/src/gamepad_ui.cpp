@@ -34,7 +34,10 @@ constexpr int kUiTab              = 23;
 typedef uint32_t (__thiscall* SortInventoryFn)(void*);
 static const auto s_sortInventory = (SortInventoryFn)0x0049A594;
 
-// Interfaces that represent blocking/interactive menus or panels during gameplay
+// Interfaces that represent blocking/interactive menus or panels during gameplay.
+// IMPORTANT: Never include always-on gameplay HUD bars (field_commands, BuffUI,
+// multi_inventory, character_awp, team_portraits, mini_map, compass_hotpoints) or
+// the controller will be trapped permanently in MenuUI mode!
 static const char* const kBlockingGamePanels[] = {
     "character",
     "store",
@@ -63,9 +66,6 @@ static const char* const kBlockingGamePanels[] = {
     "loadsave_game",
     "end_game",
     "end_game_summary",
-    "BuffUI",
-    "field_commands",
-    "multi_inventory",
     "world_map",
 };
 
@@ -802,6 +802,8 @@ void GamepadUI_Tick(const PadFrame& pad) {
         } else if (g_hudCursorToggle && IsWorldStateInGame() && !GamepadUI_IsAnyBlockingPanelOpen()) {
             g_hudCursorToggle = false;
             DisableVirtualCursor();
+        } else if (IsWorldStateInGame()) {
+            GamepadWorld_TriggerEscape();
         } else {
             InjectKeyTap(VK_ESCAPE);
         }
@@ -809,7 +811,11 @@ void GamepadUI_Tick(const PadFrame& pad) {
 
     // Start = Esc (close panels / pause menu)
     if (pad.Pressed(xinput_abi::kStart)) {
-        InjectKeyTap(VK_ESCAPE);
+        if (IsWorldStateInGame()) {
+            GamepadWorld_TriggerEscape();
+        } else {
+            InjectKeyTap(VK_ESCAPE);
+        }
     }
 
     // 6. Render native gold focus highlight around active widget or UIGridbox cell/item

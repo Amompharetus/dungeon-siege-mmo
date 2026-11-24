@@ -36,8 +36,16 @@ typedef uint8_t (__cdecl*  UIGamePotionFn)();
 typedef uint32_t (__thiscall* CollectLootFn)(void*);
 typedef uint32_t (__thiscall* RotateSlotsFn)(void*, bool);
 typedef void* (__thiscall* ServerGetScreenHeroFn)(void*);
+typedef uint8_t (__thiscall* ToggleInventoryFn)(void*, bool);
+typedef uint8_t (__thiscall* UIPartyVoidFn)(void*);
+typedef uint8_t (__thiscall* UIGameVoidFn)(void*);
+typedef uint8_t (__cdecl*    UIGameCdeclVoidFn)();
 
-static const auto s_goPlacementGetPos    = (GoPlacementGetPosFn)0x004721CE;
+// Verified DSLOA.exe v1.50 enums (GoMind::RSDoJob 0x005DAE8B, GoMind::RSStop 0x005DE632, UICommands 0x00511F61)
+constexpr int kQpClear = 5; // QP_CLEAR (0 is QP_NONE!)
+constexpr int kAoHuman = 1; // AO_HUMAN (3 is AO_PARTY!)
+
+static const auto s_goPlacementGetPos    = (GoPlacementGetPosFn)0x00540DFE;
 static const auto s_siegePosWorldPos     = (SiegePosWorldPosFn)0x00671E3C;
 static const auto s_siegePosFromWorldPos = (SiegePosFromWorldPosFn)0x00671E81;
 static const auto s_rapiWorldToScreen    = (RapiWorldToScreenFn)0x0065F475;
@@ -59,7 +67,15 @@ static const auto s_uiGameHealBody       = (UIGamePotionFn)0x004EEA77;
 static const auto s_uiGameHealMana       = (UIGamePotionFn)0x004EEB16;
 static const auto s_partyCollectLoot     = (CollectLootFn)0x004A8D71;
 static const auto s_rotateSelectedSlots  = (RotateSlotsFn)0x0050387C;
-static const auto s_serverGetScreenHero  = (ServerGetScreenHeroFn)0x0056DB34;
+static const auto s_serverGetScreenHero  = (ServerGetScreenHeroFn)0x00570565;
+// Native UIGame::BindInput (0x004E5DE4) callbacks — reliable regardless of DirectInput/WM_KEYDOWN focus
+static const auto s_partyToggleInventory = (ToggleInventoryFn)0x004A1899;
+static const auto s_partyToggleSpellbook = (UIPartyVoidFn)0x004A296D;
+static const auto s_toggleJournal        = (UIGameCdeclVoidFn)0x004A643D;
+static const auto s_uiGameToggleLabels   = (UIGameVoidFn)0x004EF2F7;
+static const auto s_toggleMegaMap        = (UIGameCdeclVoidFn)0x004EF384;
+static const auto s_uiGameOnEscape       = (UIGameVoidFn)0x004EF436;
+static const auto s_cameraTrackToggle    = (UIGameCdeclVoidFn)0x004EA20F;
 
 // ----------------------------------------------------------------------------------------------
 // UICamera::Update (0x0047C93E) 9-byte trampoline hook for smooth analog camera orbit/pitch/zoom
@@ -112,8 +128,9 @@ static void __attribute__((thiscall)) HookUICameraUpdate(void* cam, float dt) {
         *(float*)(c + 0x90) = (savedPitchMult > 0.05f ? savedPitchMult : 1.0f) * std::fabs(pitch) * speed * 1.15f;
     }
     if (std::fabs(zoom) > 0.001f) {
-        c[0x85] = (zoom > 0.0f) ? 1 : 0; // zoom in
-        c[0x84] = (zoom < 0.0f) ? 1 : 0; // zoom out
+        // Verified in UICamera::Update (0x0047C93E): +0x84 zooms IN (-dist), +0x85 zooms OUT (+dist)
+        c[0x84] = (zoom > 0.0f) ? 1 : 0; // zoom in
+        c[0x85] = (zoom < 0.0f) ? 1 : 0; // zoom out
         *(float*)(c + 0x5C) = (savedZoomRate > 0.05f ? savedZoomRate : 12.0f) * std::fabs(zoom) * speed;
     }
 
@@ -173,6 +190,13 @@ uint32_t g_lockedTargetGoid = 0;
 bool     g_manualTargetLock = false;
 uint32_t g_highlightedGoid  = 0;
 bool     g_freeAimInitialized = false;
+
+int      g_labMoveOrders = 0;
+int      g_labMoveFails  = 0;
+int      g_labWalkFlags  = 0;
+int      g_labTgtScanned = 0;
+int      g_labTgtCand    = 0;
+int      g_labTgtOnScr   = 0;
 
 static void* GetRapiRenderer() {
     uintptr_t appMod = *(uintptr_t*)kAddrAppModule;
@@ -285,7 +309,7 @@ static void UpdateAnalogMovement(void* hero, const PadFrame& pad) {
 
     void* heroMind = *(void**)((char*)hero + 0x34);
     void* placement = *(void**)((char*)hero + 0x40);
-    void* actor = *(void**)((char*)hero + 0x00);
+    void* body = *(void**)((char*)hero + 0x0C); // Go::GetBody at +0x0C (verified at 0x0062E1EB)
     void* siegeEngine = *(void**)kAddrSiegeEngine;
     if (!heroMind || !placement || !siegeEngine ||
         !Readable(heroMind, 0x60) || !Readable(placement, 0x30) || !Readable(siegeEngine, 0x44)) {
@@ -298,7 +322,7 @@ static void UpdateAnalogMovement(void* hero, const PadFrame& pad) {
     if (pad.leftStick.magnitude <= 0.0f) {
         if (g_wasMovingByStick) {
             g_wasMovingByStick = false;
-            s_goMindRSStop(heroMind, 3 /*AO_USER*/);
+            s_goMindRSStop(heroMind, kAoHuman);
         }
         return;
     }
@@ -330,12 +354,13 @@ static void UpdateAnalogMovement(void* hero, const PadFrame& pad) {
         return;
     }
 
-    // Hero's own logical walkability flags from GoActor+0x30 (fallback 1 = LF_HUMAN_PLAYER)
+    // Hero's own logical walkability flags from GoBody+0x30 (verified at 0x0062E1F4; fallback 1 = LF_HUMAN_PLAYER)
     uint32_t walkFlags = 1;
-    if (actor && Readable(actor, 0x38)) {
-        uint32_t f = *(const uint32_t*)((const char*)actor + 0x30);
+    if (body && Readable(body, 0x38)) {
+        uint32_t f = *(const uint32_t*)((const char*)body + 0x30);
         if (f != 0) walkFlags = f;
     }
+    g_labWalkFlags = (int)walkFlags;
 
     float baseDist = 1.5f + 1.4f * pad.leftStick.magnitude;
     auto probes = gamepad::GenerateWallSlideOffsets(moveDirX, moveDirZ, baseDist);
@@ -348,7 +373,7 @@ static void UpdateAnalogMovement(void* hero, const PadFrame& pad) {
         uint32_t seedNode = heroPos->node;
         s_siegePosFromWorldPos(&candPos, &candWorld, &seedNode);
 
-        if (s_siegeAdjustPoint(siegeEngine, &candPos, walkFlags, 1.8f)) {
+        if (s_siegeAdjustPoint(siegeEngine, &candPos, walkFlags, 2.5f)) {
             chosenPos = candPos;
             found = true;
             break;
@@ -356,11 +381,14 @@ static void UpdateAnalogMovement(void* hero, const PadFrame& pad) {
     }
 
     if (found) {
-        s_goMindRSMove(heroMind, &chosenPos, 0 /*QP_CLEAR*/, 3 /*AO_USER*/);
+        s_goMindRSMove(heroMind, &chosenPos, kQpClear, kAoHuman);
+        ++g_labMoveOrders;
         g_wasMovingByStick = true;
         g_lastMoveOrderMs = pad.nowMs;
         g_lastMoveDirX = moveDirX;
         g_lastMoveDirZ = moveDirZ;
+    } else {
+        ++g_labMoveFails;
     }
 }
 
@@ -395,6 +423,7 @@ static void ScanAndHighlightTargets(void* hero, const PadFrame& pad,
     candidateGos.reserve(48);
 
     int guard = 0;
+    int onScreenCount = 0;
     for (void* go = first; go && go != head && guard < 4096 && outCandidates.size() < 48; ++guard) {
         if (!Readable(go, 0xA0)) break;
         void* next = *(void**)((char*)go + 0x70);
@@ -414,7 +443,7 @@ static void ScanAndHighlightTargets(void* hero, const PadFrame& pad,
                         float dz = wPos.z - heroWorld.z;
                         float distSq = dx * dx + dy * dy + dz * dz;
 
-                        if (distSq <= 18.0f * 18.0f && distSq > 0.01f) {
+                        if (distSq <= 22.0f * 22.0f && distSq > 0.01f) {
                             gamepad::TargetKind kind = gamepad::TargetKind::None;
                             bool isActor = s_goIsActor(go);
                             void* aspect = *(void**)((char*)go + 0x04);
@@ -425,12 +454,12 @@ static void ScanAndHighlightTargets(void* hero, const PadFrame& pad,
                                     (*(const uint32_t*)((const char*)aspect + 0x3C) & 0x100) == 0)
                                 {
                                     bool isEnemy = (heroMind && Readable(heroMind, 0x60)) ? s_goMindIsEnemy(heroMind, go) : false;
-                                    if (isEnemy) {
+                                    if (isEnemy && distSq <= 18.0f * 18.0f) {
                                         kind = gamepad::TargetKind::Enemy;
-                                    } else {
+                                    } else if (!isEnemy) {
                                         void* player = *(void**)((char*)go + 0x78);
                                         int playerType = (player && Readable(player, 0x20)) ? *(const int*)((const char*)player + 0x14) : 0;
-                                        if (playerType == 2) {
+                                        if (playerType == 2 && distSq <= 22.0f * 22.0f) {
                                             // Friendly NPC (shopkeeper / quest giver / companion)
                                             if (*(void**)((char*)go + 0x14) != nullptr || *(void**)((char*)go + 0x48) != nullptr) {
                                                 kind = gamepad::TargetKind::Interactable;
@@ -444,17 +473,17 @@ static void ScanAndHighlightTargets(void* hero, const PadFrame& pad,
                                     }
                                 }
                             } else if (s_goIsUsable(go)) {
-                                if (distSq <= 9.0f * 9.0f) kind = gamepad::TargetKind::Interactable;
+                                if (distSq <= 10.0f * 10.0f) kind = gamepad::TargetKind::Interactable;
                             } else if (s_goIsContainer(go) && !s_goIsBreakable(go)) {
-                                if (distSq <= 9.0f * 9.0f) kind = gamepad::TargetKind::Interactable;
+                                if (distSq <= 10.0f * 10.0f) kind = gamepad::TargetKind::Interactable;
                             } else if (s_goIsBreakable(go)) {
-                                if (distSq <= 8.0f * 8.0f && aspect && Readable(aspect, 0xB0) &&
+                                if (distSq <= 9.0f * 9.0f && aspect && Readable(aspect, 0xB0) &&
                                     *(const int*)((const char*)aspect + 0xA0) == 1)
                                 {
                                     kind = gamepad::TargetKind::Breakable;
                                 }
                             } else if (s_goIsItem(go)) {
-                                if (distSq <= 7.0f * 7.0f) kind = gamepad::TargetKind::GroundItem;
+                                if (distSq <= 8.0f * 8.0f) kind = gamepad::TargetKind::GroundItem;
                             }
 
                             if (kind != gamepad::TargetKind::None) {
@@ -466,6 +495,7 @@ static void ScanAndHighlightTargets(void* hero, const PadFrame& pad,
                                 Vec3 projPos = {wPos.x, wPos.y + (isActor ? 1.15f : 0.45f), wPos.z};
                                 float sx = 0.0f, sy = 0.0f;
                                 bool onScr = ProjectWorldToScreen(projPos, sx, sy);
+                                if (onScr) ++onScreenCount;
 
                                 gamepad::TargetCandidate tc{};
                                 tc.goid = goid;
@@ -486,6 +516,9 @@ static void ScanAndHighlightTargets(void* hero, const PadFrame& pad,
         }
         go = next;
     }
+    g_labTgtScanned = guard;
+    g_labTgtCand    = (int)outCandidates.size();
+    g_labTgtOnScr   = onScreenCount;
 
     // Validate existing manual target lock
     if (g_manualTargetLock && g_lockedTargetGoid != 0) {
@@ -577,6 +610,27 @@ static void RotateWeaponSlot(bool prev) {
     s_rotateSelectedSlots(uiInvMgr, prev);
 }
 
+static void ToggleInventoryNative() {
+    void* partyMgr = *(void**)kAddrUIPartyMgr;
+    if (partyMgr && Readable(partyMgr, 0x80)) {
+        s_partyToggleInventory(partyMgr, false);
+    }
+}
+
+static void ToggleSpellbookNative() {
+    void* partyMgr = *(void**)kAddrUIPartyMgr;
+    if (partyMgr && Readable(partyMgr, 0x80)) {
+        s_partyToggleSpellbook(partyMgr);
+    }
+}
+
+static void ToggleItemLabelsNative() {
+    void* uiGame = *(void**)kAddrUIGame;
+    if (uiGame && Readable(uiGame, 0x80)) {
+        s_uiGameToggleLabels(uiGame);
+    }
+}
+
 } // namespace
 
 // ----------------------------------------------------------------------------------------------
@@ -586,6 +640,25 @@ namespace gp_internal {
 
 void GamepadWorld_InstallHooks() {
     InstallUICameraHook();
+}
+
+void GamepadWorld_TriggerEscape() {
+    void* uiGame = *(void**)kAddrUIGame;
+    if (uiGame && Readable(uiGame, 0x160)) {
+        s_uiGameOnEscape(uiGame);
+    } else {
+        InjectKeyTap(VK_ESCAPE);
+    }
+}
+
+void GamepadWorld_GetLabStats(int& outMoveOrders, int& outMoveFails, int& outWalkFlags,
+                              int& outTgtScanned, int& outTgtCand, int& outTgtOnScr) {
+    outMoveOrders = g_labMoveOrders;
+    outMoveFails  = g_labMoveFails;
+    outWalkFlags  = g_labWalkFlags;
+    outTgtScanned = g_labTgtScanned;
+    outTgtCand    = g_labTgtCand;
+    outTgtOnScr   = g_labTgtOnScr;
 }
 
 void* GamepadWorld_GetLocalHero() {
@@ -629,7 +702,7 @@ void GamepadWorld_OnLeaveGameplay() {
         if (void* hero = GamepadWorld_GetLocalHero()) {
             void* mind = *(void**)((char*)hero + 0x34);
             if (mind && Readable(mind, 0x60)) {
-                s_goMindRSStop(mind, 3 /*AO_USER*/);
+                s_goMindRSStop(mind, kAoHuman);
             }
         }
     }
@@ -666,8 +739,8 @@ void GamepadWorld_TickGameplay(const PadFrame& pad) {
         if (pad.Pressed(xinput_abi::kB)) CharacterAbilities_QueueTrigger(1); // [W] Shrapnel Blast
         if (pad.Pressed(xinput_abi::kX)) CharacterAbilities_QueueTrigger(2); // [E] Aegis of Renewal
         if (pad.Pressed(xinput_abi::kY)) CharacterAbilities_QueueTrigger(3); // [R] Flame Nova
-        if (pad.Pressed(xinput_abi::kDpadRight)) InjectKeyTap('B');          // Spellbook
-        if (pad.Pressed(xinput_abi::kDpadLeft))  InjectKeyTap('J');          // Journal
+        if (pad.Pressed(xinput_abi::kDpadRight)) ToggleSpellbookNative();    // Spellbook
+        if (pad.Pressed(xinput_abi::kDpadLeft))  s_toggleJournal();          // Journal
         if (pad.Pressed(xinput_abi::kDpadUp))    InjectKeyTap(VK_OEM_1, true); // Shift+; BuffUI
 
         g_overlay.showHint = true;
@@ -704,32 +777,32 @@ void GamepadWorld_TickGameplay(const PadFrame& pad) {
         RotateWeaponSlot(true);
     }
 
-    // D-Pad shortcuts
+    // D-Pad shortcuts (direct native UIGame/UIPartyManager callbacks — 100% reliable)
     if (pad.Pressed(xinput_abi::kDpadLeft)) {
-        InjectKeyTap('I'); // Inventory
+        ToggleInventoryNative(); // Inventory
     }
     if (pad.Pressed(xinput_abi::kDpadRight)) {
         if (GamepadWorld_IsHeroInTown(hero)) {
             SharedStash_TriggerOpen();
         } else {
-            InjectKeyTap('B'); // Spellbook
+            ToggleSpellbookNative(); // Spellbook
         }
     }
     if (pad.Pressed(xinput_abi::kDpadUp)) {
-        InjectKeyTap(VK_TAB); // MegaMap
+        s_toggleMegaMap(); // MegaMap
     }
     if (pad.Pressed(xinput_abi::kDpadDown)) {
-        InjectKeyTap(VK_MENU); // Item Labels (Alt)
+        ToggleItemLabelsNative(); // Item Labels
     }
 
     // L3 toggles camera track/free mode ('T')
     if (pad.Pressed(xinput_abi::kLeftThumb)) {
-        InjectKeyTap('T');
+        s_cameraTrackToggle();
     }
 
     // Start opens Pause / In-Game Menu (Esc)
     if (pad.Pressed(xinput_abi::kStart)) {
-        InjectKeyTap(VK_ESCAPE);
+        GamepadWorld_TriggerEscape();
     }
 
     // Context-aware bottom hint strip
@@ -774,7 +847,7 @@ void GamepadWorld_TickFreeAim(const PadFrame& pad) {
             g_wasMovingByStick = false;
             if (void* hero = GamepadWorld_GetLocalHero()) {
                 void* mind = *(void**)((char*)hero + 0x34);
-                if (mind && Readable(mind, 0x60)) s_goMindRSStop(mind, 3);
+                if (mind && Readable(mind, 0x60)) s_goMindRSStop(mind, kAoHuman);
             }
         }
         // Start reticle near center of screen (slightly above hero)

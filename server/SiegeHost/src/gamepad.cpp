@@ -37,6 +37,8 @@ bool g_initialized = false;
 int g_activePort = -1;
 DWORD g_lastScanMs = 0;
 DWORD g_lastTickMs = 0;
+DWORD g_lastPadInputMs = 0;
+int g_modeLogBudget = 24;
 bool g_loggedConnection = false;
 
 WORD g_prevButtons = 0;
@@ -429,9 +431,10 @@ static void RenderOverlay() {
 }
 
 // ----------------------------------------------------------------------------------------------
-// Physical mouse detection (yield virtual cursor cleanly whenever user grabs physical mouse)
+// Physical mouse detection (yield virtual cursor cleanly whenever user grabs physical mouse,
+// without fighting DS4Windows gyro/touchpad micro-jitter while sticks or buttons are in use)
 // ----------------------------------------------------------------------------------------------
-static void PollPhysicalMouseTakeover() {
+static void PollPhysicalMouseTakeover(DWORD nowMs) {
     if (!g_origGetCursorPos || !g_gameHwnd || GetForegroundWindow() != g_gameHwnd) return;
     POINT realPt{};
     if (!g_origGetCursorPos(&realPt)) return;
@@ -445,18 +448,25 @@ static void PollPhysicalMouseTakeover() {
     int dy = realPt.y - g_lastRealScreenPt.y;
     g_lastRealScreenPt = realPt;
 
+    // While gamepad input is actively arriving (or within 500ms of recent pad input),
+    // ignore OS mouse motion so DS4Windows gyro-to-mouse / touchpad brush never kills gamepad mode.
+    // A deliberate physical mouse click (Gamepad_FilterMessage) still switches back immediately.
+    if (g_gamepadActiveSession && g_lastPadInputMs != 0 && (DWORD)(nowMs - g_lastPadInputMs) < 500) {
+        return;
+    }
+
     // In fullscreen mode, AppModule resets the OS cursor to window center each frame;
     // ignore OS cursor jumps straight onto the window center.
     RECT rc{};
     if (GetClientRect(g_gameHwnd, &rc)) {
         POINT center = {(rc.right - rc.left) / 2, (rc.bottom - rc.top) / 2};
         ClientToScreen(g_gameHwnd, &center);
-        if (std::abs(realPt.x - center.x) <= 2 && std::abs(realPt.y - center.y) <= 2) {
+        if (std::abs(realPt.x - center.x) <= 4 && std::abs(realPt.y - center.y) <= 4) {
             return;
         }
     }
 
-    if (dx * dx + dy * dy >= 36) { // >= 6px real physical mouse movement
+    if (dx * dx + dy * dy >= 576) { // >= 24px deliberate physical mouse movement
         if (InterlockedCompareExchange(&g_virtualCursorActive, 0, 0) != 0) {
             DisableVirtualCursor();
         }
@@ -464,6 +474,97 @@ static void PollPhysicalMouseTakeover() {
         g_hudCursorToggle = false;
         SyncGameplayCursorHidden(false);
     }
+}
+
+// Lab-only simulated XInput test harness (SIEGEHOST_GAMEPAD_LABTEST=1, dormant for real players).
+// Exercises real Gameplay movement, camera rotation, target scanning, abilities, and Inventory
+// Gameplay <-> MenuUI transitions directly inside live DSLOA.exe.
+static bool GetLabSimulatedXInput(DWORD nowMs, xinput_abi::XINPUT_STATE& outSt) {
+    static int enabled = -1;
+    if (enabled < 0) {
+        char e[8];
+        enabled = GetEnvironmentVariableA("SIEGEHOST_GAMEPAD_LABTEST", e, sizeof e) ? 1 : 0;
+    }
+    if (!enabled || !IsWorldStateInGame()) return false;
+
+    static DWORD startMs = 0;
+    static int phase = -1;
+    static float startX = 0.0f, startZ = 0.0f;
+    static bool hasStartPos = false;
+    static float camStartYaw = 0.0f;
+    static bool hasCamStart = false;
+
+    if (!startMs) startMs = nowMs ? nowMs : 1;
+    DWORD elapsed = nowMs - startMs;
+
+    auto readCamYaw = [&]() -> float {
+        void* se = *(void**)kAddrSiegeEngine;
+        if (!se || !Readable(se, 0x44)) return 0.0f;
+        void* cam = *(void**)((char*)se + 0x3C);
+        if (!cam || !Readable(cam, 0x168)) return 0.0f;
+        const Vec3& cp = *(const Vec3*)((const char*)cam + 0x148);
+        const Vec3& tp = *(const Vec3*)((const char*)cam + 0x154);
+        return std::atan2(cp.z - tp.z, cp.x - tp.x);
+    };
+
+    auto logHeroPos = [&](const char* tag) {
+        void* hero = GamepadWorld_GetLocalHero();
+        if (!hero) { Log("GAMEPAD_LABTEST[%s]: hero=NULL!", tag); return; }
+        void* pl = *(void**)((char*)hero + 0x40);
+        if (!pl) { Log("GAMEPAD_LABTEST[%s]: placement=NULL!", tag); return; }
+        typedef const SiegePos* (__thiscall* GetPosFn)(const void*);
+        typedef Vec3* (__thiscall* WorldPosFn)(const SiegePos*, Vec3*);
+        const SiegePos* sp = ((GetPosFn)0x00540DFE)(pl);
+        Vec3 wp{0, 0, 0};
+        if (sp) ((WorldPosFn)0x00671E3C)(sp, &wp);
+        if (!hasStartPos) { startX = wp.x; startZ = wp.z; hasStartPos = true; }
+        float moved = std::sqrt((wp.x - startX) * (wp.x - startX) + (wp.z - startZ) * (wp.z - startZ));
+        float cyaw = readCamYaw();
+        if (!hasCamStart) { camStartYaw = cyaw; hasCamStart = true; }
+        float yawDelta = cyaw - camStartYaw;
+        while (yawDelta >  3.14159f) yawDelta -= 6.28318f;
+        while (yawDelta < -3.14159f) yawDelta += 6.28318f;
+        int mOrd = 0, mFail = 0, wFlags = 0, tScan = 0, tCand = 0, tOnScr = 0;
+        GamepadWorld_GetLabStats(mOrd, mFail, wFlags, tScan, tCand, tOnScr);
+        Log("GAMEPAD_LABTEST[%s]: mode=%d invVis=%d pos=(%.2f,%.2f,%.2f) moved=%.2fm camYaw=%.2f(d=%.2f) mOrd=%d mFail=%d wFlags=0x%x tgt(scan=%d,cand=%d,onScr=%d) hint='%s'",
+            tag, (int)g_mode, GamepadUI_IsInventoryOpen() ? 1 : 0,
+            wp.x, wp.y, wp.z, moved, cyaw, yawDelta,
+            mOrd, mFail, wFlags, tScan, tCand, tOnScr, g_overlay.hintText.c_str());
+    };
+
+    memset(&outSt, 0, sizeof(outSt));
+    if (elapsed < 2000) {
+        return true; // idle connected
+    } else if (elapsed < 4500) {
+        if (phase != 1) { phase = 1; logHeroPos("walk_start"); }
+        outSt.Gamepad.sThumbLY = 28000; // walk forward with Left Stick
+        return true;
+    } else if (elapsed < 6000) {
+        if (phase != 2) { phase = 2; camStartYaw = readCamYaw(); hasCamStart = true; logHeroPos("walk_after_cam_start"); }
+        outSt.Gamepad.sThumbRX = 28000; // rotate camera with Right Stick
+        return true;
+    } else if (elapsed < 7200) {
+        if (phase != 3) {
+            phase = 3;
+            logHeroPos("cam_after_open_inv");
+            outSt.Gamepad.wButtons = xinput_abi::kDpadLeft; // open Inventory via native ToggleInventory
+        }
+        return true;
+    } else if (elapsed < 8500) {
+        if (phase != 4) {
+            phase = 4;
+            logHeroPos("inv_open_close");
+            outSt.Gamepad.wButtons = xinput_abi::kB; // close Inventory via native OnPressedEscape
+        }
+        return true;
+    } else if (elapsed < 9500) {
+        if (phase != 5) {
+            phase = 5;
+            logHeroPos("done");
+        }
+        return true;
+    }
+    return false;
 }
 
 } // namespace
@@ -742,7 +843,13 @@ void Gamepad_Tick() {
     if (!g_pfnXInputGetState) return;
 
     // Never process gamepad input while DSLOA window is unfocused (avoid ghost input during Alt-Tab)
-    if (GetForegroundWindow() != g_gameHwnd) {
+    bool labTest = false;
+    {
+        static int labEnv = -1;
+        if (labEnv < 0) { char e[8]; labEnv = GetEnvironmentVariableA("SIEGEHOST_GAMEPAD_LABTEST", e, sizeof e) ? 1 : 0; }
+        labTest = (labEnv != 0);
+    }
+    if (!labTest && GetForegroundWindow() != g_gameHwnd) {
         if (g_mode == ControlMode::Gameplay || g_mode == ControlMode::FreeAim) {
             GamepadWorld_OnLeaveGameplay();
         }
@@ -751,9 +858,11 @@ void Gamepad_Tick() {
         return;
     }
 
-    PollPhysicalMouseTakeover();
-
     DWORD now = GetTickCount();
+    if (!labTest) {
+        PollPhysicalMouseTakeover(now);
+    }
+
     float dt = 0.016f;
     if (g_lastTickMs != 0) {
         DWORD delta = now - g_lastTickMs;
@@ -766,7 +875,10 @@ void Gamepad_Tick() {
     // Poll active controller; if none connected, scan ports 0..3 once every 1000ms (<1us overhead)
     xinput_abi::XINPUT_STATE st{};
     bool connected = false;
-    if (g_activePort >= 0) {
+    if (labTest && GetLabSimulatedXInput(now, st)) {
+        connected = true;
+        g_activePort = 0;
+    } else if (g_activePort >= 0) {
         if (g_pfnXInputGetState((DWORD)g_activePort, &st) == ERROR_SUCCESS) {
             connected = true;
         } else {
@@ -824,6 +936,7 @@ void Gamepad_Tick() {
                        pad.leftStick.magnitude > 0.0f || pad.rightStick.magnitude > 0.0f;
     if (anyPadInput) {
         g_gamepadActiveSession = true;
+        g_lastPadInputMs = now ? now : 1;
     }
 
     // Determine active control mode automatically from game & UI state
@@ -844,6 +957,13 @@ void Gamepad_Tick() {
 
     // Handle mode transitions cleanly
     if (prevMode != nextMode) {
+        if (g_modeLogBudget > 0) {
+            --g_modeLogBudget;
+            static const char* const kModeNames[] = {"Inactive", "Gameplay", "FreeAim", "MenuUI", "Chat"};
+            Log("Gamepad: mode %s -> %s (inGame=%d blocking=%d hudCursor=%d)",
+                kModeNames[(int)prevMode], kModeNames[(int)nextMode],
+                IsWorldStateInGame() ? 1 : 0, GamepadUI_IsAnyBlockingPanelOpen() ? 1 : 0, g_hudCursorToggle ? 1 : 0);
+        }
         if (prevMode == ControlMode::Gameplay || prevMode == ControlMode::FreeAim) {
             GamepadWorld_OnLeaveGameplay();
         }

@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <string>
 
-#define SIEGEHOST_VERSION "1.5.37"
+#define SIEGEHOST_VERSION "1.5.38"
 
 enum class Role { None, Server, Client };
 
