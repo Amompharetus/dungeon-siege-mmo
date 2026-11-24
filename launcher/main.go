@@ -1,5 +1,6 @@
 // SiegeLauncher — friend-side launcher: login, download online save, start Dungeon Siege with SiegeHost
 // auto-join, upload the save while playing and after exit. Lives in the game folder next to DSLOA.exe.
+// Docs: 04-server/SiegeLauncher/README.md
 package main
 
 import (
@@ -27,7 +28,7 @@ import (
 	"time"
 )
 
-const version = "1.3.5"
+const version = "1.3.6"
 
 type Settings struct {
 	PortalURL       string `json:"portal_url"` // e.g. http://my-server.example.com:8440

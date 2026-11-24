@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <string>
 
-#define SIEGEHOST_VERSION "1.5.35"
+#define SIEGEHOST_VERSION "1.5.36"
 
 enum class Role { None, Server, Client };
 
@@ -67,6 +67,14 @@ struct Config {
     std::string portalHubUrl;
     std::string portalShardId;
     std::string portalShardKey;
+    // [Gamepad] (1.5.36 - client-only XInput / DS4Windows controller support everywhere)
+    int   gamepadEnabled     = 1;
+    float gamepadDeadzone    = 0.18f;
+    float gamepadCameraSpeed = 1.0f;
+    float gamepadCursorSpeed = 1.0f;
+    int   gamepadInvertCamX  = 0;
+    int   gamepadInvertCamY  = 0;
+    int   gamepadShowHints   = 1;
 };
 
 extern HWND g_gameHwnd;
@@ -120,6 +128,8 @@ void ChatFixGameMsgCooldownInstall();  // 1.5.23: 3-second per-message cooldown 
 bool ChatFix_AllowGameMessage(const char* text);
 bool ChatFix_AllowGameMessageWide(const wchar_t* text);
 bool IsActorDrinkingPotion(void* go);
+LRESULT SiegeHost_SendGameWndMsg(UINT msg, WPARAM wParam, LPARAM lParam);
 std::string JG_GetAccountForDpnid(DWORD dpnid);
 #include "sharedstash.h"
 #include "doorfix.h"
+#include "gamepad.h"

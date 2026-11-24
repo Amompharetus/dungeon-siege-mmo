@@ -20,6 +20,21 @@ ShowServerHost=0
 ; 1 = frame other players' portraits correctly at every screen resolution
 PortraitFix=1
 
+[Gamepad]
+; 1 = enable native XInput / DS4Windows / Steam Input controller support across gameplay and all UI screens
+Enabled=1
+; Analog stick deadzone (0.05..0.60)
+Deadzone=0.18
+; Right-stick camera orbit/pitch/zoom sensitivity multiplier (0.25..3.00)
+CameraSpeed=1.0
+; UI / free-aim virtual cursor speed multiplier (0.25..3.00)
+CursorSpeed=1.0
+; 1 = invert horizontal / vertical right-stick camera axes
+InvertCameraX=0
+InvertCameraY=0
+; 1 = display compact context-aware button hints along the bottom of the screen when using a controller
+ShowHints=1
+
 ; game server only ([AutoHost] section of SiegeHost-server.ini):
 ; AreaScaling=1     new monsters scale with the players in their area (map location group), 0 = everyone online
 ; CountServerHost=0 ServerHost is not counted as a player for that scaling, 1 = count it as the stock game did

@@ -167,6 +167,22 @@ static void LoadConfig() {
     g_cfg.portalHubUrl   = IniString("Portal", "HubUrl", "", ini);
     g_cfg.portalShardId  = IniString("Portal", "ShardId", "", ini);
     g_cfg.portalShardKey = IniString("Portal", "ShardKey", "", ini);
+    const char* gp = "Gamepad";
+    g_cfg.gamepadEnabled     = GetPrivateProfileIntA(gp, "Enabled", 1, ini.c_str());
+    g_cfg.gamepadInvertCamX  = GetPrivateProfileIntA(gp, "InvertCameraX", 0, ini.c_str());
+    g_cfg.gamepadInvertCamY  = GetPrivateProfileIntA(gp, "InvertCameraY", 0, ini.c_str());
+    g_cfg.gamepadShowHints   = GetPrivateProfileIntA(gp, "ShowHints", 1, ini.c_str());
+    auto iniFloat = [&](const char* key, float def, float lo, float hi) -> float {
+        std::string v = IniString(gp, key, "", ini);
+        if (v.empty()) return def;
+        float f = (float)atof(v.c_str());
+        if (f < lo) f = lo;
+        if (f > hi) f = hi;
+        return f;
+    };
+    g_cfg.gamepadDeadzone    = iniFloat("Deadzone",    0.18f, 0.05f, 0.60f);
+    g_cfg.gamepadCameraSpeed = iniFloat("CameraSpeed", 1.00f, 0.25f, 3.00f);
+    g_cfg.gamepadCursorSpeed = iniFloat("CursorSpeed", 1.00f, 0.25f, 3.00f);
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -884,6 +900,13 @@ static void EnsureGameWindowSubclassed(HWND candidateHwnd) {
 typedef LRESULT (__attribute__((thiscall)) *PrivateWndProcFn)(void* self, HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 static PrivateWndProcFn g_origPrivateWndProc = (PrivateWndProcFn)0x00414FE4;
 
+LRESULT SiegeHost_SendGameWndMsg(UINT msg, WPARAM wParam, LPARAM lParam) {
+    if (!g_gameHwnd || !IsWindow(g_gameHwnd)) return 0;
+    void* appMod = *(void**)0x007ACFC8;
+    if (!appMod || IsBadReadPtr(appMod, 0x80)) return 0;
+    return g_origPrivateWndProc(appMod, g_gameHwnd, msg, wParam, lParam);
+}
+
 static LRESULT __attribute__((thiscall)) HookPrivateWndProc(void* self, HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if (msg == WM_INPUTLANGCHANGEREQUEST) {
         HKL targetHkl = (HKL)lParam;
@@ -1071,6 +1094,7 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         JG_JipTick();  // both roles: the join freeze is a per-machine thing (src/jipguard.h)
         CharacterAbilities_Tick();
         SharedStash_Tick();
+        if (g_cfg.role != Role::Server) Gamepad_Tick();
         if (g_cfg.role == Role::Server) { AutoHostTick(); LabMoveLocTick(); AreaScaleTick(); ShopStockTick(); InvFixTick(); QuestModeTick(); JipQueueTick(); PvpZoneTick(); DoorFixTick(); }
         else if (g_cfg.role == Role::Client) { AutoJoinTick(); InvFixTick(); QuestModeTick(); ShopStockClientTick(); ChatFixTick(); ChatHistoryTick(); PartyPanelTick(); PanelFilterTick(); ChatDiagTick(); PartyPanelDiagTick(); PvpZoneTick(); DoorFixTick(); }
     }
@@ -1115,6 +1139,7 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         }
 
         if (remove & PM_REMOVE) {
+            Gamepad_FilterMessage(msg);
             if (CharacterAbilities_FilterMouse(msg)) {
                 // Click handled by Character Abilities
             } else if (SharedStash_FilterMouse(msg)) {
@@ -1371,6 +1396,7 @@ static void Startup() {
     PvpZoneInstall();
     CharacterAbilities_Init();
     SharedStash_Init();
+    if (g_cfg.role != Role::Server) Gamepad_Init();
     StagingImportDisableInstall();
     if (g_cfg.role == Role::Server) { AreaScaleInstall(); ShopStockInstall(); InvFixInstall(); McpFixInstall(); QuestModeInstall(); JipQueueInstall(); DoorFixInstall(); HasteFixInstall(); }
     else { InvFixInstall(); McpFixInstall(); QuestModeInstall(); ShopStockClientInstall(); DoorFixInstall(); PrefsFixInstall(); }   // 0.9.0: the backpack cap has to come off on a player's own machine too

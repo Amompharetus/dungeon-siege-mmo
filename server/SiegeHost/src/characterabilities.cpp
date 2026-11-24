@@ -1435,8 +1435,10 @@ static void UpdateAbilityUI() {
 
     HWND hwnd = g_gameHwnd ? g_gameHwnd : GetActiveWindow();
     POINT mousePt = { -9999, -9999 };
-    if (hwnd && GetCursorPos(&mousePt)) {
-        ScreenToClient(hwnd, &mousePt);
+    if (!Gamepad_GetVirtualCursorClient(&mousePt)) {
+        if (hwnd && GetCursorPos(&mousePt)) {
+            ScreenToClient(hwnd, &mousePt);
+        }
     }
 
     void* stashHover = eng::FindWindow("awp_stash_hover_1", "character_awp");
