@@ -15,7 +15,7 @@ HistoryOnOpen=1
 ShowOtherPlayers=1
 ; 1 = only players in your area (your town and the places around it, the map's own groups), 0 = everyone
 NearbyOnly=1
-; 1 = also show the server's ServerHost character in that panel
+; 0 = hide the server's ServerHost character everywhere (staging, \ scoreboard, overhead name, 3D model, minimap, party panel); 1 = show it
 ShowServerHost=0
 ; 1 = frame other players' portraits correctly at every screen resolution
 PortraitFix=1

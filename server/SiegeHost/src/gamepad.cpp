@@ -50,6 +50,7 @@ float g_virtY = 384.0f;
 bool g_virtCoordsInitialized = false;
 POINT g_lastRealScreenPt = {-99999, -99999};
 bool g_injectingSyntheticMsg = false;
+void* g_hiddenCursorWin = nullptr;
 
 // ----------------------------------------------------------------------------------------------
 // user32!GetCursorPos inline hook (same proven trampoline pattern as InstallGetKeyboardLayoutHook)
@@ -176,6 +177,35 @@ static void SetWinVisible(void* win, bool vis) {
     if (!win || !Readable(win, 0x110)) return;
     typedef void (__thiscall* SetVisFn)(void*, bool);
     ((SetVisFn)0x0047B06E)(win, vis);
+}
+
+static void* GetActiveGameCursor() {
+    void* uiShell = eng::UIShell_Singleton();
+    if (!uiShell || !Readable(uiShell, 0x108)) return nullptr;
+    typedef void* (__thiscall* GetCurFn)(void*);
+    void* cur = ((GetCurFn)0x0047B106)(uiShell);
+    return (cur && Readable(cur, 0x110)) ? cur : nullptr;
+}
+
+static void SyncGameplayCursorHidden(bool hide) {
+    void* activeCur = GetActiveGameCursor();
+    if (hide) {
+        if (g_hiddenCursorWin && g_hiddenCursorWin != activeCur) {
+            SetWinVisible(g_hiddenCursorWin, true);
+        }
+        if (activeCur) {
+            SetWinVisible(activeCur, false);
+            g_hiddenCursorWin = activeCur;
+        }
+    } else {
+        if (g_hiddenCursorWin) {
+            SetWinVisible(g_hiddenCursorWin, true);
+            g_hiddenCursorWin = nullptr;
+        }
+        if (activeCur) {
+            SetWinVisible(activeCur, true);
+        }
+    }
 }
 
 static void SetWinRect(void* win, int left, int top, int right, int bottom) {
@@ -432,6 +462,7 @@ static void PollPhysicalMouseTakeover() {
         }
         g_gamepadActiveSession = false;
         g_hudCursorToggle = false;
+        SyncGameplayCursorHidden(false);
     }
 }
 
@@ -687,6 +718,7 @@ void Gamepad_FilterMessage(LPMSG msg) {
         }
         g_gamepadActiveSession = false;
         g_hudCursorToggle = false;
+        SyncGameplayCursorHidden(false);
     }
 }
 
@@ -714,6 +746,7 @@ void Gamepad_Tick() {
         if (g_mode == ControlMode::Gameplay || g_mode == ControlMode::FreeAim) {
             GamepadWorld_OnLeaveGameplay();
         }
+        SyncGameplayCursorHidden(false);
         DisableVirtualCursor();
         return;
     }
@@ -744,6 +777,7 @@ void Gamepad_Tick() {
             g_hudCursorToggle = false;
             GamepadWorld_OnLeaveGameplay();
             GamepadUI_OnExitUI();
+            SyncGameplayCursorHidden(false);
             DisableVirtualCursor();
             g_overlay = {};
             RenderOverlay();
@@ -817,7 +851,11 @@ void Gamepad_Tick() {
             GamepadUI_OnExitUI();
         }
         if (nextMode == ControlMode::Gameplay) {
-            DisableVirtualCursor();
+            // Park virtual cursor in neutral top-center band (away from edge-scroll borders,
+            // HUD buttons, and center combat viewport) to prevent phantom hover tooltips while hidden.
+            int sw = 0, sh = 0;
+            GetScreenDimensions(sw, sh);
+            SetVirtualCursorClient(sw * 0.5f, 28.0f, true, true);
         }
         g_mode = nextMode;
     }
@@ -862,13 +900,19 @@ void Gamepad_Tick() {
             {
                 g_hudCursorToggle = false;
                 GamepadUI_OnExitUI();
-                DisableVirtualCursor();
+                int sw = 0, sh = 0;
+                GetScreenDimensions(sw, sh);
+                SetVirtualCursorClient(sw * 0.5f, 28.0f, true, true);
                 g_mode = ControlMode::Gameplay;
             } else {
                 GamepadUI_Tick(pad);
             }
             break;
     }
+
+    // Hide the Dungeon Siege sword cursor only during active 3D gameplay;
+    // keep it visible in menus, inventory, HUD cursor mode, Free-Aim, chat, or mouse/KB use.
+    SyncGameplayCursorHidden(g_gamepadActiveSession && g_mode == ControlMode::Gameplay);
 
     RenderOverlay();
 }

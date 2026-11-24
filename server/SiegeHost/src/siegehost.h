@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <string>
 
-#define SIEGEHOST_VERSION "1.5.36"
+#define SIEGEHOST_VERSION "1.5.37"
 
 enum class Role { None, Server, Client };
 
@@ -133,3 +133,4 @@ std::string JG_GetAccountForDpnid(DWORD dpnid);
 #include "sharedstash.h"
 #include "doorfix.h"
 #include "gamepad.h"
+#include "hosthide.h"

@@ -1094,8 +1094,8 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         JG_JipTick();  // both roles: the join freeze is a per-machine thing (src/jipguard.h)
         CharacterAbilities_Tick();
         SharedStash_Tick();
-        if (g_cfg.role != Role::Server) Gamepad_Tick();
-        if (g_cfg.role == Role::Server) { AutoHostTick(); LabMoveLocTick(); AreaScaleTick(); ShopStockTick(); InvFixTick(); QuestModeTick(); JipQueueTick(); PvpZoneTick(); DoorFixTick(); }
+        if (g_cfg.role != Role::Server) { Gamepad_Tick(); HostHide_ClientTick(); }
+        if (g_cfg.role == Role::Server) { AutoHostTick(); HostHide_ServerTick(); LabMoveLocTick(); AreaScaleTick(); ShopStockTick(); InvFixTick(); QuestModeTick(); JipQueueTick(); PvpZoneTick(); DoorFixTick(); }
         else if (g_cfg.role == Role::Client) { AutoJoinTick(); InvFixTick(); QuestModeTick(); ShopStockClientTick(); ChatFixTick(); ChatHistoryTick(); PartyPanelTick(); PanelFilterTick(); ChatDiagTick(); PartyPanelDiagTick(); PvpZoneTick(); DoorFixTick(); }
     }
     BOOL res = g_origPeek(msg, wnd, fmin, fmax, remove);
@@ -1396,7 +1396,7 @@ static void Startup() {
     PvpZoneInstall();
     CharacterAbilities_Init();
     SharedStash_Init();
-    if (g_cfg.role != Role::Server) Gamepad_Init();
+    if (g_cfg.role != Role::Server) { Gamepad_Init(); HostHide_ClientInstall(); }
     StagingImportDisableInstall();
     if (g_cfg.role == Role::Server) { AreaScaleInstall(); ShopStockInstall(); InvFixInstall(); McpFixInstall(); QuestModeInstall(); JipQueueInstall(); DoorFixInstall(); HasteFixInstall(); }
     else { InvFixInstall(); McpFixInstall(); QuestModeInstall(); ShopStockClientInstall(); DoorFixInstall(); PrefsFixInstall(); }   // 0.9.0: the backpack cap has to come off on a player's own machine too
