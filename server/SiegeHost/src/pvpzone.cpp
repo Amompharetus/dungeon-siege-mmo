@@ -364,7 +364,7 @@ void PvpZoneClientTick() {
     if (pen != s_lastLocalPen) {
         char msg[160];
         if (pen != 0) {
-            snprintf(msg, sizeof msg, "You have entered %s (PvP Zone - Health/Rejuv potions disabled).",
+            snprintf(msg, sizeof msg, "You have entered %s (PvP Zone).",
                      pvpzone::PenName(pen));
             PrintClientChat(msg);
             Log("PvpZone: local hero entered pen #%d (%s).", pen, pvpzone::PenName(pen));

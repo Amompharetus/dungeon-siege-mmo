@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <string>
 
-#define SIEGEHOST_VERSION "1.5.38"
+#define SIEGEHOST_VERSION "1.5.39"
 
 enum class Role { None, Server, Client };
 
@@ -85,6 +85,7 @@ long RemotePlayerCount();
 [[noreturn]] void FlushAndExit(UINT code);
 void AutoHostTick();
 void AutoJoinTick();
+void EndGameSummaryFix_Install();
 void Snapshot(const char* label);
 void JoinGuardServerTick();
 void JG_Init();

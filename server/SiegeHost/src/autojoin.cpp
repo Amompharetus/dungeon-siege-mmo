@@ -1,5 +1,5 @@
 // autojoin.cpp — client side: walks Main menu -> Multiplayer -> Internet -> Connect(<server IP>) automatically.
-// The player still picks/creates their character in the staging screen. 
+// The player still picks/creates their character in the staging screen.
 #include "siegehost.h"
 #include "engine.h"
 #include <cstring>
@@ -66,7 +66,93 @@ void Act(const char* what, bool ok) {
     Log("AutoJoin: %s -> %s", what, ok ? "ok" : "FAILED");
     g_lastAction = GetTickCount();
 }
+
+// End-game summary disconnect fix:
+// When a player clicks "Save and Exit" / "Leave Game", DSLOA enters end_game_summary and calls
+// FUN_0049211d (0x0049211D), which shows chat_disabled_text ("The connection has been terminated.",
+// centered at x=193..377 inside chat_text_background 24..546) and hides end_game_chat_editbox,
+// combo_box_players, and end_game_send_to — but forgets to hide staging_game_chat_outline
+// (353..545), whose left border at x=353 slices straight through the text.
+typedef void (__cdecl* DisableEndGameChatFn)();
+DisableEndGameChatFn g_origDisableEndGameChat = nullptr;
+bool g_endGameFixHooked = false;
+
+void FixEndGameChatDisabledLayout() {
+    void* txt = eng::FindWindow("chat_disabled_text", "end_game_summary");
+    if (!txt || IsBadReadPtr(txt, 0x1C0)) return;
+    if (*(const char*)((const char*)txt + 0x108) == 0) return;  // only when chat_disabled_text is actually shown
+
+    // 1. Hide the orphaned Send-To dropdown border box that cuts across the text at x=353
+    void* outline = eng::FindWindow("staging_game_chat_outline", "end_game_summary");
+    if (outline && !IsBadReadPtr(outline, 0x110) && *(const char*)((const char*)outline + 0x108) != 0) {
+        typedef void (__thiscall* SetVisFn)(void*, bool);
+        ((SetVisFn)0x0047B06E)(outline, false);
+    }
+
+    // 2. Ensure chat_disabled_text is centered cleanly inside chat_text_background
+    void* bg = eng::FindWindow("chat_text_background", "end_game_summary");
+    if (bg && !IsBadReadPtr(bg, 0x70)) {
+        int wantL = *(const int*)((const char*)bg + 0x60) + 4;
+        int wantT = *(const int*)((const char*)bg + 0x64) + 4;
+        int wantR = *(const int*)((const char*)bg + 0x68) - 4;
+        int wantB = *(const int*)((const char*)bg + 0x6C) - 4;
+        int curL  = *(const int*)((const char*)txt + 0x60);
+        int curT  = *(const int*)((const char*)txt + 0x64);
+        int curR  = *(const int*)((const char*)txt + 0x68);
+        int curB  = *(const int*)((const char*)txt + 0x6C);
+        if (wantR > wantL && wantB > wantT &&
+            (curL != wantL || curT != wantT || curR != wantR || curB != wantB))
+        {
+            // UIWindow::SetRect(int left, int right, int top, int bottom, bool bAnimation)
+            typedef void (__thiscall* SetRectFn)(void*, int, int, int, int, bool);
+            ((SetRectFn)0x0047AFAB)(txt, wantL, wantR, wantT, wantB, false);
+        }
+    }
+    if (*(const int*)((const char*)txt + 0x1BC) != 2) {
+        typedef void (__thiscall* SetJustFn)(void*, int);
+        ((SetJustFn)0x0047B4AA)(txt, 2 /*center*/);
+    }
+}
+
+void __cdecl HookDisableEndGameChat() {
+    if (g_origDisableEndGameChat) {
+        g_origDisableEndGameChat();
+    }
+    FixEndGameChatDisabledLayout();
+}
 }  // namespace
+
+void EndGameSummaryFix_Install() {
+    if (g_endGameFixHooked) return;
+    const DWORD kTarget = 0x0049211D;
+    // Verified prologue: push ebp; mov ebp, esp; push ecx; push ecx; push edi
+    static const BYTE kExpect[6] = {0x55, 0x8B, 0xEC, 0x51, 0x51, 0x57};
+    if (memcmp((const void*)kTarget, kExpect, sizeof(kExpect)) != 0) {
+        Log("EndGameFix: prologue mismatch at 0x%08lX; skipping hook.", kTarget);
+        return;
+    }
+
+    BYTE* tramp = (BYTE*)VirtualAlloc(nullptr, 16, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!tramp) return;
+    memcpy(tramp, kExpect, sizeof(kExpect));
+    tramp[6] = 0xE9;
+    *(DWORD*)(tramp + 7) = (DWORD)((kTarget + sizeof(kExpect)) - ((DWORD)(tramp + 6) + 5));
+    g_origDisableEndGameChat = (DisableEndGameChatFn)tramp;
+
+    BYTE patch[6] = {0xE9, 0, 0, 0, 0, 0x90};
+    *(DWORD*)(patch + 1) = (DWORD)((BYTE*)&HookDisableEndGameChat - (BYTE*)(kTarget + 5));
+
+    DWORD oldProt = 0;
+    if (!VirtualProtect((LPVOID)kTarget, sizeof(patch), PAGE_EXECUTE_READWRITE, &oldProt)) {
+        g_origDisableEndGameChat = nullptr;
+        return;
+    }
+    memcpy((void*)kTarget, patch, sizeof(patch));
+    VirtualProtect((LPVOID)kTarget, sizeof(patch), oldProt, &oldProt);
+    FlushInstructionCache(GetCurrentProcess(), (LPCVOID)kTarget, sizeof(patch));
+    g_endGameFixHooked = true;
+    Log("EndGameFix: hooked DisableEndGameChat at 0x%08lX (hides staging_game_chat_outline & aligns chat_disabled_text).", kTarget);
+}
 
 
 // Lab-only (SIEGEHOST_LABPLAY env): after joining, create/select a character and click Ready like a player would,
@@ -92,12 +178,27 @@ static void LabPlayTick() {
         static bool exitPressed = false;
         char envx[4];
         static bool escSent = false;
-        if (!escSent && now - ingameAt > 90000 && GetEnvironmentVariableA("SIEGEHOST_LAB_SAVEEXIT", envx, sizeof envx)) {
+        static bool yesPressed = false;
+        if (!escSent && now - ingameAt > 4000 && GetEnvironmentVariableA("SIEGEHOST_LAB_ENDGAME", envx, sizeof envx)) {
+            escSent = true;
+            void* uiGame = *(void**)0x007ACF8C;
+            if (uiGame) {
+                typedef uint8_t (__thiscall* OnEscFn)(void*);
+                ((OnEscFn)0x004EF436)(uiGame);
+            }
+            Log("LabPlay: ENDGAME Esc triggered (in_game_menu visible=%d)", eng::InterfaceVisible("in_game_menu"));
+        } else if (escSent && !exitPressed && eng::InterfaceVisible("in_game_menu") && GetEnvironmentVariableA("SIEGEHOST_LAB_ENDGAME", envx, sizeof envx)) {
+            exitPressed = true;
+            Act("labplay: in-game menu SAVE AND EXIT", eng::Press("exit_game_button_client", "in_game_menu"));
+        } else if (exitPressed && !yesPressed && eng::InterfaceVisible("backend_dialog") && GetEnvironmentVariableA("SIEGEHOST_LAB_ENDGAME", envx, sizeof envx)) {
+            yesPressed = true;
+            Act("labplay: backend_dialog YES", eng::Press("backend_button_yes", "backend_dialog"));
+        } else if (!escSent && now - ingameAt > 90000 && GetEnvironmentVariableA("SIEGEHOST_LAB_SAVEEXIT", envx, sizeof envx)) {
             escSent = true;
             keybd_event(VK_ESCAPE, 0, 0, 0);
             keybd_event(VK_ESCAPE, 0, KEYEVENTF_KEYUP, 0);
             Log("LabPlay: ESC sent (in_game_menu visible=%d)", eng::InterfaceVisible("in_game_menu"));
-        } else if (escSent && !exitPressed && now - ingameAt > 94000) {
+        } else if (escSent && !exitPressed && now - ingameAt > 94000 && GetEnvironmentVariableA("SIEGEHOST_LAB_SAVEEXIT", envx, sizeof envx)) {
             exitPressed = true;
             Log("LabPlay: in_game_menu visible=%d", eng::InterfaceVisible("in_game_menu"));
             Act("labplay: in-game menu SAVE AND EXIT", eng::Press("resume_button_client", "in_game_menu"));
@@ -177,10 +278,61 @@ static void ExitAfterGameTick() {
     if (vis != lastVis || now - lastLog > 5000) { lastVis = vis; lastLog = now; Log("ExitAfterGame: worldstate=%s visible=%s", ws, vis.c_str()); }
     bool left = vis.find("end_game_summary") != std::string::npos || strstr(ws, "main_menu") || strstr(ws, "provider_select") ||
                 strstr(ws, "internet_game") || strstr(ws, "session_lost") || strstr(ws, "game_ended");
+    if (eng::InterfaceVisible("end_game_summary")) {
+        FixEndGameChatDisabledLayout();
+    }
     if (left && !leftAt) {
         leftAt = now;
         Log("ExitAfterGame: the player left the game (%s). Closing the game in 5 s so the launcher can back up the character.", ws);
         Snapshot("left_game");
+    }
+    static int endDiagCount = 0;
+    static DWORD endDiagLast = 0;
+    if (eng::InterfaceVisible("end_game_summary") && endDiagCount < 2 && (endDiagCount == 0 || now - endDiagLast >= 500)) {
+        char envEnd[4];
+        if (GetEnvironmentVariableA("SIEGEHOST_LAB_ENDGAME", envEnd, sizeof envEnd)) {
+            ++endDiagCount;
+            endDiagLast = now;
+            void* uiShell = eng::UIShell_Singleton();
+            int sw = uiShell ? *(const int*)((const char*)uiShell + 0x60) : 0;
+            int sh = uiShell ? *(const int*)((const char*)uiShell + 0x64) : 0;
+            Log("ENDGAME_DIAG[#%d]: screen=%dx%d", endDiagCount, sw, sh);
+            static const char* kWins[] = {
+                "background", "chat_title", "chat_background", "chat_text_background",
+                "staging_game_chat_outline", "end_game_send_to", "combo_box_players",
+                "button_combo_show_players", "end_game_chat_editbox", "chat_disabled_text",
+                "end_game_close", "help_background"
+            };
+            for (const char* wn : kWins) {
+                void* w = eng::FindWindow(wn, "end_game_summary");
+                if (!w) { Log("ENDGAME_DIAG:   %-26s = NULL", wn); continue; }
+                int l = *(const int*)((const char*)w + 0x60);
+                int t = *(const int*)((const char*)w + 0x64);
+                int r = *(const int*)((const char*)w + 0x68);
+                int b = *(const int*)((const char*)w + 0x6C);
+                int vis = (*(const char*)((const char*)w + 0x108) != 0) ? 1 : 0;
+                int z = *(const int*)((const char*)w + 0x70);
+                void* par = *(void**)((const char*)w + 0x88);
+                int typ = *(const int*)((const char*)w + 0x04);
+                if (strcmp(wn, "chat_disabled_text") == 0) {
+                    int just = *(const int*)((const char*)w + 0x1BC);
+                    void* font = *(void**)((const char*)w + 0x1B0);
+                    int strW = 0, strH = 0;
+                    if (font) {
+                        typedef void (__thiscall* CalcSzFn)(void*, const char*, int*, int*);
+                        ((CalcSzFn)0x00668B77)(font, "The connection has been terminated.", &strW, &strH);
+                    }
+                    int drawY = ((b - t) / 2 - strH / 2) + t;
+                    int drawX = (just == 2) ? (((r - l) / 2 - strW / 2) + l) : (just == 1 ? (r - strW) : l);
+                    if (drawX < l) drawX = l;
+                    Log("ENDGAME_DIAG:   %-26s type=%d vis=%d z=%d par=%p rect=(%d,%d,%d,%d) just=%d font=%p str=(%dx%d) draw=(%d,%d)..(%d,%d)",
+                        wn, typ, vis, z, par, l, t, r, b, just, font, strW, strH, drawX, drawY, drawX + strW, drawY + strH);
+                } else {
+                    Log("ENDGAME_DIAG:   %-26s type=%d vis=%d z=%d par=%p rect=(%d,%d,%d,%d)",
+                        wn, typ, vis, z, par, l, t, r, b);
+                }
+            }
+        }
     }
     if (leftAt && now - leftAt >= 5000) {
         Log("ExitAfterGame: closing Dungeon Siege now.");

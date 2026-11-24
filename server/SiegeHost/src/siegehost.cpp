@@ -1396,7 +1396,7 @@ static void Startup() {
     PvpZoneInstall();
     CharacterAbilities_Init();
     SharedStash_Init();
-    if (g_cfg.role != Role::Server) { Gamepad_Init(); HostHide_ClientInstall(); }
+    if (g_cfg.role != Role::Server) { Gamepad_Init(); HostHide_ClientInstall(); EndGameSummaryFix_Install(); }
     StagingImportDisableInstall();
     if (g_cfg.role == Role::Server) { AreaScaleInstall(); ShopStockInstall(); InvFixInstall(); McpFixInstall(); QuestModeInstall(); JipQueueInstall(); DoorFixInstall(); HasteFixInstall(); }
     else { InvFixInstall(); McpFixInstall(); QuestModeInstall(); ShopStockClientInstall(); DoorFixInstall(); PrefsFixInstall(); }   // 0.9.0: the backpack cap has to come off on a player's own machine too
