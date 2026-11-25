@@ -38,7 +38,7 @@ int g_activePort = -1;
 DWORD g_lastScanMs = 0;
 DWORD g_lastTickMs = 0;
 DWORD g_lastPadInputMs = 0;
-int g_modeLogBudget = 24;
+int g_modeLogBudget = 64;
 bool g_loggedConnection = false;
 
 WORD g_prevButtons = 0;
@@ -55,11 +55,31 @@ bool g_injectingSyntheticMsg = false;
 void* g_hiddenCursorWin = nullptr;
 
 // ----------------------------------------------------------------------------------------------
-// user32!GetCursorPos inline hook (same proven trampoline pattern as InstallGetKeyboardLayoutHook)
+// AppModule::PollMouse (0x00414B2A) + user32!GetCursorPos inline hooks
+//   - PollMouse hook guarantees pixel-exact virtual cursor coordinates in BOTH windowed AND
+//     fullscreen modes (immune to mouse sensitivity scaling, screen-center relative drift,
+//     and stale mouse-history interpolation during clicks!).
+//   - GetCursorPos hook keeps external cursor readers (like groundtooltip_loa.dsdll) synced.
 // ----------------------------------------------------------------------------------------------
 typedef BOOL (WINAPI* GetCursorPosFn)(LPPOINT);
 GetCursorPosFn g_origGetCursorPos = nullptr;
 bool g_getCursorPosHooked = false;
+
+typedef uint32_t (__thiscall* PollMouseFn)(void* appMod, int* outX, int* outY, int dispatch);
+PollMouseFn g_origPollMouse = nullptr;
+bool g_pollMouseHooked = false;
+
+typedef void (__thiscall* SetMouseNormFn)(void* appMod, int x, int y);
+static const auto s_appModuleSetMouseNorm = (SetMouseNormFn)0x00415D9B;
+
+static bool IsLabTestEnabled() {
+    static int labEnv = -1;
+    if (labEnv < 0) {
+        char e[8];
+        labEnv = GetEnvironmentVariableA("SIEGEHOST_GAMEPAD_LABTEST", e, sizeof e) ? 1 : 0;
+    }
+    return labEnv != 0;
+}
 
 static bool IsAppModuleInRelativeMouseMode(uintptr_t appMod) {
     if (!appMod || !Readable((const void*)appMod, 0x160)) return false;
@@ -72,22 +92,143 @@ static bool IsAppModuleInRelativeMouseMode(uintptr_t appMod) {
     return (fullscreen && !flagNoCapture) || (btnMask != 0) || forceRelative;
 }
 
+static void SyncAppModuleCursorDirect(int vx, int vy) {
+    uintptr_t appMod = *(uintptr_t*)kAddrAppModule;
+    if (!appMod || !Readable((void*)appMod, 0x1A0)) return;
+
+    LPCRITICAL_SECTION cs = *(LPCRITICAL_SECTION*)(appMod + 0x194);
+    if (cs && Readable(cs, sizeof(CRITICAL_SECTION))) {
+        EnterCriticalSection(cs);
+    }
+
+    int maxX = *(const int*)(appMod + 0xC8) - *(const int*)(appMod + 0xC0) - 1;
+    int maxY = *(const int*)(appMod + 0xCC) - *(const int*)(appMod + 0xC4) - 1;
+    if (maxX > 0) {
+        if (vx < 0) vx = 0;
+        if (vx > maxX) vx = maxX;
+    }
+    if (maxY > 0) {
+        if (vy < 0) vy = 0;
+        if (vy > maxY) vy = maxY;
+    }
+
+    *(int*)(appMod + 0x12C) = vx;
+    *(int*)(appMod + 0x130) = vy;
+    // Keep relative-mouse center reference updated so exiting gamepad mode never jumps
+    if (maxX > 0 && maxY > 0) {
+        *(int*)(appMod + 0x134) = (maxX + 1) / 2;
+        *(int*)(appMod + 0x138) = (maxY + 1) / 2;
+    }
+    // Clear mouse-history buffer so FUN_00417ADC on WM_LBUTTONDOWN/UP never rewinds to stale coords
+    *(void**)(appMod + 0x160) = *(void**)(appMod + 0x15C);
+    s_appModuleSetMouseNorm((void*)appMod, vx, vy);
+
+    if (cs && Readable(cs, sizeof(CRITICAL_SECTION))) {
+        LeaveCriticalSection(cs);
+    }
+}
+
+static uint32_t __attribute__((thiscall)) HookPollMouse(void* appMod, int* outX, int* outY, int dispatch) {
+    if (!g_origPollMouse) return 0;
+
+    if (InterlockedCompareExchange(&g_virtualCursorActive, 0, 0) != 0 &&
+        appMod && Readable(appMod, 0x1A0) && outX && outY &&
+        g_gameHwnd && IsWindow(g_gameHwnd) &&
+        (IsLabTestEnabled() || GetForegroundWindow() == g_gameHwnd))
+    {
+        LPCRITICAL_SECTION cs = *(LPCRITICAL_SECTION*)((char*)appMod + 0x194);
+        if (cs && Readable(cs, sizeof(CRITICAL_SECTION))) {
+            EnterCriticalSection(cs);
+        }
+
+        int vx = (int)std::lround(g_virtX);
+        int vy = (int)std::lround(g_virtY);
+        int maxX = *(const int*)((const char*)appMod + 0xC8) - *(const int*)((const char*)appMod + 0xC0) - 1;
+        int maxY = *(const int*)((const char*)appMod + 0xCC) - *(const int*)((const char*)appMod + 0xC4) - 1;
+        if (maxX > 0) {
+            if (vx < 0) vx = 0;
+            if (vx > maxX) vx = maxX;
+        }
+        if (maxY > 0) {
+            if (vy < 0) vy = 0;
+            if (vy > maxY) vy = maxY;
+        }
+
+        int dx = vx - *outX;
+        int dy = vy - *outY;
+        *outX = vx;
+        *outY = vy;
+        *(int*)((char*)appMod + 0x12C) = vx;
+        *(int*)((char*)appMod + 0x130) = vy;
+        if (maxX > 0 && maxY > 0) {
+            *(int*)((char*)appMod + 0x134) = (maxX + 1) / 2;
+            *(int*)((char*)appMod + 0x138) = (maxY + 1) / 2;
+        }
+        // Empty mouse-history vector so button-down timestamp lookup uses exact current (vx, vy)
+        *(void**)((char*)appMod + 0x160) = *(void**)((char*)appMod + 0x15C);
+        s_appModuleSetMouseNorm(appMod, vx, vy);
+
+        if ((dispatch & 0xFF) != 0 && (dx != 0 || dy != 0)) {
+            void** vtbl = *(void***)appMod;
+            if (vtbl && Readable(vtbl, 0x80)) {
+                typedef void (__thiscall* OnMouseDeltaFn)(void*, int, int);
+                ((OnMouseDeltaFn)vtbl[0x78 / 4])(appMod, dx, dy);
+            }
+        }
+
+        if (cs && Readable(cs, sizeof(CRITICAL_SECTION))) {
+            LeaveCriticalSection(cs);
+        }
+        return 1;
+    }
+
+    return g_origPollMouse(appMod, outX, outY, dispatch);
+}
+
+static void InstallPollMouseHook() {
+    if (g_pollMouseHooked) return;
+    const DWORD kTarget = 0x00414B2A;
+    // Verified prologue: push ebp; mov ebp, esp; sub esp, 0x40
+    static const BYTE kExpect[6] = {0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x40};
+    if (memcmp((const void*)kTarget, kExpect, sizeof(kExpect)) != 0) {
+        Log("Gamepad: AppModule::PollMouse prologue mismatch at 0x%08lX; hook skipped.", kTarget);
+        return;
+    }
+    BYTE* tramp = (BYTE*)VirtualAlloc(nullptr, 32, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!tramp) return;
+    memcpy(tramp, kExpect, sizeof(kExpect));
+    tramp[6] = 0xE9;
+    *(DWORD*)(tramp + 7) = (DWORD)((kTarget + sizeof(kExpect)) - ((DWORD)(tramp + 6) + 5));
+    g_origPollMouse = (PollMouseFn)tramp;
+
+    BYTE patch[6] = {0xE9, 0, 0, 0, 0, 0x90};
+    *(DWORD*)(patch + 1) = (DWORD)((BYTE*)&HookPollMouse - (BYTE*)(kTarget + 5));
+
+    DWORD old = 0;
+    if (!VirtualProtect((LPVOID)kTarget, sizeof(patch), PAGE_EXECUTE_READWRITE, &old)) {
+        g_origPollMouse = nullptr;
+        return;
+    }
+    memcpy((void*)kTarget, patch, sizeof(patch));
+    VirtualProtect((LPVOID)kTarget, sizeof(patch), old, &old);
+    FlushInstructionCache(GetCurrentProcess(), (LPCVOID)kTarget, sizeof(patch));
+    g_pollMouseHooked = true;
+    Log("Gamepad: hooked AppModule::PollMouse at 0x%08lX (fullscreen/windowed virtual cursor exact).", kTarget);
+}
+
 static BOOL WINAPI HookGetCursorPos(LPPOINT lpPoint) {
     if (!lpPoint) return g_origGetCursorPos ? g_origGetCursorPos(lpPoint) : FALSE;
 
     if (InterlockedCompareExchange(&g_virtualCursorActive, 0, 0) != 0 &&
-        g_gameHwnd && IsWindow(g_gameHwnd) && GetForegroundWindow() == g_gameHwnd)
+        g_gameHwnd && IsWindow(g_gameHwnd) &&
+        (IsLabTestEnabled() || GetForegroundWindow() == g_gameHwnd))
     {
         uintptr_t retAddr = (uintptr_t)__builtin_return_address(0);
         int vx = (int)std::lround(g_virtX);
         int vy = (int)std::lround(g_virtY);
         POINT clientPt = {vx, vy};
 
-        // AppModule::PollMouse (0x00414B2A..0x00414EEA) is DSLOA.exe's sole GetCursorPos caller.
-        // In fullscreen/relative-mouse mode (or while a mouse button is held), PollMouse computes
-        // delta = (cursorClient - [appMod+0x134/0x138]) and adds it to [appMod+0x12C/0x130].
-        // Returning (lastRef + desiredDelta) lands AppModule's internal cursor on exact (vx, vy)
-        // in BOTH windowed and fullscreen modes without ever warping the OS mouse cursor!
+        // Fallback relative-mode math if AppModule::PollMouse hook was skipped
         if (retAddr >= 0x00414B2Au && retAddr < 0x00414EEAu) {
             uintptr_t appMod = *(uintptr_t*)kAddrAppModule;
             if (IsAppModuleInRelativeMouseMode(appMod)) {
@@ -456,12 +597,12 @@ static void PollPhysicalMouseTakeover(DWORD nowMs) {
     }
 
     // In fullscreen mode, AppModule resets the OS cursor to window center each frame;
-    // ignore OS cursor jumps straight onto the window center.
+    // ignore OS cursor jumps onto/near the window center.
     RECT rc{};
     if (GetClientRect(g_gameHwnd, &rc)) {
         POINT center = {(rc.right - rc.left) / 2, (rc.bottom - rc.top) / 2};
         ClientToScreen(g_gameHwnd, &center);
-        if (std::abs(realPt.x - center.x) <= 4 && std::abs(realPt.y - center.y) <= 4) {
+        if (std::abs(realPt.x - center.x) <= 16 && std::abs(realPt.y - center.y) <= 16) {
             return;
         }
     }
@@ -550,16 +691,52 @@ static bool GetLabSimulatedXInput(DWORD nowMs, xinput_abi::XINPUT_STATE& outSt) 
             outSt.Gamepad.wButtons = xinput_abi::kDpadLeft; // open Inventory via native ToggleInventory
         }
         return true;
-    } else if (elapsed < 8500) {
+    } else if (elapsed < 8200) {
         if (phase != 4) {
             phase = 4;
             logHeroPos("inv_open_close");
             outSt.Gamepad.wButtons = xinput_abi::kB; // close Inventory via native OnPressedEscape
         }
         return true;
-    } else if (elapsed < 9500) {
+    } else if (elapsed < 9000) {
         if (phase != 5) {
             phase = 5;
+            logHeroPos("open_start_menu");
+            outSt.Gamepad.wButtons = xinput_abi::kStart; // open in_game_menu
+        }
+        return true;
+    } else if (elapsed < 9800) {
+        if (phase != 6) {
+            phase = 6;
+            Log("GAMEPAD_LABTEST[start_menu_open]: in_game_menu=%d mode=%d focus=(%d,%d,%d,%d) virt=(%.0f,%.0f)",
+                eng::InterfaceVisible("in_game_menu") ? 1 : 0, (int)g_mode,
+                g_overlay.focusRect.left, g_overlay.focusRect.top,
+                g_overlay.focusRect.right, g_overlay.focusRect.bottom,
+                g_virtX, g_virtY);
+            outSt.Gamepad.wButtons = xinput_abi::kA; // press A on Resume Game button!
+        }
+        return true;
+    } else if (elapsed < 10800) {
+        if (phase != 7) {
+            phase = 7;
+            Log("GAMEPAD_LABTEST[after_resume_click]: in_game_menu=%d mode=%d slot=%d",
+                eng::InterfaceVisible("in_game_menu") ? 1 : 0, (int)g_mode, GamepadWorld_GetActiveWeaponSlot());
+            // Hold R2 FreeAim & push left stick far-left to edge to verify zero runaway camera spin!
+        }
+        outSt.Gamepad.bRightTrigger = 240;
+        outSt.Gamepad.sThumbLX = -32000;
+        return true;
+    } else if (elapsed < 12200) {
+        if (phase != 8) {
+            phase = 8;
+            camStartYaw = readCamYaw();
+            hasCamStart = true;
+            logHeroPos("freeaim_released_start");
+        }
+        return true; // release R2, wait idle 1.4s and confirm camYaw delta == 0.00!
+    } else if (elapsed < 13000) {
+        if (phase != 9) {
+            phase = 9;
             logHeroPos("done");
         }
         return true;
@@ -607,6 +784,11 @@ bool IsWorldStateInGame() {
            _stricmp(ws, "ws_mp_ingame_jip") == 0;
 }
 
+bool IsWorldStateMegaMap() {
+    const char* ws = eng::CurrentWorldState();
+    return ws && _stricmp(ws, "ws_mega_map") == 0;
+}
+
 bool IsInMenuOrPanelOpen() {
     if (!IsWorldStateInGame()) return true;
     return GamepadUI_IsAnyBlockingPanelOpen();
@@ -641,7 +823,9 @@ void SetVirtualCursorClient(float x, float y, bool activate, bool dispatchMove) 
     }
 
     if (dispatchMove && g_gameHwnd && IsWindow(g_gameHwnd)) {
-        // Also mirror directly into UIShell mouse coordinates so hit-testing sees it immediately this frame
+        // Keep AppModule (0x007A99A0) and UIShell mouse coordinates strictly synchronized so
+        // WM_LBUTTONDOWN / WM_LBUTTONUP / UIGame hit-testing land on exact (ix, iy) in fullscreen & windowed!
+        SyncAppModuleCursorDirect(ix, iy);
         void* uiShell = eng::UIShell_Singleton();
         if (uiShell && Readable(uiShell, 0x88)) {
             typedef void (__thiscall* SetMouseFn)(void*, int);
@@ -651,6 +835,8 @@ void SetVirtualCursorClient(float x, float y, bool activate, bool dispatchMove) 
         g_injectingSyntheticMsg = true;
         SiegeHost_SendGameWndMsg(WM_MOUSEMOVE, 0, MAKELPARAM(ix, iy));
         g_injectingSyntheticMsg = false;
+    } else if (activate) {
+        SyncAppModuleCursorDirect(ix, iy);
     }
 }
 
@@ -712,7 +898,21 @@ void InjectMouseClick(bool rightButton, bool down) {
     WPARAM wp = down ? (rightButton ? MK_RBUTTON : MK_LBUTTON) : 0;
 
     g_injectingSyntheticMsg = true;
+    // In headless/unfocused lab tests, ensure AppModule::m_ActiveCnt (+0x78) allows button dispatch
+    uintptr_t appMod = *(uintptr_t*)kAddrAppModule;
+    int savedActive = 0;
+    bool patchedActive = false;
+    if (IsLabTestEnabled() && appMod && Readable((void*)(appMod + 0x78), 4)) {
+        savedActive = *(int*)(appMod + 0x78);
+        if (savedActive < 1) {
+            *(int*)(appMod + 0x78) = 1;
+            patchedActive = true;
+        }
+    }
     SiegeHost_SendGameWndMsg(msg, wp, MAKELPARAM(ix, iy));
+    if (patchedActive) {
+        *(int*)(appMod + 0x78) = savedActive;
+    }
     g_injectingSyntheticMsg = false;
 }
 
@@ -802,6 +1002,7 @@ void Gamepad_Init() {
     }
 
     // Never call LoadLibraryA inside DllMain (loader lock): XInput DLL is loaded lazily on the first main-thread tick.
+    InstallPollMouseHook();
     InstallGetCursorPosHook();
     GamepadWorld_InstallHooks();
     Log("Gamepad: hooks armed (deadzone=%.2f, camSpeed=%.2f, cursorSpeed=%.2f, hints=%d).",
@@ -971,11 +1172,11 @@ void Gamepad_Tick() {
             GamepadUI_OnExitUI();
         }
         if (nextMode == ControlMode::Gameplay) {
-            // Park virtual cursor in neutral top-center band (away from edge-scroll borders,
-            // HUD buttons, and center combat viewport) to prevent phantom hover tooltips while hidden.
+            // Park virtual cursor cleanly inside the safe interior (normY ~= +0.56, well clear of
+            // all 4 screen-edge camera-scroll borders, HUD buttons, and the center hero bounding box).
             int sw = 0, sh = 0;
             GetScreenDimensions(sw, sh);
-            SetVirtualCursorClient(sw * 0.5f, 28.0f, true, true);
+            SetVirtualCursorClient(sw * 0.5f, sh * 0.22f, true, true);
         }
         g_mode = nextMode;
     }
@@ -1022,7 +1223,7 @@ void Gamepad_Tick() {
                 GamepadUI_OnExitUI();
                 int sw = 0, sh = 0;
                 GetScreenDimensions(sw, sh);
-                SetVirtualCursorClient(sw * 0.5f, 28.0f, true, true);
+                SetVirtualCursorClient(sw * 0.5f, sh * 0.22f, true, true);
                 g_mode = ControlMode::Gameplay;
             } else {
                 GamepadUI_Tick(pad);

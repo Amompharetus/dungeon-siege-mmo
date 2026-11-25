@@ -182,6 +182,36 @@ static void TestVirtualCursorIntegration() {
     assert(xEdge <= 1918.0f && yEdge >= 1.0f);
 }
 
+static void TestWeaponSlotCycling() {
+    // All 4 slots populated: RB (+1) strictly 0->1->2->3->0; LB (-1) strictly 3->2->1->0->3 (zero 4<->1 bounce!)
+    const bool all4[4] = {true, true, true, true};
+    int s = 0;
+    s = SelectNextWeaponSlot(s, +1, all4); assert(s == 1);
+    s = SelectNextWeaponSlot(s, +1, all4); assert(s == 2);
+    s = SelectNextWeaponSlot(s, +1, all4); assert(s == 3);
+    s = SelectNextWeaponSlot(s, +1, all4); assert(s == 0);
+    s = SelectNextWeaponSlot(s, +1, all4); assert(s == 1);
+
+    s = 3;
+    s = SelectNextWeaponSlot(s, -1, all4); assert(s == 2);
+    s = SelectNextWeaponSlot(s, -1, all4); assert(s == 1);
+    s = SelectNextWeaponSlot(s, -1, all4); assert(s == 0);
+    s = SelectNextWeaponSlot(s, -1, all4); assert(s == 3);
+    s = SelectNextWeaponSlot(s, -1, all4); assert(s == 2);
+
+    // Sparse slots (Melee + Combat spell only): skips empty Ranged & Primary Spell cleanly both ways
+    const bool meleeAndCombat[4] = {true, false, false, true};
+    assert(SelectNextWeaponSlot(0, +1, meleeAndCombat) == 3);
+    assert(SelectNextWeaponSlot(3, +1, meleeAndCombat) == 0);
+    assert(SelectNextWeaponSlot(0, -1, meleeAndCombat) == 3);
+    assert(SelectNextWeaponSlot(3, -1, meleeAndCombat) == 0);
+
+    // Only Melee available: returns -1 (no-op)
+    const bool meleeOnly[4] = {true, false, false, false};
+    assert(SelectNextWeaponSlot(0, +1, meleeOnly) == -1);
+    assert(SelectNextWeaponSlot(0, -1, meleeOnly) == -1);
+}
+
 int main() {
     TestStickProcessing();
     TestTriggerHysteresis();
@@ -191,6 +221,7 @@ int main() {
     TestUiFocusSnappingAndPanels();
     TestGridboxStepping();
     TestVirtualCursorIntegration();
-    std::printf("gamepad_test: ALL 8 TEST SUITES PASSED!\n");
+    TestWeaponSlotCycling();
+    std::printf("gamepad_test: ALL 9 TEST SUITES PASSED!\n");
     return 0;
 }

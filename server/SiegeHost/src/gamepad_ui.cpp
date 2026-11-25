@@ -209,7 +209,11 @@ static void CollectWindowsFromInterface(void* iface, const char* ifaceName, int 
         int uiType = *(const int*)((const char*)win + 0x04);
         if (!IsInteractiveType(uiType)) continue;
 
-        // Skip disabled buttons (UIButton::GetDisabled at +0x1A0? Guard safely: rect check + visible/enabled)
+        // Skip disabled UIButtons (verified in UIButton::DisableButton at 0x007072CF: this+0x1C0 = 1)
+        if (uiType == kUiButton && Readable(win, 0x1C8) && *(const char*)((const char*)win + 0x1C0) != 0) {
+            continue;
+        }
+
         gamepad::UiRect rc{};
         rc.left   = *(const int*)((const char*)win + 0x60);
         rc.top    = *(const int*)((const char*)win + 0x64);
@@ -557,6 +561,34 @@ void GamepadUI_Tick(const PadFrame& pad) {
     int sw = 0, sh = 0;
     GetScreenDimensions(sw, sh);
 
+    // Handle MegaMap (ws_mega_map): B / D-Pad Up / Start closes cleanly; RS-Y zooms.
+    if (IsWorldStateMegaMap()) {
+        if (pad.Pressed(xinput_abi::kB) || pad.Pressed(xinput_abi::kDpadUp) || pad.Pressed(xinput_abi::kStart)) {
+            GamepadWorld_ToggleMegaMap();
+            return;
+        }
+        float cx = 0.0f, cy = 0.0f;
+        GetVirtualCursorClientF(cx, cy);
+        if (pad.leftStick.magnitude > 0.0f) {
+            gamepad::IntegrateVirtualCursor(cx, cy, pad.leftStick, pad.dtSec, sw, sh,
+                                            Cfg().gamepadCursorSpeed, pad.rtDown, false);
+            SetVirtualCursorClient(cx, cy, true, true);
+        }
+        if (std::fabs(pad.rightStick.y) > 0.15f) {
+            g_wheelAccum += pad.rightStick.y * pad.dtSec * 14.0f;
+            int notches = (int)g_wheelAccum;
+            if (notches != 0) {
+                g_wheelAccum -= (float)notches;
+                InjectMouseWheel(notches);
+            }
+        } else {
+            g_wheelAccum = 0.0f;
+        }
+        g_overlay.showHint = true;
+        g_overlay.hintText = "[MegaMap]  [LS] Cursor  [RS-Y] Zoom  [B / D-Up] Close";
+        return;
+    }
+
     std::vector<CollectedWidget> widgets;
     CollectVisibleWidgets(widgets);
 
@@ -582,12 +614,36 @@ void GamepadUI_Tick(const PadFrame& pad) {
 
     if (!g_uiEntered) {
         g_uiEntered = true;
-        // On entering a menu/panel, snap cursor cleanly onto the first logical widget (or gridbox)
+        // On entering a menu/panel, snap cursor cleanly onto:
+        //   1) First UIGridbox (Inventory / Stash / Store), else
+        //   2) Top-most clickable UIButton (e.g. "Resume Game" on in_game_menu instead of read-only info listbox), else
+        //   3) First interactive widget.
         if (!widgets.empty()) {
-            const CollectedWidget* initial = &widgets[0];
+            const CollectedWidget* initial = nullptr;
             for (const auto& w : widgets) {
                 if (w.base.isGridbox) { initial = &w; break; }
             }
+            if (!initial) {
+                // Prefer real dialog/menu buttons (e.g. "RESUME GAME" 140x32) over tiny 16x16 scrollbar arrows
+                int bestTop = 999999;
+                for (const auto& w : widgets) {
+                    if (w.base.uiType == kUiButton && w.base.rect.Width() >= 48 && w.base.rect.Height() >= 20 &&
+                        w.base.rect.top < bestTop) {
+                        bestTop = w.base.rect.top;
+                        initial = &w;
+                    }
+                }
+            }
+            if (!initial) {
+                int bestTop = 999999;
+                for (const auto& w : widgets) {
+                    if (w.base.uiType == kUiButton && w.base.rect.top < bestTop) {
+                        bestTop = w.base.rect.top;
+                        initial = &w;
+                    }
+                }
+            }
+            if (!initial) initial = &widgets[0];
             SnapCursorToWidget(*initial, true);
             GetVirtualCursorClientF(cx, cy);
         } else {

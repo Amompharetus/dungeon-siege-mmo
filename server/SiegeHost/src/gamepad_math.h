@@ -179,8 +179,8 @@ inline float ScoreTargetCandidate(
             break;
         case TargetKind::Interactable:
             // Nearby interactables (chests, doors, NPCs, shrines) win when standing close and no enemy is point-blank
-            base = (c.dist <= 5.5f) ? 98.0f : 72.0f;
-            maxRange = 9.0f;
+            base = (c.dist <= 4.5f) ? 98.0f : 72.0f;
+            maxRange = 10.0f;
             break;
         case TargetKind::Breakable:
             base = 65.0f;
@@ -204,11 +204,11 @@ inline float ScoreTargetCandidate(
 
     if (hasAimDir) {
         float dot = c.dirX * aimDirX + c.dirZ * aimDirZ;
-        score += dot * 22.0f;
+        score += dot * 26.0f;
     }
 
     if (c.onScreen) {
-        score += 10.0f;
+        score += 28.0f;
     }
 
     // Sticky lock hysteresis prevents target jitter
@@ -217,6 +217,22 @@ inline float ScoreTargetCandidate(
     }
 
     return score;
+}
+
+// Deterministically cycles active AWP slots (0=Melee, 1=Ranged, 2=Spell1, 3=Spell2)
+// in HUD visual order: dir > 0 moves left-to-right (RB: 0->1->2->3->0),
+// dir < 0 moves right-to-left (LB: 3->2->1->0->3), skipping unavailable slots.
+// Returns the next slot index in 0..3, or -1 if no other slot is available.
+inline int SelectNextWeaponSlot(int currentSlot, int dir, const bool available[4]) {
+    if (!available) return -1;
+    int step = (dir >= 0) ? 1 : -1;
+    int cur = (currentSlot >= 0 && currentSlot < 4) ? currentSlot : 0;
+    for (int i = 1; i <= 4; ++i) {
+        int cand = (cur + step * i + 16) % 4;
+        if (cand == cur) return -1;
+        if (available[cand]) return cand;
+    }
+    return -1;
 }
 
 inline int SelectBestTargetIndex(

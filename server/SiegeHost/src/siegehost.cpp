@@ -902,7 +902,12 @@ static PrivateWndProcFn g_origPrivateWndProc = (PrivateWndProcFn)0x00414FE4;
 
 LRESULT SiegeHost_SendGameWndMsg(UINT msg, WPARAM wParam, LPARAM lParam) {
     if (!g_gameHwnd || !IsWindow(g_gameHwnd)) return 0;
-    void* appMod = *(void**)0x007ACFC8;
+    // AppModule singleton is at 0x007A99A0 (also stored in HWND GWL_USERDATA by 0x00414F9E).
+    // (0x007ACFC8 is RapiOwner, NOT AppModule!)
+    void* appMod = *(void**)0x007A99A0;
+    if (!appMod || IsBadReadPtr(appMod, 0x80)) {
+        appMod = (void*)(uintptr_t)GetWindowLongA(g_gameHwnd, GWL_USERDATA);
+    }
     if (!appMod || IsBadReadPtr(appMod, 0x80)) return 0;
     return g_origPrivateWndProc(appMod, g_gameHwnd, msg, wParam, lParam);
 }

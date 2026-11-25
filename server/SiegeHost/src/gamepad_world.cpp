@@ -34,12 +34,21 @@ typedef bool  (__thiscall* GoBoolQueryFn)(const void*);
 typedef bool  (__thiscall* ContextActionOnGoFn)(void*, uint32_t, bool, int);
 typedef uint8_t (__cdecl*  UIGamePotionFn)();
 typedef uint32_t (__thiscall* CollectLootFn)(void*);
-typedef uint32_t (__thiscall* RotateSlotsFn)(void*, bool);
 typedef void* (__thiscall* ServerGetScreenHeroFn)(void*);
 typedef uint8_t (__thiscall* ToggleInventoryFn)(void*, bool);
 typedef uint8_t (__thiscall* UIPartyVoidFn)(void*);
 typedef uint8_t (__thiscall* UIGameVoidFn)(void*);
 typedef uint8_t (__cdecl*    UIGameCdeclVoidFn)();
+typedef void* (__thiscall* GoInvGetItemFn)(void*, int);
+typedef void* (__thiscall* GoInvGetSelectedSpellFn)(void*);
+typedef void  (__thiscall* GoInvRSSelectFn)(void*, int, int);
+typedef void  (__thiscall* UIRadioSetCheckFn)(void*, bool);
+typedef void  (__thiscall* UIInvRefreshForGoFn)(void*, uint32_t);
+typedef uint8_t (__thiscall* GoMagicCanCastLvlFn)(const void*);
+typedef bool  (__thiscall* GoMagicIsCastableOnFn)(void*, void*, bool);
+typedef bool  (__thiscall* GoMagicBoolFn)(void*);
+typedef uint32_t (__thiscall* GoMagicUsageFlagsFn)(const void*);
+typedef void  (__thiscall* UICmdsCastSpellFn)(void*, void*, void*, bool);
 
 // Verified DSLOA.exe v1.50 enums (GoMind::RSDoJob 0x005DAE8B, GoMind::RSStop 0x005DE632, UICommands 0x00511F61)
 constexpr int kQpClear = 5; // QP_CLEAR (0 is QP_NONE!)
@@ -60,13 +69,24 @@ static const auto s_goIsBreakable        = (GoBoolQueryFn)0x005394AA;
 static const auto s_goIsContainer        = (GoBoolQueryFn)0x0053952E;
 static const auto s_goIsItem             = (GoBoolQueryFn)0x00539612;
 static const auto s_goIsSelectable       = (GoBoolQueryFn)0x00539743;
+static const auto s_goIsSpell            = (GoBoolQueryFn)0x00539779;
 static const auto s_goIsUsable           = (GoBoolQueryFn)0x005397C4;
 static const auto s_goIsInsideInv        = (GoBoolQueryFn)0x0047C07D;
 static const auto s_contextActionOnGo    = (ContextActionOnGoFn)0x00512EF0;
+static const auto s_castSpellOnGo        = (UICmdsCastSpellFn)0x00510B7F;
 static const auto s_uiGameHealBody       = (UIGamePotionFn)0x004EEA77;
 static const auto s_uiGameHealMana       = (UIGamePotionFn)0x004EEB16;
 static const auto s_partyCollectLoot     = (CollectLootFn)0x004A8D71;
-static const auto s_rotateSelectedSlots  = (RotateSlotsFn)0x0050387C;
+static const auto s_goInvGetItem         = (GoInvGetItemFn)0x00573876;
+static const auto s_goInvGetSelectedSpell= (GoInvGetSelectedSpellFn)0x00578800;
+static const auto s_goInvRSSelect        = (GoInvRSSelectFn)0x005750E2;
+static const auto s_uiRadioSetCheck      = (UIRadioSetCheckFn)0x00713005;
+static const auto s_uiInvRefreshForGo    = (UIInvRefreshForGoFn)0x00504460;
+static const auto s_goMagicCanCastLevel  = (GoMagicCanCastLvlFn)0x005D5777;
+static const auto s_goMagicIsCastableOn  = (GoMagicIsCastableOnFn)0x005D6988;
+static const auto s_goMagicIsDefensive   = (GoMagicBoolFn)0x00498D3C;
+static const auto s_goMagicIsOffensive   = (GoMagicBoolFn)0x00498D48;
+static const auto s_goMagicUsageFlags    = (GoMagicUsageFlagsFn)0x005D6928;
 static const auto s_serverGetScreenHero  = (ServerGetScreenHeroFn)0x00570565;
 // Native UIGame::BindInput (0x004E5DE4) callbacks — reliable regardless of DirectInput/WM_KEYDOWN focus
 static const auto s_partyToggleInventory = (ToggleInventoryFn)0x004A1899;
@@ -88,13 +108,25 @@ float g_analogCamYaw   = 0.0f; // [-1, 1], + = rotate right
 float g_analogCamPitch = 0.0f; // [-1, 1], + = tilt up
 float g_analogCamZoom  = 0.0f; // [-1, 1], + = zoom in
 
+static bool IsAnyKeyboardCameraKeyDown() {
+    return ((GetAsyncKeyState(VK_LEFT)  & 0x8000) != 0) ||
+           ((GetAsyncKeyState(VK_RIGHT) & 0x8000) != 0) ||
+           ((GetAsyncKeyState(VK_UP)    & 0x8000) != 0) ||
+           ((GetAsyncKeyState(VK_DOWN)  & 0x8000) != 0);
+}
+
 static void __attribute__((thiscall)) HookUICameraUpdate(void* cam, float dt) {
     if (!g_origUICameraUpdate) return;
 
-    bool apply = (cam && Readable(cam, 0xA0)) &&
-                 (std::fabs(g_analogCamYaw) > 0.001f ||
-                  std::fabs(g_analogCamPitch) > 0.001f ||
-                  std::fabs(g_analogCamZoom) > 0.001f);
+    bool hasStickInput = (std::fabs(g_analogCamYaw) > 0.001f ||
+                          std::fabs(g_analogCamPitch) > 0.001f ||
+                          std::fabs(g_analogCamZoom) > 0.001f);
+    // While gamepad owns 3D Gameplay or FreeAim, suppress UIGame's mouse screen-edge rotation
+    // (0x004E5081 sets c[0x80..0x83] when the reticle approaches any edge) unless arrow keys are held.
+    bool suppressEdgeScroll = g_gamepadActiveSession &&
+                              (g_mode == ControlMode::Gameplay || g_mode == ControlMode::FreeAim) &&
+                              !IsAnyKeyboardCameraKeyDown();
+    bool apply = (cam && Readable(cam, 0xA0)) && (hasStickInput || suppressEdgeScroll);
 
     if (!apply) {
         g_origUICameraUpdate(cam, dt);
@@ -109,22 +141,30 @@ static void __attribute__((thiscall)) HookUICameraUpdate(void* cam, float dt) {
     float savedPitchMult = *(float*)(c + 0x90);
     float savedZoomRate  = *(float*)(c + 0x5C);
 
+    if (suppressEdgeScroll) {
+        memset(c + 0x80, 0, 6);
+    }
+
     float speed = Cfg().gamepadCameraSpeed;
     if (speed < 0.2f) speed = 0.2f;
     if (speed > 4.0f) speed = 4.0f;
 
-    float yaw = Cfg().gamepadInvertCamX ? -g_analogCamYaw : g_analogCamYaw;
-    float pitch = Cfg().gamepadInvertCamY ? -g_analogCamPitch : g_analogCamPitch;
-    float zoom = g_analogCamZoom;
+    // Verified in UICamera::Update (0x0047C93E):
+    //   c[0x80] (+azimuth) orbits view LEFT;  c[0x81] (-azimuth) orbits view RIGHT.
+    //   c[0x82] (-pitch)   tilts view DOWN;   c[0x83] (+pitch)   tilts view UP.
+    // Default (InvertCameraX=0, InvertCameraY=0) maps RS Right -> look right, RS Up -> move up.
+    float yaw   = Cfg().gamepadInvertCamX ? g_analogCamYaw   : -g_analogCamYaw;
+    float pitch = Cfg().gamepadInvertCamY ? g_analogCamPitch : -g_analogCamPitch;
+    float zoom  = g_analogCamZoom;
 
     if (std::fabs(yaw) > 0.001f) {
-        c[0x80] = (yaw > 0.0f) ? 1 : 0; // rotate right
-        c[0x81] = (yaw < 0.0f) ? 1 : 0; // rotate left
+        c[0x80] = (yaw > 0.0f) ? 1 : 0; // +azimuth (look left)
+        c[0x81] = (yaw < 0.0f) ? 1 : 0; // -azimuth (look right)
         *(float*)(c + 0x8C) = (savedRotMult > 0.05f ? savedRotMult : 1.0f) * std::fabs(yaw) * speed * 1.35f;
     }
     if (std::fabs(pitch) > 0.001f) {
-        c[0x82] = (pitch > 0.0f) ? 1 : 0; // tilt up
-        c[0x83] = (pitch < 0.0f) ? 1 : 0; // tilt down
+        c[0x82] = (pitch > 0.0f) ? 1 : 0; // -pitch (tilt down)
+        c[0x83] = (pitch < 0.0f) ? 1 : 0; // +pitch (tilt up)
         *(float*)(c + 0x90) = (savedPitchMult > 0.05f ? savedPitchMult : 1.0f) * std::fabs(pitch) * speed * 1.15f;
     }
     if (std::fabs(zoom) > 0.001f) {
@@ -136,8 +176,12 @@ static void __attribute__((thiscall)) HookUICameraUpdate(void* cam, float dt) {
 
     g_origUICameraUpdate(cam, dt);
 
-    // Restore original flags & multipliers immediately
-    memcpy(c + 0x80, savedFlags, 6);
+    // Restore original flags & multipliers immediately (zeroing edge-scroll flags if suppressed)
+    if (suppressEdgeScroll) {
+        memset(c + 0x80, 0, 6);
+    } else {
+        memcpy(c + 0x80, savedFlags, 6);
+    }
     *(float*)(c + 0x8C) = savedRotMult;
     *(float*)(c + 0x90) = savedPitchMult;
     *(float*)(c + 0x5C) = savedZoomRate;
@@ -199,9 +243,9 @@ int      g_labTgtCand    = 0;
 int      g_labTgtOnScr   = 0;
 
 static void* GetRapiRenderer() {
-    uintptr_t appMod = *(uintptr_t*)kAddrAppModule;
-    if (!appMod || !Readable((const void*)(appMod + 0x1E0), 4)) return nullptr;
-    void* rapi = *(void**)(appMod + 0x1E0);
+    uintptr_t rapiOwner = *(uintptr_t*)kAddrRapiOwner;
+    if (!rapiOwner || !Readable((const void*)(rapiOwner + 0x1E0), 4)) return nullptr;
+    void* rapi = *(void**)(rapiOwner + 0x1E0);
     return (rapi && Readable(rapi, 0xD00)) ? rapi : nullptr;
 }
 
@@ -602,12 +646,100 @@ static void ExecuteContextAction(uint32_t goid) {
     s_contextActionOnGo(uiCmds, goid, false, 3 /*AO_USER*/);
 }
 
-static void RotateWeaponSlot(bool prev) {
+static bool CastSelectedSpellOnTarget(void* hero, void* targetGo) {
+    if (!hero || !targetGo || !IsGoConscious(hero)) return false;
+    void* uiGame = *(void**)kAddrUIGame;
+    if (!uiGame || !Readable(uiGame, 0x30)) return false;
+    void* uiCmds = *(void**)((char*)uiGame + 0x1C);
+    if (!uiCmds || !Readable(uiCmds, 0x40)) return false;
+    g_wasMovingByStick = false;
+    s_castSpellOnGo(uiCmds, hero, targetGo, false);
+    return true;
+}
+
+struct SelectedSpellInfo {
+    bool isSpellSlot = false;
+    bool isSelfBuff  = false; // True for defensive / healing / self-targeted buffs (Haste, Healing Hands, Armor, etc.)
+    bool canSelfCast = false; // True when GoMagic::IsCastableOn(hero, checkMana=false) accepts hero
+    std::string name;
+};
+
+static SelectedSpellInfo InspectSelectedSpell(void* hero) {
+    SelectedSpellInfo info{};
+    if (!hero || !Readable(hero, 0x80)) return info;
+    void* inv = *(void**)((char*)hero + 0x2C);
+    if (!inv || !Readable(inv, 0x80)) return info;
+    int selLoc = *(const int*)((const char*)inv + 0x74);
+    if (selLoc != 2 && selLoc != 3) return info;
+
+    void* spell = s_goInvGetSelectedSpell(inv);
+    if (!spell || !Readable(spell, 0x40)) return info;
+    void* magic = *(void**)((char*)spell + 0x30);
+    if (!magic || !Readable(magic, 0x40)) return info;
+
+    info.isSpellSlot = true;
+    char nm[64] = "";
+    ReadGoScreenName(spell, nm, sizeof(nm));
+    info.name = nm;
+
+    bool canSelf = s_goMagicIsCastableOn(magic, hero, false);
+    bool isDef   = s_goMagicIsDefensive(magic);
+    bool isOff   = s_goMagicIsOffensive(magic);
+    uint32_t usageFlags = s_goMagicUsageFlags(magic);
+
+    info.canSelfCast = canSelf;
+    // Defensive buffs (Haste, Group Haste, Spirit Armor, Mana Shield, Stone Skin, Magic Armor) and
+    // healing spells (Healing Hands, Healing Wind) are non-offensive and self/friend-castable.
+    info.isSelfBuff = !isOff && (isDef || canSelf || usageFlags != 0);
+    return info;
+}
+
+// Deterministic AWP slot cycling (replaces vanilla UIInventoryManager::RotateSelectedSlots 0x0050387C,
+// which has a stock bug where eVar6==3 writes uVar4=1 and bounces 4 <-> 1).
+// HUD left-to-right order: 0=Melee (slot_1), 1=Ranged (slot_2), 2=Spell 1 (slot_3), 3=Spell 2 (slot_4).
+// dir > 0 (RB/R1) moves strictly left-to-right; dir < 0 (LB/L1) moves strictly right-to-left.
+static void CycleActiveWeaponSlot(void* hero, int dir) {
+    if (!hero || !IsGoConscious(hero) || IsActorDrinkingPotion(hero)) return;
+    void* inv = *(void**)((char*)hero + 0x2C);
+    if (!inv || !Readable(inv, 0x80)) return;
     void* uiGame = *(void**)kAddrUIGame;
     if (!uiGame || !Readable(uiGame, 0x30)) return;
     void* uiInvMgr = *(void**)((char*)uiGame + 0x24);
     if (!uiInvMgr || !Readable(uiInvMgr, 0x40)) return;
-    s_rotateSelectedSlots(uiInvMgr, prev);
+
+    int cur = *(const int*)((const char*)inv + 0x74);
+    if (cur < 0 || cur > 3) cur = 0;
+
+    bool avail[4] = {false, false, false, false};
+    for (int s = 0; s < 4; ++s) {
+        char winName[48];
+        snprintf(winName, sizeof(winName), "awp_radio_button_character_1_slot_%d", s + 1);
+        if (!eng::FindWindow(winName, nullptr)) continue;
+        void* item = s_goInvGetItem(inv, s);
+        if (!item) {
+            // Slot 0 (Melee) is always selectable even bare-handed
+            avail[s] = (s == 0);
+            continue;
+        }
+        if (Readable(item, 0x40) && *(void**)((char*)item + 0x30) != nullptr && s_goIsSpell(item)) {
+            void* magic = *(void**)((char*)item + 0x30);
+            if (!s_goMagicCanCastLevel(magic)) continue;
+        }
+        avail[s] = true;
+    }
+
+    int next = gamepad::SelectNextWeaponSlot(cur, dir, avail);
+    if (next < 0) return;
+
+    char btnName[48];
+    snprintf(btnName, sizeof(btnName), "awp_radio_button_character_1_slot_%d", next + 1);
+    void* btn = eng::FindWindow(btnName, nullptr);
+    if (!btn) return;
+
+    uint32_t heroGoid = *(const uint32_t*)((const char*)hero + 0x4C);
+    s_uiRadioSetCheck(btn, true);
+    s_goInvRSSelect(inv, next, 1 /*AO_HUMAN*/);
+    s_uiInvRefreshForGo(uiInvMgr, heroGoid);
 }
 
 static void ToggleInventoryNative() {
@@ -649,6 +781,18 @@ void GamepadWorld_TriggerEscape() {
     } else {
         InjectKeyTap(VK_ESCAPE);
     }
+}
+
+void GamepadWorld_ToggleMegaMap() {
+    s_toggleMegaMap();
+}
+
+int GamepadWorld_GetActiveWeaponSlot() {
+    void* hero = GamepadWorld_GetLocalHero();
+    if (!hero || !Readable(hero, 0x40)) return -1;
+    void* inv = *(void**)((char*)hero + 0x2C);
+    if (!inv || !Readable(inv, 0x80)) return -1;
+    return *(const int*)((const char*)inv + 0x74);
 }
 
 void GamepadWorld_GetLabStats(int& outMoveOrders, int& outMoveFails, int& outWalkFlags,
@@ -726,31 +870,53 @@ void GamepadWorld_TickGameplay(const PadFrame& pad) {
     // 2. Left Stick camera-relative analog movement
     UpdateAnalogMovement(hero, pad);
 
-    // 3. Smart target/interact scan & highlight reticle
+    // 3. Smart target/interact scan & highlight reticle + inspect selected spell for self-buffs
     std::vector<gamepad::TargetCandidate> candidates;
     int bestIdx = -1;
     std::string bestName;
     ScanAndHighlightTargets(hero, pad, candidates, bestIdx, bestName);
+    SelectedSpellInfo spellInfo = InspectSelectedSpell(hero);
+
+    // Determine whether A should smartly self-cast (Haste, Healing Hands, Armor Buffs, etc.)
+    // vs interact with a very close NPC/chest vs cast on a manually locked ally player.
+    bool preferSelfCastOnA = false;
+    if (spellInfo.isSelfBuff) {
+        bool closeInteractable = (bestIdx >= 0 &&
+                                  candidates[bestIdx].kind == gamepad::TargetKind::Interactable &&
+                                  candidates[bestIdx].dist <= 3.5f);
+        bool lockedAlly = (g_manualTargetLock && bestIdx >= 0 &&
+                           candidates[bestIdx].kind == gamepad::TargetKind::AllyPlayer);
+        if (!closeInteractable && !lockedAlly) {
+            preferSelfCastOnA = true;
+        }
+    }
 
     // 4. Button actions
     if (pad.ltDown) {
-        // LT chord: Q / W / E / R Custom MMO Abilities + Spellbook + Journal
+        // LT chord: Q / W / E / R Custom MMO Abilities + Instant Self-Cast + Spellbook + Journal
         if (pad.Pressed(xinput_abi::kA)) CharacterAbilities_QueueTrigger(0); // [Q] Whirling Cleave
         if (pad.Pressed(xinput_abi::kB)) CharacterAbilities_QueueTrigger(1); // [W] Shrapnel Blast
         if (pad.Pressed(xinput_abi::kX)) CharacterAbilities_QueueTrigger(2); // [E] Aegis of Renewal
         if (pad.Pressed(xinput_abi::kY)) CharacterAbilities_QueueTrigger(3); // [R] Flame Nova
+        if (pad.Pressed(xinput_abi::kRightShoulder)) {
+            CastSelectedSpellOnTarget(hero, hero); // Explicit self-cast for any buff/heal spell
+        }
         if (pad.Pressed(xinput_abi::kDpadRight)) ToggleSpellbookNative();    // Spellbook
         if (pad.Pressed(xinput_abi::kDpadLeft))  s_toggleJournal();          // Journal
         if (pad.Pressed(xinput_abi::kDpadUp))    InjectKeyTap(VK_OEM_1, true); // Shift+; BuffUI
 
         g_overlay.showHint = true;
-        g_overlay.hintText = "[LT+A] Q-Cleave  [LT+B] W-Blast  [LT+X] E-Aegis  [LT+Y] R-Nova  [RS-Y] Zoom";
+        g_overlay.hintText = "[LT+A] Q-Cleave  [LT+B] W-Blast  [LT+X] E-Aegis  [LT+Y] R-Nova  [LT+RB] Self-Cast  [RS-Y] Zoom";
         return;
     }
 
-    // Primary Context Action (Attack / Cast / Talk / Shop / Open Chest/Door / Shrine / Pick Up / Trade)
-    if (pad.Pressed(xinput_abi::kA) && bestIdx >= 0) {
-        ExecuteContextAction(candidates[bestIdx].goid);
+    // Primary Context Action (Smart Self-Cast Buff / Attack / Cast / Talk / Shop / Open Chest/Door / Pick Up / Trade)
+    if (pad.Pressed(xinput_abi::kA)) {
+        if (preferSelfCastOnA) {
+            CastSelectedSpellOnTarget(hero, hero);
+        } else if (bestIdx >= 0) {
+            ExecuteContextAction(candidates[bestIdx].goid);
+        }
     }
 
     // Health Potion (B) & Mana Potion (Y) — respects PvP potion block at 0x005F4C5D automatically
@@ -769,12 +935,12 @@ void GamepadWorld_TickGameplay(const PadFrame& pad) {
         }
     }
 
-    // Cycle Active Weapon / Spell Slots (LB / RB)
+    // Cycle Active Weapon / Spell Slots: RB = left-to-right (1->2->3->4), LB = right-to-left (4->3->2->1)
     if (pad.Pressed(xinput_abi::kRightShoulder)) {
-        RotateWeaponSlot(false);
+        CycleActiveWeaponSlot(hero, +1);
     }
     if (pad.Pressed(xinput_abi::kLeftShoulder)) {
-        RotateWeaponSlot(true);
+        CycleActiveWeaponSlot(hero, -1);
     }
 
     // D-Pad shortcuts (direct native UIGame/UIPartyManager callbacks — 100% reliable)
@@ -807,14 +973,24 @@ void GamepadWorld_TickGameplay(const PadFrame& pad) {
 
     // Context-aware bottom hint strip
     g_overlay.showHint = true;
-    if (bestIdx >= 0) {
+    if (preferSelfCastOnA) {
+        g_overlay.showTargetBox = false; // Do not highlight an enemy when A will self-cast a buff/heal
+        char buf[160];
+        if (!spellInfo.name.empty()) {
+            snprintf(buf, sizeof(buf), "[A] Self-Cast: %s  [LB/RB] Slots  [X] Loot  [B/Y] Potions  [LT] Abilities",
+                     spellInfo.name.c_str());
+        } else {
+            snprintf(buf, sizeof(buf), "[A] Self-Cast Buff  [LB/RB] Slots  [X] Loot  [B/Y] Potions  [LT] Abilities");
+        }
+        g_overlay.hintText = buf;
+    } else if (bestIdx >= 0) {
         const char* verb = "Interact";
         switch (candidates[bestIdx].kind) {
             case gamepad::TargetKind::Enemy:        verb = "Attack"; break;
             case gamepad::TargetKind::Interactable: verb = "Use / Talk"; break;
             case gamepad::TargetKind::Breakable:    verb = "Smash"; break;
             case gamepad::TargetKind::GroundItem:   verb = "Pick Up"; break;
-            case gamepad::TargetKind::AllyPlayer:   verb = "Trade"; break;
+            case gamepad::TargetKind::AllyPlayer:   verb = (spellInfo.isSelfBuff ? "Buff / Heal" : "Trade"); break;
             default: break;
         }
         char buf[160];
@@ -826,7 +1002,7 @@ void GamepadWorld_TickGameplay(const PadFrame& pad) {
         }
         g_overlay.hintText = buf;
     } else {
-        g_overlay.hintText = "[LS] Move  [RS] Camera  [X] Loot  [B/Y] Potions  [LB/RB] Weapons  [LT] Abilities";
+        g_overlay.hintText = "[LS] Move  [RS] Camera  [X] Loot  [B/Y] Potions  [LB/RB] Slots  [LT] Abilities";
     }
 }
 
@@ -880,11 +1056,12 @@ void GamepadWorld_TickFreeAim(const PadFrame& pad) {
     if (pad.Pressed(xinput_abi::kY)) {
         s_uiGameHealMana();
     }
+    void* hero = GamepadWorld_GetLocalHero();
     if (pad.Pressed(xinput_abi::kRightShoulder)) {
-        RotateWeaponSlot(false);
+        CycleActiveWeaponSlot(hero, +1);
     }
     if (pad.Pressed(xinput_abi::kLeftShoulder)) {
-        RotateWeaponSlot(true);
+        CycleActiveWeaponSlot(hero, -1);
     }
 
     g_overlay.showHint = true;

@@ -105,7 +105,8 @@ inline bool Readable(const void* p, size_t n = 4) {
 }
 
 // Engine globals (DSLOA.exe v1.50 verified)
-constexpr uintptr_t kAddrAppModule     = 0x007ACFC8;
+constexpr uintptr_t kAddrAppModule     = 0x007A99A0; // AppModule (cursor, fullscreen, flags, mouse history)
+constexpr uintptr_t kAddrRapiOwner     = 0x007ACFC8; // RapiOwner (+0x1E0 = Rapi*)
 constexpr uintptr_t kAddrUIShell       = 0x007ACFE4;
 constexpr uintptr_t kAddrUICamera      = 0x007ACF84;
 constexpr uintptr_t kAddrUIGame        = 0x007ACF8C;
@@ -125,6 +126,7 @@ extern OverlayState g_overlay;
 
 void GetScreenDimensions(int& outW, int& outH);
 bool IsWorldStateInGame();
+bool IsWorldStateMegaMap();
 bool IsInMenuOrPanelOpen();
 void SetVirtualCursorClient(float x, float y, bool activate, bool dispatchMove = true);
 void GetVirtualCursorClientF(float& outX, float& outY);
@@ -145,6 +147,8 @@ bool GamepadWorld_GetCameraAnalog(float& outYaw, float& outPitch, float& outZoom
 void* GamepadWorld_GetLocalHero();
 bool GamepadWorld_IsHeroInTown(void* hero);
 void GamepadWorld_TriggerEscape();
+void GamepadWorld_ToggleMegaMap();
+int  GamepadWorld_GetActiveWeaponSlot();
 void GamepadWorld_GetLabStats(int& outMoveOrders, int& outMoveFails, int& outWalkFlags,
                               int& outTgtScanned, int& outTgtCand, int& outTgtOnScr);
 
