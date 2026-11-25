@@ -31,6 +31,7 @@ typedef void  (__thiscall* GoMindRSStopFn)(void*, int);
 typedef bool  (__thiscall* GoMindIsEnemyFn)(void*, const void*);
 typedef bool  (__thiscall* GoMindIsFriendFn)(void*, const void*);
 typedef bool  (__thiscall* GoBoolQueryFn)(const void*);
+typedef float (__thiscall* GoAspectRadiusFn)(const void*);
 typedef bool  (__thiscall* ContextActionOnGoFn)(void*, uint32_t, bool, int);
 typedef uint8_t (__cdecl*  UIGamePotionFn)();
 typedef uint32_t (__thiscall* CollectLootFn)(void*);
@@ -67,11 +68,14 @@ static const auto s_goIsInFrustum        = (GoBoolQueryFn)0x00539161;
 static const auto s_goIsActor            = (GoBoolQueryFn)0x00539442;
 static const auto s_goIsBreakable        = (GoBoolQueryFn)0x005394AA;
 static const auto s_goIsContainer        = (GoBoolQueryFn)0x0053952E;
+static const auto s_goIsGold             = (GoBoolQueryFn)0x005395CB;
+static const auto s_goHasGui             = (GoBoolQueryFn)0x0047C1FC;
 static const auto s_goIsItem             = (GoBoolQueryFn)0x00539612;
 static const auto s_goIsSelectable       = (GoBoolQueryFn)0x00539743;
 static const auto s_goIsSpell            = (GoBoolQueryFn)0x00539779;
 static const auto s_goIsUsable           = (GoBoolQueryFn)0x005397C4;
 static const auto s_goIsInsideInv        = (GoBoolQueryFn)0x0047C07D;
+static const auto s_goAspectBoundRadius  = (GoAspectRadiusFn)0x00535FCE;
 static const auto s_contextActionOnGo    = (ContextActionOnGoFn)0x00512EF0;
 static const auto s_castSpellOnGo        = (UICmdsCastSpellFn)0x00510B7F;
 static const auto s_uiGameHealBody       = (UIGamePotionFn)0x004EEA77;
@@ -234,6 +238,7 @@ uint32_t g_lockedTargetGoid = 0;
 bool     g_manualTargetLock = false;
 uint32_t g_highlightedGoid  = 0;
 bool     g_freeAimInitialized = false;
+gamepad::GroundTooltipHoverState g_groundHover{};
 
 int      g_labMoveOrders = 0;
 int      g_labMoveFails  = 0;
@@ -516,6 +521,10 @@ static void ScanAndHighlightTargets(void* hero, const PadFrame& pad,
                                         }
                                     }
                                 }
+                            } else if (s_goHasGui(go) || s_goIsGold(go)) {
+                                // Check pickupable inventory items & gold BEFORE IsUsable/IsContainer
+                                // (base_item sets aspect.is_usable=true and backpacks are containers!)
+                                if (distSq <= 8.0f * 8.0f) kind = gamepad::TargetKind::GroundItem;
                             } else if (s_goIsUsable(go)) {
                                 if (distSq <= 10.0f * 10.0f) kind = gamepad::TargetKind::Interactable;
                             } else if (s_goIsContainer(go) && !s_goIsBreakable(go)) {
@@ -536,7 +545,19 @@ static void ScanAndHighlightTargets(void* hero, const PadFrame& pad,
                                 float ndx = (xzLen > 1e-4f) ? (dx / xzLen) : 0.0f;
                                 float ndz = (xzLen > 1e-4f) ? (dz / xzLen) : 0.0f;
 
-                                Vec3 projPos = {wPos.x, wPos.y + (isActor ? 1.15f : 0.45f), wPos.z};
+                                float projHeight = 0.45f;
+                                if (isActor) {
+                                    projHeight = 1.15f;
+                                } else if (kind == gamepad::TargetKind::GroundItem) {
+                                    // Project directly onto the ground item's 3D mesh center so both the
+                                    // highlight square and GroundTooltip mouse hit-test land squarely on it.
+                                    float r = (aspect && Readable(aspect, 0xA4)) ? s_goAspectBoundRadius(aspect) : 0.14f;
+                                    if (!std::isfinite(r) || r <= 0.0f) r = 0.14f;
+                                    projHeight = r * 0.45f;
+                                    if (projHeight < 0.04f) projHeight = 0.04f;
+                                    if (projHeight > 0.22f) projHeight = 0.22f;
+                                }
+                                Vec3 projPos = {wPos.x, wPos.y + projHeight, wPos.z};
                                 float sx = 0.0f, sy = 0.0f;
                                 bool onScr = ProjectWorldToScreen(projPos, sx, sy);
                                 if (onScr) ++onScreenCount;
@@ -841,6 +862,7 @@ void GamepadWorld_OnLeaveGameplay() {
     g_analogCamPitch = 0.0f;
     g_analogCamZoom  = 0.0f;
     g_freeAimInitialized = false;
+    g_groundHover = {};
     if (g_wasMovingByStick) {
         g_wasMovingByStick = false;
         if (void* hero = GamepadWorld_GetLocalHero()) {
@@ -888,6 +910,34 @@ void GamepadWorld_TickGameplay(const PadFrame& pad) {
                            candidates[bestIdx].kind == gamepad::TargetKind::AllyPlayer);
         if (!closeInteractable && !lockedAlly) {
             preferSelfCastOnA = true;
+        }
+    }
+
+    // 3b. Idle Ground-Item Hover Sync: when standing still (~150ms) with a ground item highlighted,
+    // place the hidden virtual cursor onto the item so GroundTooltip pops up natively without combat clutter.
+    {
+        int sw = 0, sh = 0;
+        GetScreenDimensions(sw, sh);
+        bool dismissAction = pad.Pressed(xinput_abi::kA) || pad.Pressed(xinput_abi::kX);
+        bool isIdle = !g_wasMovingByStick &&
+                      pad.leftStick.magnitude <= 0.0f &&
+                      pad.rightStick.magnitude <= 0.0f &&
+                      !pad.ltDown && !dismissAction;
+        bool hasGroundItem = !preferSelfCastOnA &&
+                             bestIdx >= 0 &&
+                             candidates[bestIdx].kind == gamepad::TargetKind::GroundItem &&
+                             candidates[bestIdx].onScreen;
+        uint32_t itemGoid = hasGroundItem ? candidates[bestIdx].goid : 0;
+        float itemX = hasGroundItem ? candidates[bestIdx].screenX : 0.0f;
+        float itemY = hasGroundItem ? candidates[bestIdx].screenY : 0.0f;
+
+        auto hoverUpd = gamepad::UpdateGroundTooltipHover(
+            g_groundHover, pad.nowMs, isIdle, hasGroundItem,
+            itemGoid, itemX, itemY, sw, sh, 150, 3.0f);
+        if (hoverUpd.action == gamepad::GroundHoverAction::MoveToItem ||
+            hoverUpd.action == gamepad::GroundHoverAction::ParkNeutral)
+        {
+            SetVirtualCursorClient(hoverUpd.x, hoverUpd.y, true, true);
         }
     }
 

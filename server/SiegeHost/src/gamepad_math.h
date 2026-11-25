@@ -252,12 +252,21 @@ inline int SelectBestTargetIndex(
     return bestIdx;
 }
 
-// Cycles deterministically through enemies first, then interactables, sorted by distance.
+// Cycles deterministically through enemies first, then interactables/breakables, sorted by distance.
+// When no combat/interactable targets exist nearby (e.g. standing over a post-combat loot pile),
+// falls back to cycling GroundItems so players can inspect each dropped item's Ground Tooltip with R3.
 inline uint32_t CycleNextTargetGoid(const std::vector<TargetCandidate>& candidates, uint32_t currentGoid, int delta = 1) {
     std::vector<const TargetCandidate*> pool;
     for (const auto& c : candidates) {
         if (c.goid != 0 && (c.kind == TargetKind::Enemy || c.kind == TargetKind::Interactable || c.kind == TargetKind::Breakable)) {
             pool.push_back(&c);
+        }
+    }
+    if (pool.empty()) {
+        for (const auto& c : candidates) {
+            if (c.goid != 0 && c.kind == TargetKind::GroundItem) {
+                pool.push_back(&c);
+            }
         }
     }
     if (pool.empty()) return 0;
@@ -279,6 +288,88 @@ inline uint32_t CycleNextTargetGoid(const std::vector<TargetCandidate>& candidat
     int n = static_cast<int>(pool.size());
     int nextIdx = (curIdx + (delta >= 0 ? 1 : -1) + n) % n;
     return pool[nextIdx]->goid;
+}
+
+// ----------------------------------------------------------------------------------------------
+// Idle Ground-Item Hover Sync (triggers GroundTooltip natively without combat clutter)
+// ----------------------------------------------------------------------------------------------
+struct GroundTooltipHoverState {
+    bool     hoverActive = false;
+    uint32_t hoveredGoid = 0;
+    float    hoveredX    = 0.0f;
+    float    hoveredY    = 0.0f;
+    uint32_t idleSinceMs = 0;
+    bool     wasIdle     = false;
+};
+
+enum class GroundHoverAction : uint8_t {
+    None        = 0, // No cursor change needed (waiting for dwell, stationary hover, or already parked)
+    MoveToItem  = 1, // Sync hidden virtual cursor onto (x, y) over the ground item
+    ParkNeutral = 2, // Return hidden virtual cursor to safe neutral park (50%, 22%)
+};
+
+struct GroundHoverUpdate {
+    GroundHoverAction action = GroundHoverAction::None;
+    float x = 0.0f;
+    float y = 0.0f;
+};
+
+inline GroundHoverUpdate UpdateGroundTooltipHover(
+    GroundTooltipHoverState& st,
+    uint32_t nowMs,
+    bool isIdle,
+    bool hasGroundItem,
+    uint32_t itemGoid,
+    float itemX,
+    float itemY,
+    int screenW,
+    int screenH,
+    uint32_t hoverDelayMs = 150,
+    float repollDeltaPx = 3.0f)
+{
+    const float parkX = (screenW > 0) ? (static_cast<float>(screenW) * 0.5f) : 512.0f;
+    const float parkY = (screenH > 0) ? (static_cast<float>(screenH) * 0.22f) : 168.0f;
+
+    // Keep synced cursor strictly inside the 3D playfield (never over top portraits or bottom HUD bars)
+    bool inSafePlayfield = hasGroundItem && itemGoid != 0 && screenW > 64 && screenH > 64 &&
+                           itemX >= 16.0f && itemX <= static_cast<float>(screenW - 16) &&
+                           itemY >= static_cast<float>(screenH) * 0.07f &&
+                           itemY <= static_cast<float>(screenH) * 0.84f;
+
+    if (!isIdle || !inSafePlayfield) {
+        st.wasIdle = false;
+        st.idleSinceMs = 0;
+        if (st.hoverActive) {
+            st.hoverActive = false;
+            st.hoveredGoid = 0;
+            return {GroundHoverAction::ParkNeutral, parkX, parkY};
+        }
+        return {GroundHoverAction::None, 0.0f, 0.0f};
+    }
+
+    if (!st.wasIdle) {
+        st.wasIdle = true;
+        st.idleSinceMs = nowMs;
+    }
+
+    uint32_t elapsed = nowMs - st.idleSinceMs;
+    if (elapsed < hoverDelayMs) {
+        return {GroundHoverAction::None, 0.0f, 0.0f};
+    }
+
+    float dx = itemX - st.hoveredX;
+    float dy = itemY - st.hoveredY;
+    bool movedEnough = (dx * dx + dy * dy) >= (repollDeltaPx * repollDeltaPx);
+
+    if (!st.hoverActive || st.hoveredGoid != itemGoid || movedEnough) {
+        st.hoverActive = true;
+        st.hoveredGoid = itemGoid;
+        st.hoveredX = itemX;
+        st.hoveredY = itemY;
+        return {GroundHoverAction::MoveToItem, itemX, itemY};
+    }
+
+    return {GroundHoverAction::None, 0.0f, 0.0f};
 }
 
 // ----------------------------------------------------------------------------------------------

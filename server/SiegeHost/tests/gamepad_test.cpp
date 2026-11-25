@@ -212,6 +212,56 @@ static void TestWeaponSlotCycling() {
     assert(SelectNextWeaponSlot(0, -1, meleeOnly) == -1);
 }
 
+static void TestGroundTooltipHoverSyncAndLootCycle() {
+    // When only GroundItems exist nearby (no enemies/interactables), R3 cycles cleanly through loot pile
+    std::vector<TargetCandidate> lootOnly = {
+        {0x501, TargetKind::GroundItem, 1.5f, 0.0f, 1.0f, 640, 400, true},
+        {0x502, TargetKind::GroundItem, 2.2f, 0.3f, 0.9f, 700, 420, true},
+    };
+    assert(CycleNextTargetGoid(lootOnly, 0, +1) == 0x501);
+    assert(CycleNextTargetGoid(lootOnly, 0x501, +1) == 0x502);
+    assert(CycleNextTargetGoid(lootOnly, 0x502, +1) == 0x501);
+
+    GroundTooltipHoverState st{};
+    const int sw = 1920, sh = 1080;
+
+    // 1. Moving -> never triggers hover
+    auto r0 = UpdateGroundTooltipHover(st, 1000, false, true, 0x501, 960, 540, sw, sh);
+    assert(r0.action == GroundHoverAction::None && !st.hoverActive);
+
+    // 2. Stop moving at t=1100 -> waits for 150ms dwell before showing tooltip
+    auto r1 = UpdateGroundTooltipHover(st, 1100, true, true, 0x501, 960, 540, sw, sh);
+    assert(r1.action == GroundHoverAction::None && !st.hoverActive);
+    auto r2 = UpdateGroundTooltipHover(st, 1200, true, true, 0x501, 960, 540, sw, sh);
+    assert(r2.action == GroundHoverAction::None && !st.hoverActive);
+
+    // 3. Dwell reached at t=1250 -> moves hidden virtual cursor onto item
+    auto r3 = UpdateGroundTooltipHover(st, 1250, true, true, 0x501, 960, 540, sw, sh);
+    assert(r3.action == GroundHoverAction::MoveToItem && Near(r3.x, 960) && Near(r3.y, 540) && st.hoverActive);
+
+    // 4. Tiny 1px camera jitter while stationary -> returns None (preserves stationary hover!)
+    auto r4 = UpdateGroundTooltipHover(st, 1280, true, true, 0x501, 961.0f, 540.5f, sw, sh);
+    assert(r4.action == GroundHoverAction::None && st.hoverActive);
+
+    // 5. Cycling to second ground item while still idle -> moves immediately without re-waiting dwell
+    auto r5 = UpdateGroundTooltipHover(st, 1300, true, true, 0x502, 1020, 560, sw, sh);
+    assert(r5.action == GroundHoverAction::MoveToItem && Near(r5.x, 1020) && Near(r5.y, 560));
+
+    // 6. Start moving again -> immediately re-parks cursor to safe neutral spot (50%, 22%)
+    auto r6 = UpdateGroundTooltipHover(st, 1330, false, true, 0x502, 1020, 560, sw, sh);
+    assert(r6.action == GroundHoverAction::ParkNeutral && Near(r6.x, 960) && Near(r6.y, sh * 0.22f) && !st.hoverActive);
+
+    // 7. Subsequent frame while still moving -> None (doesn't spam re-park)
+    auto r7 = UpdateGroundTooltipHover(st, 1350, false, true, 0x502, 1020, 560, sw, sh);
+    assert(r7.action == GroundHoverAction::None);
+
+    // 8. Item behind bottom HUD bar (y > 84% of screen height) -> safely ignored
+    auto r8 = UpdateGroundTooltipHover(st, 2000, true, true, 0x501, 960, 1010, sw, sh);
+    assert(r8.action == GroundHoverAction::None && !st.hoverActive);
+    auto r9 = UpdateGroundTooltipHover(st, 2250, true, true, 0x501, 960, 1010, sw, sh);
+    assert(r9.action == GroundHoverAction::None && !st.hoverActive);
+}
+
 int main() {
     TestStickProcessing();
     TestTriggerHysteresis();
@@ -222,6 +272,7 @@ int main() {
     TestGridboxStepping();
     TestVirtualCursorIntegration();
     TestWeaponSlotCycling();
-    std::printf("gamepad_test: ALL 9 TEST SUITES PASSED!\n");
+    TestGroundTooltipHoverSyncAndLootCycle();
+    std::printf("gamepad_test: ALL 10 TEST SUITES PASSED!\n");
     return 0;
 }
