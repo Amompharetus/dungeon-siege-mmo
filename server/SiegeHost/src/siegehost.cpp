@@ -1100,7 +1100,7 @@ static BOOL WINAPI HookPeekMessageA(LPMSG msg, HWND wnd, UINT fmin, UINT fmax, U
         CharacterAbilities_Tick();
         SharedStash_Tick();
         if (g_cfg.role != Role::Server) { Gamepad_Tick(); HostHide_ClientTick(); }
-        if (g_cfg.role == Role::Server) { AutoHostTick(); HostHide_ServerTick(); LabMoveLocTick(); AreaScaleTick(); ShopStockTick(); InvFixTick(); QuestModeTick(); JipQueueTick(); PvpZoneTick(); DoorFixTick(); }
+        if (g_cfg.role == Role::Server) { AutoHostTick(); HostHide_ServerTick(); LabMoveLocTick(); AreaScaleTick(); ShopStockTick(); InvFixTick(); QuestModeTick(); JipQueueTick(); PvpZoneTick(); DoorFixTick(); LevelAnnounce_Tick(); }
         else if (g_cfg.role == Role::Client) { AutoJoinTick(); InvFixTick(); QuestModeTick(); ShopStockClientTick(); ChatFixTick(); ChatHistoryTick(); PartyPanelTick(); PanelFilterTick(); ChatDiagTick(); PartyPanelDiagTick(); PvpZoneTick(); DoorFixTick(); }
     }
     BOOL res = g_origPeek(msg, wnd, fmin, fmax, remove);
@@ -1403,7 +1403,7 @@ static void Startup() {
     SharedStash_Init();
     if (g_cfg.role != Role::Server) { Gamepad_Init(); HostHide_ClientInstall(); EndGameSummaryFix_Install(); }
     StagingImportDisableInstall();
-    if (g_cfg.role == Role::Server) { AreaScaleInstall(); ShopStockInstall(); InvFixInstall(); McpFixInstall(); QuestModeInstall(); JipQueueInstall(); DoorFixInstall(); HasteFixInstall(); }
+    if (g_cfg.role == Role::Server) { AreaScaleInstall(); ShopStockInstall(); InvFixInstall(); McpFixInstall(); QuestModeInstall(); JipQueueInstall(); DoorFixInstall(); HasteFixInstall(); LevelAnnounce_Init(); }
     else { InvFixInstall(); McpFixInstall(); QuestModeInstall(); ShopStockClientInstall(); DoorFixInstall(); PrefsFixInstall(); }   // 0.9.0: the backpack cap has to come off on a player's own machine too
     if (g_cfg.role == Role::Client) { ChatFixInstall(); PartyPanelInstall(); PortraitFixInstall(); if (g_cfg.showOtherPlayers) PanelHostFilterInstall(); PortraitDiagInstall(); ChatDiagInstall(); AreaScaleClientDiagInstall(); }
     else if (g_cfg.role == Role::None) { ChatFixGameMsgCooldownInstall(); }

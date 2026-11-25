@@ -1,6 +1,6 @@
 // SiegePortal — accounts, online character saves and server status for the Dungeon Siege MMO project.
 // Single static binary, stdlib only. Runs on the game-host PC (Windows) or on a Linux VPS.
-// Docs: server/SiegePortal/README.md
+// Docs: 04-server/SiegePortal/README.md
 package main
 
 import (
@@ -28,7 +28,7 @@ import (
 	"time"
 )
 
-const version = "0.7.2"
+const version = "0.7.3"
 
 // See SiegeServer-24-7: absent means 30 Hz, so a portal.json that update.sh preserved still tells
 // launchers the new rate. Host and client must agree, so this comes from the server entry.
@@ -69,6 +69,9 @@ type Config struct {
 	JoinNewCharMaxXP  int64 `json:"join_new_char_max_xp"`   // most experience an unknown (new) character may have (default 500)
 	JoinToleranceXP   int64 `json:"join_tolerance_xp"`      // allowed above the record (last seconds before a crash) (default 1000)
 	JoinTolerancePct  int64 `json:"join_tolerance_percent"` // plus this percentage of the record (default 5)
+
+	// Discord level-up announcer (0.7.3): see discord.go
+	Discord *DiscordConfig `json:"discord,omitempty"`
 }
 
 // ServerEntry is one game server (shard), e.g. NA on Hostinger or EU on AWS. The shard's SiegeServer pushes its
@@ -133,6 +136,11 @@ type Portal struct {
 	charsDirty bool
 
 	leasesDirty bool // 0.7.2: an expiry moved; leasesFlushLoop writes it. Starts and ends write immediately.
+
+	// 0.7.3: Discord level-up announcer deduplication & async delivery
+	discordLevels map[string]int
+	discordClient *http.Client
+	discordWG     *sync.WaitGroup // non-nil only in unit tests for deterministic synchronization
 }
 
 var nameRe = regexp.MustCompile(`^[A-Za-z0-9_]{3,20}$`)
@@ -170,12 +178,13 @@ func main() {
 		return
 	}
 	cfg := loadConfig(*cfgPath)
-	p := &Portal{cfg: cfg, accounts: map[string]*Account{}, leases: map[string]*lease{}, shards: map[string]*shardState{}, refusals: map[string]refusal{}}
+	p := &Portal{cfg: cfg, accounts: map[string]*Account{}, leases: map[string]*lease{}, shards: map[string]*shardState{}, refusals: map[string]refusal{}, discordLevels: map[string]int{}}
 	must(os.MkdirAll(filepath.Join(cfg.DataDir, "saves"), 0o755))
 	p.secret = p.loadSecret()
 	p.loadAccounts()
 	p.initAllChars()
 	p.loadLeases() // before the listener opens, so a session that was live across the restart is honoured on its first request
+	p.loadDiscordLevels()
 	go p.charsFlushLoop()
 	go p.leasesFlushLoop()
 
@@ -196,6 +205,7 @@ func main() {
 	mux.HandleFunc("POST /api/shard/heartbeat", p.handleShardHeartbeat)
 	mux.HandleFunc("GET /api/shard/stash", p.handleGetShardStash)
 	mux.HandleFunc("PUT /api/shard/stash", p.handlePutShardStash)
+	mux.HandleFunc("POST /api/shard/levelup", p.handleShardLevelUp)
 	mux.HandleFunc("POST /api/servers/wake", p.auth(p.handleWake))
 	p.startOnDemandLoops()
 
@@ -205,6 +215,7 @@ func main() {
 	for _, s := range cfg.Servers {
 		log.Printf("server %q (%s) address=%s heartbeat=%s", s.ID, s.Name, s.GameAddress, map[bool]string{true: "push", false: "file"}[s.HeartbeatFile == ""])
 	}
+	p.logDiscordStatus()
 	log.Printf("SiegePortal %s listening on %s (data=%s, game=%s)", version, cfg.Listen, cfg.DataDir, cfg.GameAddress)
 	srv := &http.Server{Addr: cfg.Listen, Handler: logRequests(mux), ReadHeaderTimeout: 15 * time.Second}
 	log.Fatal(srv.ListenAndServe())
@@ -851,7 +862,7 @@ func (p *Portal) handlePutSave(w http.ResponseWriter, r *http.Request, acct *Acc
 	defer p.mu.Unlock()
 	// 0.7.2: a save is refused only when someone else is demonstrably holding this account. "No lease" and
 	// "someone else's lease" were one check until a restart wiped every lease and turned the first case into
-	// silent data loss. They are different situations and only the second one justifies a refusal.
+	// silent data loss (RE-39). They are different situations and only the second one justifies a refusal.
 	if l := p.leases[strings.ToLower(acct.Name)]; l == nil || !time.Now().Before(l.Expires) {
 		log.Printf("save accepted without a live lease: %s (%d bytes) - no other session holds this account",
 			acct.Name, len(body))

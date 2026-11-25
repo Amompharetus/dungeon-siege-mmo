@@ -8,6 +8,14 @@
   "keep_backups": 20,
   "lease_seconds": 300,
   "max_save_mb": 64,
+  "discord": {
+    "bot_token": "",
+    "channel_id": "",
+    "min_level": 5,
+    "max_level": 150,
+    "milestone_step": 5,
+    "bold": true
+  },
   "servers": [
     {
       "id": "na",

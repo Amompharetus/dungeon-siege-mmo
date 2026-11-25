@@ -1,4 +1,4 @@
-// joinguard.cpp — 0.6.0 "join through the launcher only" 
+// joinguard.cpp — 0.6.0 "join through the launcher only" (see 03-analysis/RE-04-join-guard.md)
 //
 // Client: the launcher writes a signed join ticket into SiegeHost.ini ([JoinGuard] Ticket=). HookConnect appends it to
 //   the DirectPlay connect data:  <game data><ticket text><uint32 ticket length>"DSMT".
@@ -873,4 +873,12 @@ std::string JG_GetAccountForDpnid(DWORD dpnid) {
         return it->second.t.account;
     }
     return "";
+}
+
+bool JG_IsDpnidVerified(DWORD dpnid) {
+    if (!g_enforce) return true;
+    if (!g_csInit) return false;
+    Lock l;
+    auto it = g_joined.find(dpnid);
+    return it != g_joined.end() && it->second.verified && !it->second.kicked && !it->second.departedTick;
 }

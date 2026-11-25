@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <string>
 
-#define SIEGEHOST_VERSION "1.5.40"
+#define SIEGEHOST_VERSION "1.5.41"
 
 enum class Role { None, Server, Client };
 
@@ -131,7 +131,9 @@ bool ChatFix_AllowGameMessageWide(const wchar_t* text);
 bool IsActorDrinkingPotion(void* go);
 LRESULT SiegeHost_SendGameWndMsg(UINT msg, WPARAM wParam, LPARAM lParam);
 std::string JG_GetAccountForDpnid(DWORD dpnid);
+bool JG_IsDpnidVerified(DWORD dpnid);
 #include "sharedstash.h"
 #include "doorfix.h"
 #include "gamepad.h"
 #include "hosthide.h"
+#include "levelannounce.h"
