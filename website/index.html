@@ -6069,15 +6069,19 @@ select.wiki-select::picker-icon {
         flex-direction: row;
         flex-wrap: wrap;
         justify-content: center;
+        align-items: center;
         gap: 6px;
         margin: 10px auto 12px;
         padding: 0 56px 0 8px;
     }
-    .nav-btn {
+    .nav-btn,
+    #nav-btn-gm {
         width: auto;
-        padding: 6px 10px;
-        font-size: 10.5px;
-        gap: 5px;
+        padding: 6px 10px !important;
+        font-size: 10.5px !important;
+        line-height: 1.2 !important;
+        letter-spacing: 0.8px !important;
+        gap: 5px !important;
         border-width: 1.5px;
     }
     .nav-btn .nav-icon {
@@ -6178,28 +6182,16 @@ select.wiki-select::picker-icon {
         font-size: 10px;
         padding: 2px 6px;
     }
-    /* Eliminate horizontal scrollbar in Realms cards on mobile by wrapping Location cleanly to a subtle sub-row */
-    #view-realms .roster-head {
-        min-width: 0 !important;
-        grid-template-columns: minmax(0, 1fr) 54px auto;
-        column-gap: 6px;
-        padding: 10px 10px;
-    }
-    #view-realms .roster-head .th-col:nth-child(4) {
-        display: none;
+    /* Keep classic 4-column horizontal Realms layout on mobile with smooth right-scroll inside the card */
+    #view-realms .roster-head,
+    #view-realms .roster-body {
+        min-width: 520px;
+        box-sizing: border-box;
     }
     #view-realms .roster-row {
-        min-width: 0 !important;
-        grid-template-columns: minmax(0, 1fr) 54px auto;
-        column-gap: 6px;
-        row-gap: 6px;
-        padding: 10px 10px;
-    }
-    #view-realms .roster-row .col-location {
-        grid-column: 1 / -1;
-        justify-content: flex-start;
-        padding-top: 6px;
-        border-top: 1px solid rgba(128, 96, 49, 0.22);
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
     }
     /* Eliminate horizontal scrollbar in Ladder card on mobile */
     #view-ladder .ladder-head,
