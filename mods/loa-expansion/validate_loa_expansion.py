@@ -775,7 +775,164 @@ def validate(game_dir: str, mod_path: str) -> None:
             ):
                 if needle not in glyph_skrit:
                     errors.append(f"world/contentdb/components/spells/spell_glyph.skrit missing expected snippet: {needle!r}")
-        print(f"[7/8] Metadata, Displacers, pcontent.skrit & spell_glyph.skrit validated.")
+
+        # Verify world/global/monster_types.gas undead & spell group fixes
+        mt_raw = mod.get("world/global/monster_types.gas")
+        if not mt_raw:
+            errors.append("Z_LoA_Expansion.dsres missing world/global/monster_types.gas")
+        else:
+            mt_txt = strip_gas_comments(mt_raw.decode("latin1"))
+            mt_groups: Dict[str, Tuple[Set[str], List[str]]] = {}
+            for _, _, _, gblk in extract_blocks(mt_txt, r"\[group\*\]"):
+                nm = re.search(r'\bname\s*=\s*"?([^";\r\n]+)"?\s*;', gblk, re.I)
+                if not nm:
+                    continue
+                gname = nm.group(1).strip().lower()
+                mset: Set[str] = set()
+                tlist: List[str] = []
+                for _, _, _, sub in extract_blocks(gblk, r"\[membership\]"):
+                    for m in re.finditer(r"\*\s*=\s*([^;\r\n]+);", sub):
+                        mset.add(m.group(1).strip().lower())
+                for _, _, _, sub in extract_blocks(gblk, r"\[templates\]"):
+                    for m in re.finditer(r"\*\s*=\s*([^;\r\n]+);", sub):
+                        tlist.append(m.group(1).strip().lower())
+                mt_groups[gname] = (mset, tlist)
+                # Every template entry must resolve in merged_templates and be unique
+                if len(tlist) != len(set(tlist)):
+                    dups = sorted({t for t in tlist if tlist.count(t) > 1})
+                    errors.append(f"monster_types.gas group {gname!r} has duplicate templates: {dups[:10]}")
+                missing_mt = sorted({t for t in tlist if t not in merged_templates})
+                if missing_mt:
+                    errors.append(f"monster_types.gas group {gname!r} references missing templates: {missing_mt[:10]}")
+
+            # Simulate DSLOA.exe MonsterTypes::Group::IsMember for undead
+            def _eff_membership(tname: str) -> Set[str]:
+                cur: str | None = tname.lower()
+                seen_c: Set[str] = set()
+                while cur and cur not in seen_c and cur in merged_templates:
+                    seen_c.add(cur)
+                    tblk, par = merged_templates[cur]
+                    ms = re.findall(r"(?mi)(?:^|[\s{;])(?:[fbixs]\s+)?membership\s*=\s*([^;\r\n}]+);", tblk)
+                    if ms:
+                        return {tok.strip().lower() for tok in ms[-1].split(",") if tok.strip()}
+                    cur = par
+                return set()
+
+            u_mems, u_tpls_list = mt_groups.get("undead", (set(), []))
+            u_tpls = set(u_tpls_list)
+
+            def _is_undead(tname: str) -> bool:
+                tl = tname.lower()
+                return bool(_eff_membership(tl) & u_mems) or (tl in u_tpls)
+
+            must_be_undead = (
+                "skeleton", "2w_skeleton", "3w_skeleton",
+                "skeleton_large", "2w_skeleton_large", "3w_skeleton_large",
+                "skeleton_mercenary_archer", "2w_skeleton_mercenary_archer", "3w_skeleton_mercenary_archer",
+                "ghost", "2w_ghost", "3w_ghost",
+                "wraith", "2w_wraith", "3w_wraith",
+                "wraith_lesser", "2w_wraith_lesser", "3w_wraith_lesser",
+                "wraith_archer", "2w_wraith_archer", "3w_wraith_archer",
+                "wraith_mage", "2w_wraith_mage", "3w_wraith_mage",
+                "wraith_piercer", "2w_wraith_piercer", "3w_wraith_piercer",
+                "wraith_terror", "2w_wraith_terror", "3w_wraith_terror",
+                "wraith_boss_01", "2w_wraith_boss_01", "3w_wraith_boss_01",
+                "wraith_mage_boss_01", "2w_wraith_mage_boss_01", "3w_wraith_mage_boss_01",
+                "warlock", "2w_warlock", "3w_warlock",
+                "zombie_01", "2w_zombie_01", "3w_zombie_01",
+                "zombie_02", "2w_zombie_02", "3w_zombie_02",
+                "zombie_03", "2w_zombie_03", "3w_zombie_03",
+                "zombie_headless", "2w_zombie_headless", "3w_zombie_headless",
+                "zombie_02_boss_01", "2w_zombie_02_boss_01", "3w_zombie_02_boss_01",
+                "walking_corpse", "2w_walking_corpse", "3w_walking_corpse",
+                "walking_corpse_boss_01", "2w_walking_corpse_boss_01", "3w_walking_corpse_boss_01",
+                "tortured_corpse", "2w_tortured_corpse", "3w_tortured_corpse",
+                "dungeon_crawler", "2w_dungeon_crawler", "3w_dungeon_crawler",
+                "grave_crawler", "2w_grave_crawler", "3w_grave_crawler",
+                "krug_dog_skeleton", "2w_krug_dog_skeleton", "3w_krug_dog_skeleton",
+                "horrid", "2w_horrid", "3w_horrid",
+                "lava_spirit", "2w_lava_spirit", "3w_lava_spirit",
+                "possessed_skull", "2w_possessed_skull", "3w_possessed_skull",
+                "dsx_ghost", "2w_dsx_ghost", "3w_dsx_ghost",
+                "dsx_wraith", "2w_dsx_wraith", "3w_dsx_wraith",
+                "dsx_armor_deadly", "2w_dsx_armor_deadly", "3w_dsx_armor_deadly",
+                "dsx_crawler_dungeon", "2w_dsx_crawler_dungeon", "3w_dsx_crawler_dungeon",
+                "dsx_drake_death_two_boss", "2w_dsx_drake_death_two_boss", "3w_dsx_drake_death_two_boss",
+                "dsx_ztrool", "2w_dsx_ztrool", "3w_dsx_ztrool",
+                "mmo_loa_dsx_horrid", "2w_mmo_loa_dsx_horrid", "3w_mmo_loa_dsx_horrid",
+                "mmo_loa_dsx_lava_spirit", "2w_mmo_loa_dsx_lava_spirit", "3w_mmo_loa_dsx_lava_spirit",
+                "mmo_loa_dsx_ztrool", "2w_mmo_loa_dsx_ztrool", "3w_mmo_loa_dsx_ztrool",
+                "gpg_king_lich", "gpg_king_lich_spirit", "gpg_darkling_fire",
+            )
+            for ut in must_be_undead:
+                if not _is_undead(ut):
+                    errors.append(f"monster_types.gas undead group failed to match expected undead: {ut}")
+            must_not_be_undead = (
+                "dsx_deathknight", "2w_dsx_deathknight", "3w_dsx_deathknight",
+                "mucosa_raider", "2w_mucosa_raider", "punisher", "maljin_magic",
+                "mmo_loa_dsx_zaurask_fighter", "mmo_loa_dsx_shadow_bigboss",
+            )
+            for nt in must_not_be_undead:
+                if _is_undead(nt):
+                    errors.append(f"monster_types.gas undead group unexpectedly matched non-undead/excluded: {nt}")
+
+            for gname, req_spells in (
+                ("spells_combat", ("spell_transform_troll_masher", "spell_zorkons_bonecrusher")),
+                ("spells_transform", ("spell_transform_troll_masher",)),
+                ("spells_nature", ("spell_orb_poultry", "spell_purity")),
+                ("spells_healing", ("spell_resurrect", "spell_full_resurrect", "spell_revive", "spell_shargs_revive")),
+                ("spells_electric", ("spell_starburst",)),
+                ("spells_fire", ("spell_bombard",)),
+                ("tricky_spells", ("spell_sleepy_gas", "spell_lightofchadek", "spell_invisibility_self")),
+            ):
+                gs = set(mt_groups.get(gname, (set(), []))[1])
+                for rs in req_spells:
+                    if rs not in gs:
+                        errors.append(f"monster_types.gas group {gname!r} missing spell {rs}")
+
+        # Verify dsx_spl_spell.gas Bonecrusher fix while preserving Buffed Spells edits
+        bc_blk = merged_templates.get("spell_zorkons_bonecrusher", ("", None))[0]
+        if not bc_blk:
+            errors.append("Missing spell_zorkons_bonecrusher template")
+        else:
+            if "mana_cost_ui" in bc_blk.lower():
+                errors.append("spell_zorkons_bonecrusher still has active mana_cost_ui override")
+            if "dependent on the power of the target" in bc_blk.lower():
+                errors.append("spell_zorkons_bonecrusher still has stale variable-mana description")
+            if "groupdamage = 18" not in bc_blk.lower() or "targettype = undead" not in bc_blk.lower():
+                errors.append("spell_zorkons_bonecrusher missing groupDamage=18 / targetType=undead")
+        rb_blk = merged_templates.get("spell_rangeboost", ("", None))[0]
+        if "(#magic*45)-700" not in rb_blk.lower():
+            errors.append("dsx_spl_spell.gas override lost Buffed Spells.dsres spell_rangeboost duration edit")
+
+        # Verify spell_zorkons.skrit & spell_purity.skrit fixes
+        zork_raw = mod.get("world/contentdb/components/spells/spell_zorkons.skrit")
+        if not zork_raw:
+            errors.append("Z_LoA_Expansion.dsres missing world/contentdb/components/spells/spell_zorkons.skrit")
+        else:
+            zork_txt = zork_raw.decode("latin1")
+            check_gas_syntax(zork_txt, "world/contentdb/components/spells/spell_zorkons.skrit", errors)
+            if "float damage$ = 0;" not in zork_txt or "if(damage$ > 0)" not in zork_txt or "damage$ >= 0" in zork_txt:
+                errors.append("spell_zorkons.skrit missing damage$ initialization or > 0 guard")
+
+        pur_raw = mod.get("world/contentdb/components/spells/spell_purity.skrit")
+        if not pur_raw:
+            errors.append("Z_LoA_Expansion.dsres missing world/contentdb/components/spells/spell_purity.skrit")
+        else:
+            pur_txt = pur_raw.decode("latin1")
+            check_gas_syntax(pur_txt, "world/contentdb/components/spells/spell_purity.skrit", errors)
+            for needle in (
+                "bool is_friend$ = false;",
+                "this.SetTimerGlobal( 1, true );",
+                "OnGoHandleCCMessage( WE_DESTRUCTED )",
+                "HasGenericState( turnStateName$ )",
+            ):
+                if needle not in pur_txt:
+                    errors.append(f"world/contentdb/components/spells/spell_purity.skrit missing expected snippet: {needle!r}")
+            if "WE_SPELL_SYNC_END" in strip_gas_comments(pur_txt):
+                errors.append("spell_purity.skrit still waits on WE_SPELL_SYNC_END (permanent GO leak)")
+
+        print(f"[7/8] Metadata, Displacers, monster_types.gas, pcontent & spell skrits validated.")
         print(f"[8/8] Summary: {len(errors)} errors, {len(warnings)} warnings")
         for w in warnings:
             print(f"  WARN: {w}")

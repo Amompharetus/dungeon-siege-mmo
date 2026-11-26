@@ -1340,6 +1340,44 @@ static void DsloaSehFilterInstall() {
     }
 }
 
+// 1.5.43: Vanilla DSLOA crash fix in Rules::RCPlayLevelUpSoundAndText (0x005B69A3).
+// When any player levels up, the server broadcasts RCPlayLevelUpSoundAndText(goid, ...) to all
+// clients. If a recipient does not have that Go loaded (e.g. sitting on the character select screen
+// while JipGuard keeps the world live, or outside their frustum), GoHandle::Get() (0x00470810) at
+// 0x005B6A98 returns NULL and 0x005B6A9F calls Go::QueryActor(0) (0x0047C17C: `mov eax,[ecx]; ret 4`)
+// without checking `ecx != NULL` - crashing with 0xC0000005 even though 0x005B6AA7 checks `if (!actor)`.
+static volatile LONG g_levelUpNullGuardHits = 0;
+
+extern "C" void* __attribute__((thiscall)) SafeQueryActor_RCPlayLevelUp(void* go, int arg) {
+    if (!go) {
+        LONG n = InterlockedIncrement(&g_levelUpNullGuardHits);
+        if (n <= 10) {
+            Log("LevelUpGuard: skipped RCPlayLevelUpSoundAndText for unloaded Go (prevented NULL crash #%ld).", n);
+        }
+        return nullptr;
+    }
+    using QueryActorFn = void* (__attribute__((thiscall))*)(void*, int);
+    return ((QueryActorFn)0x0047C17C)(go, arg);
+}
+
+static void LevelUpNullGuardInstall() {
+    const DWORD kCallSite = 0x005B6A9F;
+    const BYTE kExpect[5] = { 0xE8, 0xD8, 0x56, 0xEC, 0xFF };  // call 0x0047C17C
+    if (memcmp((const void*)kCallSite, kExpect, 5) != 0) {
+        Log("WARNING: LevelUpGuard unexpected bytes at 0x%08lX - NOT patched.", kCallSite);
+        return;
+    }
+    BYTE patch[5];
+    patch[0] = 0xE8;
+    DWORD rel = (DWORD)(void*)&SafeQueryActor_RCPlayLevelUp - (kCallSite + 5);
+    memcpy(patch + 1, &rel, 4);
+    if (WriteCode(kCallSite, patch, 5)) {
+        Log("LevelUpGuard: armed at 0x%08lX (NULL-Go crash fix in RCPlayLevelUpSoundAndText).", kCallSite);
+    } else {
+        Log("WARNING: LevelUpGuard failed to write patch at 0x%08lX.", kCallSite);
+    }
+}
+
 // ----------------------------------------------------------------------------------------------
 // Startup
 // ----------------------------------------------------------------------------------------------
@@ -1381,6 +1419,7 @@ static void Startup() {
     if (!IdentifyTarget(exe)) { Log("Unknown executable build. Patches NOT applied (safety)."); return; }
 
     DsloaSehFilterInstall();
+    LevelUpNullGuardInstall();
     ImeDisableInstall();
     DisableLowLevelKeyboardHookInstall();
 

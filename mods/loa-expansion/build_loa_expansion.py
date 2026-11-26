@@ -1541,6 +1541,737 @@ state Abort$
     return skrit.replace("\r\n", "\n").replace("\n", "\r\n").encode("latin1")
 
 
+# Undead actor template stems lacking `membership = skeleton/undead` that must be
+# matched across Regular (1W), Veteran (2W), and Elite (3W) in monster_types.gas.
+_UNDEAD_TIERED_STEMS: Tuple[str, ...] = (
+    # Base DS1 Ghosts, Wraiths & Wraith Warlocks
+    "ghost",
+    "wraith",
+    "wraith_lesser",
+    "wraith_archer",
+    "wraith_archer_summon",
+    "wraith_mage",
+    "wraith_piercer",
+    "wraith_terror",
+    "wraith_terror_act",
+    "wraith_boss_01",
+    "wraith_mage_boss_01",
+    "wraith_summon",
+    "warlock",
+    "warlock_act",
+    # Base DS1 Zombies & Corpses
+    "zombie_01",
+    "zombie_01_ar",
+    "zombie_02",
+    "zombie_02_ar",
+    "zombie_02_boss_01",
+    "zombie_03",
+    "zombie_03_ar",
+    "zombie_headless",
+    "zombie_headless_ar",
+    "zombie_headless_summon",
+    "walking_corpse",
+    "walking_corpse_boss_01",
+    "tortured_corpse",
+    # Base DS1 Crawling Corpses (same base_dungeon_crawler as dsx_crawler_dungeon)
+    "dungeon_crawler",
+    "grave_crawler",
+    # Base DS1 Krug Dog Skeletons, Horrids, Lava Spirits, Possessed Skulls
+    "krug_dog_skeleton",
+    "krug_dog_skeleton_summon",
+    "horrid",
+    "lava_spirit",
+    "lava_spirit_magic",
+    "lava_spirit_magic_summon",
+    "possessed_skull",
+    # LoA Expansion template-listed undead (vanilla only listed 1W, omitting 2W/3W)
+    "dsx_armor_deadly",
+    "dsx_armor_deadly_base",
+    "dsx_deadly_armor_summon",
+    "dsx_crawler_dungeon",
+    "dsx_drake_death_one",
+    "dsx_drake_death_two",
+    "dsx_drake_death_two_boss",
+    "dsx_ghost",
+    "dsx_horrid",
+    "dsx_lava_spirit",
+    "dsx_base_lava_spirit",
+    "dsx_lava_spirit_magic",
+    "dsx_lava_spirit_magic_base",
+    "dsx_necron_ghastly",
+    "dsx_possessed_skull",
+    "dsx_slime_zombie",
+    "dsx_ursae_demonic_base",
+    "dsx_ursae_demonic_summon",
+    "dsx_wraith",
+    "dsx_zaurask_skeleton",
+    "dsx_zaurask_zombie_archer",
+    "dsx_zaurask_zombie_karate",
+    "dsx_zaurask_zombie_sword",
+    "dsx_ztrool",
+    # MMO LoA Endgame scaled clones (Z_LoA_Expansion.dsres)
+    "mmo_loa_dsx_horrid",
+    "mmo_loa_dsx_lava_spirit",
+    "mmo_loa_dsx_ztrool",
+)
+
+# Single-tier Yesterhaven undead templates
+_UNDEAD_YESTERHAVEN_TEMPLATES: Tuple[str, ...] = (
+    "gpg_king_lich",
+    "gpg_king_lich_spirit",
+    "gpg_darkling_fire",
+)
+
+
+def build_monster_types(exp_res: LazyTank) -> bytes:
+    """Patch Expansion.dsres world/global/monster_types.gas:
+    - Add missing base-game DS1 undead (Ghosts, Wraiths, Warlocks, Zombies, Corpses,
+      Crawlers, Horrids, Lava Spirits, Possessed Skulls), all Veteran (2W_) and
+      Elite (3W_) variants of template-listed DS1/LoA undead, custom MMO LoA undead
+      (mmo_loa_dsx_horrid/lava_spirit/ztrool), and Yesterhaven undead, while keeping
+      Cicatrix (dsx_deathknight) excluded per vanilla comment.
+    - Remove dead template names (dsx_zombie, dsx_zombie_2, spell_sleepygas).
+    - Fix missing/misnamed spell group entries (spell_transform_troll_masher replacing
+      non-existent spell_transform_slithermage in spells_combat & spells_transform;
+      spell_orb_poultry in spells_nature; spell_resurrect & spell_shargs_revive in
+      spells_healing; spell_starburst in spells_electric; spell_bombard in spells_fire).
+    """
+    raw = exp_res.get("world/global/monster_types.gas")
+    if raw is None:
+        raise RuntimeError("Missing world/global/monster_types.gas in Expansion.dsres")
+    txt = raw.decode("latin1").replace("\r\n", "\n")
+
+    # 1. Add wraith party memberships alongside existing undead memberships
+    old_mem = "\t\t\t\t* = undead;\n\t\t\t}"
+    new_mem = (
+        "\t\t\t\t* = undead;\n"
+        "\t\t\t\t* = party_wraith;\n"
+        "\t\t\t\t* = party_wraith_mage;\n"
+        "\t\t\t}"
+    )
+    if txt.count(old_mem) != 1:
+        raise RuntimeError("monster_types.gas: failed to locate undead [membership] anchor")
+    txt = txt.replace(old_mem, new_mem, 1)
+
+    # 2. Comment out dead non-existent zombie template entries in undead [templates]
+    old_dead_z = "\t\t\t\t* = dsx_zombie;\n\t\t\t\t* = dsx_zombie_2;\n"
+    new_dead_z = (
+        "\t\t\t\t// Removed non-existent templates dsx_zombie / dsx_zombie_2 "
+        "(covered by membership = undead & dsx_slime_zombie)\n"
+    )
+    if txt.count(old_dead_z) != 1:
+        raise RuntimeError("monster_types.gas: failed to locate dsx_zombie dead entries")
+    txt = txt.replace(old_dead_z, new_dead_z, 1)
+
+    # 3. Append all missing 1W/2W/3W base DS1, LoA, MMO LoA, and Yesterhaven undead
+    #    deduplicating against entries already present in vanilla undead [templates].
+    undead_end = "\t\t\t\t* = dsx_drake_death_two;\n\t\t\t}"
+    if txt.count(undead_end) != 1:
+        raise RuntimeError("monster_types.gas: failed to locate undead [templates] end anchor")
+
+    # Collect existing template names inside the undead [templates] section
+    undead_blocks = extract_blocks(txt, r"\[group\*\]")
+    existing_undead: Set[str] = set()
+    for _, _, _, gblk in undead_blocks:
+        if 'name = "undead"' in gblk.lower():
+            for m in re.finditer(r"^\s*\*\s*=\s*([a-zA-Z0-9_-]+)\s*;", gblk, re.M):
+                existing_undead.add(m.group(1).lower())
+            break
+
+    extra_lines: List[str] = [
+        "\t\t\t\t* = dsx_drake_death_two;",
+        "",
+        "\t\t\t\t// MMO fix: missing base-game DS1 undead, Veteran (2w_)/Elite (3w_) tiers,",
+        "\t\t\t\t// MMO LoA endgame undead, and Yesterhaven undead",
+    ]
+    seen_added: Set[str] = set(existing_undead)
+    for stem in _UNDEAD_TIERED_STEMS:
+        for pfx in ("", "2w_", "3w_"):
+            tname = f"{pfx}{stem}".lower()
+            if tname not in seen_added:
+                seen_added.add(tname)
+                extra_lines.append(f"\t\t\t\t* = {tname};")
+    for tname in _UNDEAD_YESTERHAVEN_TEMPLATES:
+        tl = tname.lower()
+        if tl not in seen_added:
+            seen_added.add(tl)
+            extra_lines.append(f"\t\t\t\t* = {tl};")
+    extra_lines.append("\t\t\t}")
+    txt = txt.replace(undead_end, "\n".join(extra_lines), 1)
+
+    # 4. Fix spell groups (typos, non-existent templates, missing player spells)
+    # 4a. spells_combat & spells_transform: spell_transform_slithermage -> spell_transform_troll_masher
+    slither_line = "\t\t\t\t\t* = spell_transform_slithermage;"
+    troll_line = "\t\t\t\t\t* = spell_transform_troll_masher;"
+    if txt.count(slither_line) != 2:
+        raise RuntimeError(f"monster_types.gas: expected 2 occurrences of spell_transform_slithermage, found {txt.count(slither_line)}")
+    txt = txt.replace(slither_line, troll_line)
+
+    # 4b. spells_nature: add missing spell_orb_poultry
+    nat_anchor = "\t\t\t\t\t* = spell_orb_ice;\n\t\t\t\t\t* = spell_orb_healing;"
+    nat_repl = (
+        "\t\t\t\t\t* = spell_orb_ice;\n"
+        "\t\t\t\t\t* = spell_orb_healing;\n"
+        "\t\t\t\t\t* = spell_orb_poultry;"
+    )
+    if txt.count(nat_anchor) != 1:
+        raise RuntimeError("monster_types.gas: failed to locate spells_nature orb anchor")
+    txt = txt.replace(nat_anchor, nat_repl, 1)
+
+    # 4c. spells_fire: add missing spell_bombard ("exploding balls of fire")
+    fire_anchor = "\t\t\t\t\t* = spell_firebomb;\n\t\t\t\t\t* = spell_fireshot;"
+    fire_repl = (
+        "\t\t\t\t\t* = spell_firebomb;\n"
+        "\t\t\t\t\t* = spell_bombard;\n"
+        "\t\t\t\t\t* = spell_fireshot;"
+    )
+    if txt.count(fire_anchor) != 1:
+        raise RuntimeError("monster_types.gas: failed to locate spells_fire anchor")
+    txt = txt.replace(fire_anchor, fire_repl, 1)
+
+    # 4d. spells_healing: add missing spell_resurrect & spell_shargs_revive
+    heal_anchor = "\t\t\t\t\t* = spell_full_resurrect;\n\t\t\t\t\t* = spell_revive;\n\t\t\t\t}"
+    heal_repl = (
+        "\t\t\t\t\t* = spell_full_resurrect;\n"
+        "\t\t\t\t\t* = spell_resurrect;\n"
+        "\t\t\t\t\t* = spell_revive;\n"
+        "\t\t\t\t\t* = spell_shargs_revive;\n"
+        "\t\t\t\t}"
+    )
+    if txt.count(heal_anchor) != 1:
+        raise RuntimeError("monster_types.gas: failed to locate spells_healing anchor")
+    txt = txt.replace(heal_anchor, heal_repl, 1)
+
+    # 4e. spells_electric: add missing spell_starburst ("globe of electricity")
+    elec_anchor = "\t\t\t\t\t* = spell_spark_multi;\n\t\t\t\t\t* = spell_storm;"
+    elec_repl = (
+        "\t\t\t\t\t* = spell_spark_multi;\n"
+        "\t\t\t\t\t* = spell_starburst;\n"
+        "\t\t\t\t\t* = spell_storm;"
+    )
+    if txt.count(elec_anchor) != 1:
+        raise RuntimeError("monster_types.gas: failed to locate spells_electric anchor")
+    txt = txt.replace(elec_anchor, elec_repl, 1)
+
+    # 4f. tricky_spells: remove typo duplicate spell_sleepygas (spell_sleepy_gas stays)
+    tricky_typo = "\t\t\t\t\t* = spell_sleepygas;\n"
+    if txt.count(tricky_typo) != 1:
+        raise RuntimeError("monster_types.gas: failed to locate tricky_spells spell_sleepygas typo")
+    txt = txt.replace(tricky_typo, "", 1)
+
+    return txt.replace("\n", "\r\n").encode("latin1")
+
+
+def build_dsx_spl_spell(buffed_res: LazyTank | None, exp_res: LazyTank) -> bytes:
+    """Patch spell_zorkons_bonecrusher in dsx_spl_spell.gas (preserving Buffed Spells.dsres).
+
+    Removes orphaned variable-mana UI overrides (mana_cost_ui = 2 /
+    mana_cost_ui_modifier = (#SRC_MAXMANA)+1) and updates the stale description
+    left over from Zorkon's Disintegrator/Exploder so the tooltip displays
+    Bonecrusher's real fixed mana cost (1 + (#magic*.7)+.7).
+    """
+    path = "world/contentdb/templates/regular/interactive/dsx_spl_spell.gas"
+    raw = buffed_res.get(path) if (buffed_res is not None and path in buffed_res) else exp_res.get(path)
+    if raw is None:
+        raise RuntimeError(f"Missing {path} in Buffed Spells.dsres / Expansion.dsres")
+    txt = raw.decode("latin1")
+
+    blocks = extract_blocks(txt, r"\[t:template,n:spell_zorkons_bonecrusher\]")
+    if len(blocks) != 1:
+        raise RuntimeError(f"Expected 1 spell_zorkons_bonecrusher template, found {len(blocks)}")
+    _, s, e, blk = blocks[0]
+
+    old_desc = 'description = "Bone damage spell, highly effective against skeletons. Mana cost dependent on the power of the target.";'
+    new_desc = 'description = "Bone damage spell, highly effective against skeletons and other undead.";'
+    if old_desc not in blk:
+        raise RuntimeError("dsx_spl_spell.gas: failed to locate spell_zorkons_bonecrusher description")
+    blk = blk.replace(old_desc, new_desc, 1)
+
+    old_ui = "mana_cost_ui = 2;\r\n\t\t\tmana_cost_ui_modifier = (#SRC_MAXMANA)+1;"
+    new_ui = (
+        "// MMO fix: Bonecrusher uses fixed mana cost (1 + #magic*.7 + .7), not target-dependent mana\r\n"
+        "\t\t\t//mana_cost_ui = 2;\r\n"
+        "\t\t\t//mana_cost_ui_modifier = (#SRC_MAXMANA)+1;"
+    )
+    if old_ui not in blk:
+        old_ui_lf = old_ui.replace("\r\n", "\n")
+        if old_ui_lf not in blk:
+            raise RuntimeError("dsx_spl_spell.gas: failed to locate spell_zorkons_bonecrusher mana_cost_ui")
+        blk = blk.replace(old_ui_lf, new_ui.replace("\r\n", "\n"), 1)
+    else:
+        blk = blk.replace(old_ui, new_ui, 1)
+
+    return (txt[:s] + blk + txt[e:]).encode("latin1")
+
+
+def build_spell_zorkons_skrit(exp_res: LazyTank) -> bytes:
+    """Patch world/contentdb/components/spells/spell_zorkons.skrit:
+    - Initialize damage$ = 0 explicitly.
+    - Fix off-by-one `if(damage$ >= 0)` -> `if(damage$ > 0)` so zero-damage casts
+      never invoke AwardExperience (matching the original developer comment).
+    """
+    raw = exp_res.get("world/contentdb/components/spells/spell_zorkons.skrit")
+    if raw is None:
+        raise RuntimeError("Missing world/contentdb/components/spells/spell_zorkons.skrit in Expansion.dsres")
+    txt = raw.decode("latin1")
+
+    old_decl = "float damage$;"
+    new_decl = "float damage$ = 0;"
+    if txt.count(old_decl) != 1:
+        raise RuntimeError("spell_zorkons.skrit: failed to locate float damage$ declaration")
+    txt = txt.replace(old_decl, new_decl, 1)
+
+    old_cmp = "if(damage$ >= 0)"
+    new_cmp = "if(damage$ > 0)"
+    if txt.count(old_cmp) != 1:
+        raise RuntimeError("spell_zorkons.skrit: failed to locate if(damage$ >= 0)")
+    txt = txt.replace(old_cmp, new_cmp, 1)
+
+    return txt.encode("latin1")
+
+
+def build_spell_purity_skrit(exp_res: LazyTank) -> bytes:
+    """Patch world/contentdb/components/spells/spell_purity.skrit fixing:
+    - Permanent parent + Omni GO memory leak on every cast (state Finished$ waited
+      for WE_SPELL_SYNC_END which purity SFX never sends; changed to OnEnterState$).
+    - NULL dereference / wrong cleanup branch in RestoreState$ when caster$
+      disconnects before duration expires (caches is_friend$ & checks target$.Go).
+    - Global duration timers (SetTimerGlobal) + WE_DESTRUCTED transition so Omni
+      clones clean up reliably even when targets leave frustum or despawn.
+    - Guard against stacking duplicate fear Omni instances on already-turned undead.
+    """
+    orig = exp_res.get("world/contentdb/components/spells/spell_purity.skrit")
+    if orig is None:
+        raise RuntimeError("Missing world/contentdb/components/spells/spell_purity.skrit in Expansion.dsres")
+
+    skrit = """//////////////////////////////////////////////////////////////////////////////
+//
+// File     :  spell_purity.skrit
+// Author(s):  Tara Teich (patched for Dungeon Siege MMO)
+//
+// Copyright © 2003 Mad Doc Software, LLC.  All rights reserved.
+//----------------------------------------------------------------------------
+//
+// Turns undead, and heals friends
+//
+// MMO fixes:
+// - state Finished$ cleans up in OnEnterState$ instead of waiting on
+//   WE_SPELL_SYNC_END (which purity SFX never sends, leaking every cast GO).
+// - Caches is_friend$ & is_watching$ so RestoreState$ never dereferences an
+//   invalid/disconnected caster$ and always restores SetMayAttack on enemies.
+// - Uses SetTimerGlobal + WE_DESTRUCTED transition so timers never stall out
+//   of frustum and turned undead don't stack overlapping fear instances.
+//
+//////////////////////////////////////////////////////////////////////////////
+
+property string effect_script$     = ""          doc = "Name of the SiegeFx script that will be providing the visual.";
+property string caster_script$     = ""          doc = "Name of the SiegeFx script providing the visual on the caster.";
+property string heal_script$       = ""          doc = "Name of SiegeFx script to play on healing party members.";
+property string script_params$     = ""          doc = "Parameters to send to SiegeFx script";
+property float  radius$            = 15.0        doc = "Radius of the effect, centered on the caster.";
+property string grouping$          = "undead"    doc = "The type of creature we turn.";
+property string description$       = ""          doc = "Description of enchantment being applied";
+property string turnStateName$     = "Turned"    doc = "State name for turned monsters.";
+property string state_description$ = "Cowering"  doc = "State name for turned monsters.";
+
+
+owner = GoSkritComponent;
+
+Goid target$;
+Goid caster$;
+float alt_time$ = 0;
+SFxSID effectID$;
+bool is_friend$ = false;
+bool is_watching$ = false;
+
+// Func to do the turning part of the spell
+void TurnEnemies$()
+{
+\tif ( !caster$.IsValid() || caster$.Go == NULL || !caster$.Go.HasMind() )
+\t{
+\t\treturn;
+\t}
+
+\tcaster$.Go.Mind.TempGopColl1.Clear;
+\tcaster$.Go.Mind.GetEnemiesInSphere( radius$, caster$.Go.Mind.TempGopColl1 );
+
+\tint i$ = 0;
+\tint iend$ = caster$.Go.Mind.TempGopColl1.Size();
+\tGo temp$;
+
+\twhile( i$ < iend$ )
+\t{
+\t\ttemp$ = caster$.Go.Mind.TempGopColl1.Get( i$ );
+
+\t\tif ( temp$ != NULL && temp$.HasMind() && temp$.HasActor() )
+\t\t{
+\t\t\tbool doit$ = false;
+
+\t\t\tif( !StringTool.IsEmpty( grouping$ ) )
+\t\t\t{
+\t\t\t\t// if this is a member of the target group
+\t\t\t\tif ( Rules.IsMemberofGroup( temp$.goid, grouping$ ) )
+\t\t\t\t{
+\t\t\t\t\tdoit$ = true;
+\t\t\t\t}
+\t\t\t}
+
+\t\t\tJob action$ = temp$.Mind.GetFrontJob( JQ_ACTION );
+\t\t\tif( action$ != NULL )
+\t\t\t{
+\t\t\t\tif( action$.JobAbstractType == JAT_STARTUP )
+\t\t\t\t{
+\t\t\t\t\tdoit$ = false;
+\t\t\t\t}
+\t\t\t}
+
+\t\t\tif( temp$.Player.Controller != PC_COMPUTER )
+\t\t\t{
+\t\t\t\tdoit$ = false;
+\t\t\t}
+
+\t\t\t// Avoid stacking overlapping fear instances on an already-turned undead
+\t\t\tif( temp$.Actor.HasGenericState( turnStateName$ ) )
+\t\t\t{
+\t\t\t\tdoit$ = false;
+\t\t\t}
+
+\t\t\tif( doit$ )
+\t\t\t{
+\t\t\t\t// if they know how to flee, we'll make them flee - but we have to do this later
+\t\t\t\t// because setting the job now will clear the collection I'm looping through
+\t\t\t\tif( temp$.Mind.UnderstandsJob( JAT_FLEE_FROM_OBJECT ) )
+\t\t\t\t{
+\t\t\t\t\t// create Omni version of the spell - this is so we have a timer for each affected guy
+\t\t\t\t\tGoCloneReq cloneReq$ = MakeGoCloneReq( Owner.go.Parent.Goid, owner.goid );
+\t\t\t\t\tcloneReq$.Omni = true;
+\t\t\t\t\tGoid new_spell$ = GoDb.SCloneGo( cloneReq$ );
+
+\t\t\t\t\t// send Omni version an Activate to get it started.
+\t\t\t\t\tPostWorldMessage( WE_REQ_ACTIVATE, caster$, new_spell$, MakeInt( temp$.Goid ), 0 );
+\t\t\t\t}
+\t\t\t}
+\t\t}
+
+\t\ti$ += 1;
+\t}
+}
+
+// And to create the healing part
+void HealFriends$()
+{
+\tif ( !caster$.IsValid() || caster$.Go == NULL || !caster$.Go.HasMind() )
+\t{
+\t\treturn;
+\t}
+
+\t// We now need to heal all friendlies
+\tcaster$.Go.Mind.TempGopColl1.Clear;
+
+\tcaster$.Go.Mind.GetVisible( QT_FRIEND, caster$.Go.Mind.TempGopColl1, radius$ );
+
+\tcaster$.Go.Mind.TempGopColl1.Add( caster$.Go );
+
+\tint i$ = 0;
+\tint iend$ = caster$.Go.Mind.TempGopColl1.Size();
+\tGo temp$;
+
+\tint enchanted$ = 0;
+\twhile( i$ < iend$ )
+\t{
+\t\ttemp$ = caster$.Go.Mind.TempGopColl1.Get( i$ );
+
+\t\tif( temp$ != NULL && temp$.HasActor() )
+\t\t{
+\t\t\tif( owner.Go.Magic.IsCastableOn( temp$, false ) )
+\t\t\t{
+\t\t\t\t// create Omni version of the spell.
+\t\t\t\tGoCloneReq cloneReq$ = MakeGoCloneReq( Owner.go.Parent.Goid, owner.goid );
+\t\t\t\tcloneReq$.Omni = true;
+\t\t\t\tGoid new_spell$ = GoDb.SCloneGo( cloneReq$ );
+
+\t\t\t\t// send Omni version an Activate to get it started.
+\t\t\t\tPostWorldMessage( WE_REQ_ACTIVATE, caster$, new_spell$, MakeInt( temp$.Goid ), 0 );
+\t\t\t\tenchanted$ += 1;
+\t\t\t}
+\t\t}
+\t\ti$ += 1;
+\t}
+}
+
+
+////////////////////////////////////////
+//\tState Machine
+
+startup state CastBegin$
+{
+\tevent OnGoHandleMessage$( eWorldEvent e$, WorldMessage msg$ )
+\t{
+\t\tif( e$ == WE_REQ_CAST )
+\t\t{
+\t\t\ttarget$ = MakeGoid( msg$.GetData1() );
+\t\t\tcaster$ = msg$.GetSendFrom();
+
+\t\t\tif( !target$.IsValidMp || !caster$.IsValidMp )
+\t\t\t{
+\t\t\t\tSetState Finished$;
+\t\t\t\treturn;
+\t\t\t}
+
+\t\t\t// Start the visual
+\t\t\tif ( !StringTool.IsEmpty( caster_script$ ) )
+\t\t\t{
+\t\t\t\tSiegeFx.SRunScript( caster_script$, target$, caster$, script_params$, owner.Goid, e$ );
+\t\t\t}
+
+\t\t\t// Turn enemies
+\t\t\tTurnEnemies$();
+
+\t\t\t// heal
+\t\t\tHealFriends$();
+
+\t\t\talt_time$ = 20;
+\t\t\tSetState InActive$;
+\t\t\treturn;
+\t\t}
+\t\telse if ( e$ == WE_REQ_ACTIVATE )
+\t\t{
+\t\t\t/////////////////////////////
+\t\t\t// Omni Go
+
+\t\t\ttarget$ = MakeGoid( msg$.GetData1() );
+\t\t\tcaster$ = msg$.GetSendFrom();
+
+\t\t\tif( !target$.IsValid || !caster$.IsValid || target$.Go == NULL || caster$.Go == NULL || !target$.Go.HasMind() || !target$.Go.HasActor() )
+\t\t\t{
+\t\t\t\tSetState Finished$;
+\t\t\t\treturn;
+\t\t\t}
+
+\t\t\t// we do 2 different things, if friend or enemy
+\t\t\tif ( target$.Go.Mind.IsFriend( caster$.go ) )
+\t\t\t{
+\t\t\t\tis_friend$ = true;
+
+\t\t\t\t// Check to see if the enchantment has already been cast on this go
+\t\t\t\tif( target$.Go.Actor.HasGenericState( owner.Go.Magic.StateName ) )
+\t\t\t\t{
+\t\t\t\t\tfloat level$ = target$.Go.Actor.GetGenericStateSpellLevel( owner.Go.Magic.StateName );
+\t\t\t\t\tGoid old_spell$ = target$.Go.Actor.GetGenericStateSpellGoid( owner.Go.Magic.StateName );
+
+\t\t\t\t\tif( level$ > owner.go.magic.GetMagicLevel( caster$.go ) )
+\t\t\t\t\t{
+\t\t\t\t\t\towner.go.magic.SApplyEnchantments( target$, caster$ );
+\t\t\t\t\t\talt_time$ = GoDb.GetLongestAlteration( target$, target$, caster$, owner.goid );
+
+\t\t\t\t\t\tint packed_speed$ = Math.Round( alt_time$ * 1000 );
+\t\t\t\t\t\tSendWorldMessage( WE_SPELL_EXPIRATION_TIMER_RESET, owner.Goid, old_spell$, packed_speed$ );
+
+\t\t\t\t\t\tSetState InActive$;
+\t\t\t\t\t\treturn;
+\t\t\t\t\t}
+\t\t\t\t\telse
+\t\t\t\t\t{
+\t\t\t\t\t\t// tell the old spell to go away.
+\t\t\t\t\t\tSendWorldMessage( WE_SPELL_EXPIRATION_TIMER_RESET, owner.Goid, old_spell$, -1 );
+
+\t\t\t\t\t\t// remove stale state...
+\t\t\t\t\t\ttarget$.Go.Actor.SRemoveGenericState( owner.Go.Magic.StateName );
+\t\t\t\t\t}
+\t\t\t\t}
+
+\t\t\t\t// do the alterations and figure out how long we should stick around because of them.
+\t\t\t\towner.go.magic.SApplyEnchantments( target$, caster$ );
+
+\t\t\t\talt_time$ = GoDb.GetLongestAlteration( target$, target$, caster$, owner.goid );
+\t\t\t\tif ( alt_time$ < 0.1 )
+\t\t\t\t{
+\t\t\t\t\talt_time$ = 0.1;
+\t\t\t\t}
+
+\t\t\t\t// Add the effected state so this can only happen once
+\t\t\t\ttarget$.Go.Actor.SAddGenericState( owner.Go.Magic.StateName, description$, alt_time$, caster$, owner.goid, owner.go.magic.GetMagicLevel( caster$.go ) );
+
+\t\t\t\t// Start the visual
+\t\t\t\tif( heal_script$ != "" )
+\t\t\t\t{
+\t\t\t\t\teffectID$ = SiegeFx.SRunMpScript( heal_script$, target$, caster$, "", owner.Goid, e$ );
+\t\t\t\t}
+
+\t\t\t\tGodb.StartWatching( owner.goid, target$ );
+\t\t\t\tis_watching$ = true;
+
+\t\t\t\tthis.CreateTimer( 1, alt_time$ );
+\t\t\t\tthis.SetTimerGlobal( 1, true );
+\t\t\t}
+\t\t\telse
+\t\t\t{
+\t\t\t\tis_friend$ = false;
+
+\t\t\t\t// Guard against race if another Purity instance already turned this target
+\t\t\t\tif( target$.Go.Actor.HasGenericState( turnStateName$ ) )
+\t\t\t\t{
+\t\t\t\t\tSetState Finished$;
+\t\t\t\t\treturn;
+\t\t\t\t}
+
+\t\t\t\t// it's an enemy, so we want to just wait for the duration, then set it able to attack again
+\t\t\t\talt_time$ = owner.Go.Magic.EvaluateEffectDuration( caster$.Go, target$.Go );
+\t\t\t\tif ( alt_time$ < 0.1 )
+\t\t\t\t{
+\t\t\t\t\talt_time$ = 0.1;
+\t\t\t\t}
+
+\t\t\t\t// Add the effected state so this can only happen once
+\t\t\t\ttarget$.Go.Actor.SAddGenericState( turnStateName$, state_description$, alt_time$, caster$, owner.goid, owner.go.magic.GetMagicLevel( caster$.go ) );
+
+\t\t\t\t// now we run from the caster - we know we understand the job, or we wouldn't have gotten here at all
+\t\t\t\ttarget$.Go.Mind.SDoJob( MakeJobReq( JAT_FLEE_FROM_OBJECT, JQ_ACTION, QP_CLEAR, AO_COMMAND, caster$ ) );
+
+\t\t\t\t// set that this guy can't attack - after the duration is up, we'll enable
+\t\t\t\t// him to attack again
+\t\t\t\ttarget$.Go.Mind.SetMayAttack = false;
+
+\t\t\t\t// Start the visual
+\t\t\t\tif( effect_script$ != "" )
+\t\t\t\t{
+\t\t\t\t\teffectID$ = SiegeFx.SRunMpScript( effect_script$, target$, caster$, "", owner.Goid, e$ );
+\t\t\t\t}
+
+\t\t\t\tGodb.StartWatching( owner.goid, target$ );
+\t\t\t\tis_watching$ = true;
+
+\t\t\t\tthis.CreateTimer( 1, alt_time$ );
+\t\t\t\tthis.SetTimerGlobal( 1, true );
+\t\t\t}
+\t\t}
+\t\telse if ( e$ == WE_SPELL_EXPIRATION_TIMER_RESET )
+\t\t{
+\t\t\t/////////////////////////////
+\t\t\t// Omni Go
+
+\t\t\tif( target$.IsValid && target$.Go != NULL && target$.Go.HasActor() )
+\t\t\t{
+\t\t\t\tif( msg$.GetData1() == -1 )
+\t\t\t\t{
+\t\t\t\t\tif( is_watching$ )
+\t\t\t\t\t{
+\t\t\t\t\t\tis_watching$ = false;
+\t\t\t\t\t\tGodb.StopWatching( owner.goid, target$ );
+\t\t\t\t\t}
+\t\t\t\t\tSetState( Finished$ );
+\t\t\t\t}
+\t\t\t\telse
+\t\t\t\t{
+\t\t\t\t\t// remove stale state...
+\t\t\t\t\ttarget$.Go.Actor.SRemoveGenericState( owner.Go.Magic.StateName );
+
+\t\t\t\t\tfloat unpacked_duration$ = msg$.GetData1() / 1000.0;
+\t\t\t\t\tif ( unpacked_duration$ < 0.1 )
+\t\t\t\t\t{
+\t\t\t\t\t\tunpacked_duration$ = 0.1;
+\t\t\t\t\t}
+
+\t\t\t\t\t// Add the effected state so this can only happen once
+\t\t\t\t\tif ( caster$.IsValid && caster$.Go != NULL )
+\t\t\t\t\t{
+\t\t\t\t\t\ttarget$.Go.Actor.SAddGenericState( owner.Go.Magic.StateName, description$, unpacked_duration$, caster$, owner.goid, owner.go.magic.GetMagicLevel( caster$.go ) );
+\t\t\t\t\t}
+
+\t\t\t\t\tThis.SetNewTimerSeconds( 1, unpacked_duration$ );
+\t\t\t\t\tthis.SetTimerGlobal( 1, true );
+\t\t\t\t}
+\t\t\t}
+\t\t}
+\t}
+
+\ttransition -> RestoreState$ : OnTimer( 1 );
+\ttransition -> RestoreState$ : OnGoHandleCCMessage( WE_KILLED );
+\ttransition -> RestoreState$ : OnGoHandleCCMessage( WE_DESTRUCTED );
+}
+
+state RestoreState$
+{
+\t/////////////////////////////
+\t// Omni Go
+
+\tevent OnEnterState$
+\t{
+\t\tif( is_watching$ )
+\t\t{
+\t\t\tis_watching$ = false;
+\t\t\tif( target$.IsValid )
+\t\t\t{
+\t\t\t\tGodb.StopWatching( owner.goid, target$ );
+\t\t\t}
+\t\t}
+
+\t\t// If the go is still alive then restore its state
+\t\tif( target$.IsValid && target$.Go != NULL )
+\t\t{
+\t\t\tif ( is_friend$ )
+\t\t\t{
+\t\t\t\tif( target$.Go.HasActor() )
+\t\t\t\t{
+\t\t\t\t\ttarget$.Go.Actor.SRemoveGenericState( owner.Go.Magic.StateName );
+\t\t\t\t}
+\t\t\t}
+\t\t\telse
+\t\t\t{
+\t\t\t\t// stop visual effect
+\t\t\t\tSiegeFx.SStopScript( effectID$ );
+
+\t\t\t\t// remove the state so this can be affected again
+\t\t\t\tif( target$.Go.HasActor() )
+\t\t\t\t{
+\t\t\t\t\ttarget$.Go.Actor.SRemoveGenericState( turnStateName$ );
+\t\t\t\t}
+\t\t\t\t// and set it to be able to attack again
+\t\t\t\tif( target$.Go.HasMind() )
+\t\t\t\t{
+\t\t\t\t\ttarget$.Go.Mind.SetMayAttack = true;
+\t\t\t\t}
+\t\t\t}
+\t\t}
+
+\t\tSetState Finished$;
+\t}
+}
+
+state InActive$
+{
+\t/////////////////////////////
+\t// Parent or superseded Omni Go
+
+\ttrigger OnTimer$( 1 )
+\t{
+\t\tSetState( Finished$ );
+\t}
+
+\tevent OnEnterState$
+\t{
+\t\tfloat wait$ = alt_time$;
+\t\tif ( wait$ < 0.1 )
+\t\t{
+\t\t\twait$ = 0.1;
+\t\t}
+\t\tthis.CreateTimer( 1, wait$ );
+\t\tthis.SetTimerGlobal( 1, true );
+\t}
+}
+
+state Finished$
+{
+\tevent OnEnterState$
+\t{
+\t\tSiegeFx.ClearVariables( owner.goid );
+\t\tPostWorldMessage( WE_REQ_DELETE, owner.Goid, owner.Goid, 1 );
+\t}
+}
+"""
+    return skrit.replace("\r\n", "\n").replace("\n", "\r\n").encode("latin1")
+
+
 def build_expansion_tank(game_dir: str, out_path: str) -> Tuple[int, int]:
     """Assemble and write Z_LoA_Expansion.dsres at priority 0x5500."""
     mp_map = LazyTank(os.path.join(game_dir, "Maps", "MpWorld.dsmap"))
@@ -1548,6 +2279,8 @@ def build_expansion_tank(game_dir: str, out_path: str) -> Tuple[int, int]:
     logic_res = LazyTank(os.path.join(game_dir, "Resources", "Logic.dsres"))
     terrain_res = LazyTank(os.path.join(game_dir, "Resources", "Terrain.dsres"))
     exp_res = LazyTank(os.path.join(game_dir, "DSLOA", "Expansion.dsres"))
+    buffed_path = os.path.join(game_dir, "DSLOA", "Buffed Spells.dsres")
+    buffed_res = LazyTank(buffed_path) if os.path.exists(buffed_path) else None
 
     try:
         files: Dict[str, bytes] = {}
@@ -1570,17 +2303,21 @@ def build_expansion_tank(game_dir: str, out_path: str) -> Tuple[int, int]:
                 raise RuntimeError(f"Duplicate output path for swamp2gi fix: {path}")
         files.update(swamp_fix)
 
-        # 3. Map & global metadata merges
+        # 3. Map & global metadata merges + vanilla spell/monster_types bugfixes
         files["world/maps/multiplayer_world/info/start_positions.gas"] = build_start_positions(mp_map, exp_map)
         files["world/maps/multiplayer_world/info/world_locations.gas"] = build_world_locations(mp_map, exp_map)
         files["world/maps/multiplayer_world/info/lore.gas"] = build_lore(mp_map, exp_map)
         files["world/maps/multiplayer_world/quests/quests.gas"] = build_quests(mp_map, exp_map)
         files["world/maps/multiplayer_world/index/stitch_index.gas"] = build_stitch_index(mp_map, exp_map)
         files["world/global/elevators.gas"] = build_elevators(exp_res)
+        files["world/global/monster_types.gas"] = build_monster_types(exp_res)
         files["world/global/moods/multiplayer_world/moods1.gas"] = build_moods(logic_res, exp_res)
         files["world/global/moods/dsx_mood_manager.skrit"] = build_mood_manager(exp_res)
         files["world/contentdb/pcontent.skrit"] = build_pcontent_skrit(exp_res)
         files["world/contentdb/components/spells/spell_glyph.skrit"] = build_spell_glyph_skrit(exp_res)
+        files["world/contentdb/components/spells/spell_zorkons.skrit"] = build_spell_zorkons_skrit(exp_res)
+        files["world/contentdb/components/spells/spell_purity.skrit"] = build_spell_purity_skrit(exp_res)
+        files["world/contentdb/templates/regular/interactive/dsx_spl_spell.gas"] = build_dsx_spl_spell(buffed_res, exp_res)
         siege_bytes, siege_count = build_siege_nodes(reg_files, terrain_res, exp_res)
         files["world/global/siege_nodes/loa_expansion/loa_expansion_nodes.gas"] = siege_bytes
 
@@ -1593,15 +2330,17 @@ def build_expansion_tank(game_dir: str, out_path: str) -> Tuple[int, int]:
             description="Legends of Aranna Stronghold and Great Clock expansion integrated into Utraean Peninsula (multiplayer_world).",
             priority=0x5500,
         )
+        meta_count = nfiles - len(tpl_files) - len(reg_files) - len(swamp_fix)
         print(
             f"Built {out_path}: {nfiles} files ({len(tpl_files)} template, "
-            f"{len(reg_files)} region, 10 metadata; {siege_count} siege_nodes), "
-            f"{size_bytes:,} bytes, priority=0x5500"
+            f"{len(reg_files)} region, {len(swamp_fix)} swamp2gi fix, {meta_count} metadata/patch; "
+            f"{siege_count} siege_nodes), {size_bytes:,} bytes, priority=0x5500"
         )
         return nfiles, size_bytes
     finally:
-        for tk in (mp_map, exp_map, logic_res, terrain_res, exp_res):
-            tk.close()
+        for tk in (mp_map, exp_map, logic_res, terrain_res, exp_res, buffed_res):
+            if tk is not None:
+                tk.close()
 
 
 def main() -> None:
